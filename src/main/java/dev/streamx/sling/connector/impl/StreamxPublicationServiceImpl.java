@@ -3,8 +3,6 @@ package dev.streamx.sling.connector.impl;
 import dev.streamx.clients.ingestion.StreamxClient;
 import dev.streamx.clients.ingestion.exceptions.StreamxClientException;
 import dev.streamx.clients.ingestion.publisher.Publisher;
-import dev.streamx.clients.ingestion.rest.RestStreamxClient;
-import dev.streamx.sling.connector.HttpClientProvider;
 import dev.streamx.sling.connector.PublicationData;
 import dev.streamx.sling.connector.PublicationHandler;
 import dev.streamx.sling.connector.PublishData;
@@ -18,7 +16,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.sling.api.resource.LoginException;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
@@ -51,6 +48,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
   private static final String PN_STREAMX_HANDLER_ID = "streamx.handler.id";
   private static final String PN_STREAMX_ACTION = "streamx.action";
   private static final String PN_STREAMX_PATH = "streamx.path";
+
   private static final String ACTION_PUBLISH = "PUBLISH";
   private static final String ACTION_UNPUBLISH = "UNPUBLISH";
 
@@ -66,14 +64,10 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
       policyOption = ReferencePolicyOption.GREEDY)
   private List<PublicationHandler<?>> publicationHandlers;
 
-  @Reference(cardinality = ReferenceCardinality.OPTIONAL)
-  private HttpClientProvider customHttpClientProvider;
-
   @Reference
-  private DefaultHttpClientProvider defaultHttpClientProvider;
+  private StreamxClientFactory streamxClientFactory;
 
   private boolean enabled;
-  private String streamxUrl;
   private StreamxClient streamxClient;
   private Map<String, Publisher<?>> publishers;
 
@@ -85,8 +79,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
   @Modified
   private void activate(Config config) throws StreamxClientException {
     enabled = config.enabled();
-    streamxUrl = config.streamxUrl();
-    streamxClient = createStreamxClient();
+    streamxClient = streamxClientFactory.createStreamxClient(config.streamxUrl());
     publishers = new HashMap<>();
   }
 
@@ -94,19 +87,6 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
   private void deactivate() throws StreamxClientException {
     if (streamxClient != null) {
       streamxClient.close();
-    }
-  }
-
-  private StreamxClient createStreamxClient() throws StreamxClientException {
-    CloseableHttpClient providedHttpClient = customHttpClientProvider != null
-        ? customHttpClientProvider.getClient()
-        : null;
-    if (providedHttpClient != null) {
-      LOG.info("Using provided HttpClient from: {}", customHttpClientProvider.getClass().getName());
-      return RestStreamxClient.create(streamxUrl, providedHttpClient);
-    } else {
-      LOG.info("No HttpClient provided, using a default from StreamX connector");
-      return RestStreamxClient.create(streamxUrl, defaultHttpClientProvider.getClient());
     }
   }
 
@@ -126,7 +106,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
   }
 
   private void addPublicationToQueueIfCanHandle(String action, List<String> resourcesPaths) {
-    if (resourcesPaths.isEmpty()) {
+    if (!enabled || resourcesPaths.isEmpty()) {
       return;
     }
 
@@ -204,6 +184,10 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
         return;
       }
       PublishData<?> publishData = publicationHandler.getPublishData(resource);
+      if (publishData == null) {
+        LOG.debug("Publish data returned by [{}] is null", publicationHandler.getClass().getName());
+        return;
+      }
       handlePublish(publishData);
     } catch (StreamxClientException | LoginException | UnsupportedEncodingException e) {
       LOG.error("Cannot publish to StreamX", e);
@@ -224,6 +208,11 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
   private void handleUnpublish(PublicationHandler<?> publicationHandler, String resourcePath) {
     try {
       UnpublishData<?> unpublishData = publicationHandler.getUnpublishData(resourcePath);
+      if (unpublishData == null) {
+        LOG.debug("Unpublish data returned by [{}] is null",
+            publicationHandler.getClass().getName());
+        return;
+      }
       handleUnpublish(unpublishData);
     } catch (StreamxClientException | UnsupportedEncodingException e) {
       LOG.error("Cannot unpublish from StreamX", e);
@@ -251,7 +240,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     boolean enabled() default true;
 
     @AttributeDefinition(name = "URL to StreamX", description =
-        "URL of to StreamX instance that will receive publication requests.")
-    String streamxUrl() default "http://localhost:8080";
+        "URL to StreamX instance that will receive publication requests.")
+    String streamxUrl();
   }
 }
