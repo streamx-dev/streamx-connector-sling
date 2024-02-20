@@ -28,8 +28,6 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
-import org.osgi.service.component.annotations.ReferenceCardinality;
-import org.osgi.service.component.annotations.ReferencePolicyOption;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 import org.slf4j.Logger;
@@ -58,11 +56,8 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
   @Reference
   private JobManager jobManager;
 
-  @Reference(
-      service = PublicationHandler.class,
-      cardinality = ReferenceCardinality.AT_LEAST_ONE,
-      policyOption = ReferencePolicyOption.GREEDY)
-  private List<PublicationHandler<?>> publicationHandlers;
+  @Reference
+  private PublicationHandlerRegistry publicationHandlerRegistry;
 
   @Reference
   private StreamxClientFactory streamxClientFactory;
@@ -114,7 +109,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
       if (StringUtils.isBlank(resourcePath)) {
         continue;
       }
-      for (PublicationHandler<?> handler : publicationHandlers) {
+      for (PublicationHandler<?> handler : publicationHandlerRegistry.getHandlers()) {
         if (handler.canHandle(resourcePath)) {
           addPublicationToQueue(handler.getId(), action, resourcePath);
         }
@@ -170,7 +165,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
   }
 
   private PublicationHandler<?> findHandler(String handlerId) {
-    return publicationHandlers.stream()
+    return publicationHandlerRegistry.getHandlers().stream()
         .filter(handler -> handlerId.equals(handler.getId()))
         .findFirst()
         .orElse(null);

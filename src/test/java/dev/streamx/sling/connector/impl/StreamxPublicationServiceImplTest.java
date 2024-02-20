@@ -62,6 +62,7 @@ class StreamxPublicationServiceImplTest {
     for (PublicationHandler<?> handler : handlers) {
       slingContext.registerService(PublicationHandler.class, handler);
     }
+    slingContext.registerInjectActivateService(new PublicationHandlerRegistry());
 
     slingContext.registerInjectActivateService(publicationServiceImpl, publicationServiceConfig);
 
