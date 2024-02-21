@@ -5,6 +5,7 @@ import dev.streamx.clients.ingestion.exceptions.StreamxClientException;
 
 public interface StreamxClientFactory {
 
-  StreamxClient createStreamxClient(String streamxUrl) throws StreamxClientException;
+  StreamxClient createStreamxClient(String streamxUrl, String authToken)
+      throws StreamxClientException;
 
 }

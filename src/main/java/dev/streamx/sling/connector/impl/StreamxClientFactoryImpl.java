@@ -2,7 +2,6 @@ package dev.streamx.sling.connector.impl;
 
 import dev.streamx.clients.ingestion.StreamxClient;
 import dev.streamx.clients.ingestion.exceptions.StreamxClientException;
-import dev.streamx.clients.ingestion.rest.RestStreamxClient;
 import dev.streamx.sling.connector.HttpClientProvider;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.osgi.service.component.annotations.Component;
@@ -22,17 +21,26 @@ public class StreamxClientFactoryImpl implements StreamxClientFactory {
   @Reference
   private DefaultHttpClientProvider defaultHttpClientProvider;
 
-  public StreamxClient createStreamxClient(String streamxUrl) throws StreamxClientException {
+  public StreamxClient createStreamxClient(String streamxUrl, String authToken)
+      throws StreamxClientException {
     CloseableHttpClient providedHttpClient = customHttpClientProvider != null
         ? customHttpClientProvider.getClient()
         : null;
     if (providedHttpClient != null) {
       LOG.info("Using provided HttpClient from: {}", customHttpClientProvider.getClass().getName());
-      return RestStreamxClient.create(streamxUrl, providedHttpClient);
+      return createStreamxClient(streamxUrl, authToken, providedHttpClient);
     } else {
       LOG.info("No HttpClient provided, using a default from StreamX connector");
-      return RestStreamxClient.create(streamxUrl, defaultHttpClientProvider.getClient());
+      return createStreamxClient(streamxUrl, authToken, defaultHttpClientProvider.getClient());
     }
+  }
+
+  private StreamxClient createStreamxClient(String streamxUrl, String authToken,
+      CloseableHttpClient httpClient) throws StreamxClientException {
+    return StreamxClient.builder(streamxUrl)
+        .setAuthToken(authToken)
+        .setApacheHttpClient(httpClient)
+        .build();
   }
 
 }

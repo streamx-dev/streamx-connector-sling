@@ -9,9 +9,7 @@ import dev.streamx.sling.connector.PublishData;
 import dev.streamx.sling.connector.StreamxPublicationException;
 import dev.streamx.sling.connector.StreamxPublicationService;
 import dev.streamx.sling.connector.UnpublishData;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
+import dev.streamx.sling.connector.impl.StreamxPublicationServiceImpl.Config;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +27,7 @@ import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
+import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +36,7 @@ import org.slf4j.LoggerFactory;
     service = {StreamxPublicationService.class, JobConsumer.class},
     property = {JobConsumer.PROPERTY_TOPICS + "=" + StreamxPublicationServiceImpl.JOB_TOPIC}
 )
+@Designate(ocd = Config.class)
 public class StreamxPublicationServiceImpl implements StreamxPublicationService, JobConsumer {
 
   static final String JOB_TOPIC = "dev/streamx/sling/connector";
@@ -66,15 +66,12 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
   private StreamxClient streamxClient;
   private Map<String, Publisher<?>> publishers;
 
-  private static String getKey(PublicationData<?> publication) throws UnsupportedEncodingException {
-    return URLEncoder.encode(publication.getKey(), StandardCharsets.UTF_8.toString());
-  }
-
   @Activate
   @Modified
   private void activate(Config config) throws StreamxClientException {
     enabled = config.enabled();
-    streamxClient = streamxClientFactory.createStreamxClient(config.streamxUrl());
+    streamxClient = streamxClientFactory
+        .createStreamxClient(config.streamxUrl(), config.authToken());
     publishers = new HashMap<>();
   }
 
@@ -184,7 +181,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
         return;
       }
       handlePublish(publishData);
-    } catch (StreamxClientException | LoginException | UnsupportedEncodingException e) {
+    } catch (StreamxClientException | LoginException e) {
       LOG.error("Cannot publish to StreamX", e);
     }
   }
@@ -193,10 +190,9 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     return resolverFactory.getAdministrativeResourceResolver(null);
   }
 
-  private <T> void handlePublish(PublishData<T> publishData)
-      throws StreamxClientException, UnsupportedEncodingException {
+  private <T> void handlePublish(PublishData<T> publishData) throws StreamxClientException {
     Publisher<T> publisher = getPublisher(publishData);
-    publisher.publish(getKey(publishData), publishData.getModel());
+    publisher.publish(publishData.getKey(), publishData.getModel());
     LOG.info("Published resource: [{}]", publishData.getKey());
   }
 
@@ -209,15 +205,14 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
         return;
       }
       handleUnpublish(unpublishData);
-    } catch (StreamxClientException | UnsupportedEncodingException e) {
+    } catch (StreamxClientException e) {
       LOG.error("Cannot unpublish from StreamX", e);
     }
   }
 
-  private <T> void handleUnpublish(UnpublishData<T> unpublishData)
-      throws StreamxClientException, UnsupportedEncodingException {
+  private <T> void handleUnpublish(UnpublishData<T> unpublishData) throws StreamxClientException {
     Publisher<T> publisher = getPublisher(unpublishData);
-    publisher.unpublish(getKey(unpublishData));
+    publisher.unpublish(unpublishData.getKey());
     LOG.info("Unpublished resource: [{}]", unpublishData.getKey());
   }
 
@@ -237,5 +232,9 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     @AttributeDefinition(name = "URL to StreamX", description =
         "URL to StreamX instance that will receive publication requests.")
     String streamxUrl();
+
+    @AttributeDefinition(name = "JWT", description =
+        "JWT that will be sent by during publication requests.")
+    String authToken();
   }
 }

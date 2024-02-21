@@ -11,9 +11,6 @@ import dev.streamx.sling.connector.testing.handlers.ImpostorPublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.PagePublicationHandler;
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJobManager;
 import dev.streamx.sling.connector.testing.streamx.clients.ingestion.FakeStreamxClient;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -307,18 +304,10 @@ class StreamxPublicationServiceImplTest {
   }
 
   private Tuple publish(String key, String channel, String data) {
-    return tuple("Publish", urlEncode(key), channel, data);
+    return tuple("Publish", key, channel, data);
   }
 
   private Tuple unpublish(String key) {
-    return tuple("Unpublish", urlEncode(key), null, null);
-  }
-
-  private String urlEncode(String string) {
-    try {
-      return URLEncoder.encode(string, StandardCharsets.UTF_8.toString());
-    } catch (UnsupportedEncodingException e) {
-      throw new RuntimeException(e);
-    }
+    return tuple("Unpublish", key, null, null);
   }
 }

@@ -86,13 +86,19 @@
     <dependency>
       <groupId>dev.streamx</groupId>
       <artifactId>ingestion-client</artifactId>
-      <version>1.0-SNAPSHOT</version>
+      <version>0.0.6-SNAPSHOT</version>
     </dependency>
     <!--AEM-->
     <dependency>
       <groupId>com.adobe.aem</groupId>
       <artifactId>aem-sdk-api</artifactId>
       <version>2021.1.4738.20210107T143101Z-201217</version>
+    </dependency>
+    <!-- Common -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>1.7.36</version>
     </dependency>
     <!-- Testing -->
     <dependency>
