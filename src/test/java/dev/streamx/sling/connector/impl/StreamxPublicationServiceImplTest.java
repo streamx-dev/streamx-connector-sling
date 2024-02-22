@@ -52,8 +52,8 @@ class StreamxPublicationServiceImplTest {
     }
 
     StreamxPublicationServiceImpl publicationServiceImpl = new StreamxPublicationServiceImpl();
-    FakeStreamxClientFactory fakeStreamxClientProvider = new FakeStreamxClientFactory();
-    slingContext.registerService(StreamxClientFactory.class, fakeStreamxClientProvider);
+    FakeStreamxClientFactory fakeStreamxClientFactory = new FakeStreamxClientFactory();
+    slingContext.registerService(StreamxClientFactory.class, fakeStreamxClientFactory);
     fakeJobManager = new FakeJobManager(Collections.singletonList(publicationServiceImpl));
     slingContext.registerService(JobManager.class, fakeJobManager);
     for (PublicationHandler<?> handler : handlers) {
@@ -64,7 +64,7 @@ class StreamxPublicationServiceImplTest {
     slingContext.registerInjectActivateService(publicationServiceImpl, publicationServiceConfig);
 
     publicationService = publicationServiceImpl;
-    fakeStreamxClient = fakeStreamxClientProvider.getFakeClient();
+    fakeStreamxClient = fakeStreamxClientFactory.getFakeClient();
   }
 
   @Test

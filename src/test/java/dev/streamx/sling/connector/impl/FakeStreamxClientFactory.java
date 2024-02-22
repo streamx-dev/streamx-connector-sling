@@ -8,7 +8,7 @@ public class FakeStreamxClientFactory implements StreamxClientFactory {
   private FakeStreamxClient fakeStreamxClient;
 
   @Override
-  public StreamxClient createStreamxClient(String streamxUrl, String authToken) {
+  public StreamxClient createStreamxClient() {
     fakeStreamxClient = new FakeStreamxClient();
     return fakeStreamxClient;
   }

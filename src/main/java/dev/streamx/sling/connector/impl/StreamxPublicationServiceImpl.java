@@ -13,6 +13,7 @@ import dev.streamx.sling.connector.impl.StreamxPublicationServiceImpl.Config;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.sling.api.resource.LoginException;
 import org.apache.sling.api.resource.Resource;
@@ -64,15 +65,15 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
 
   private boolean enabled;
   private StreamxClient streamxClient;
-  private Map<String, Publisher<?>> publishers;
+  private ConcurrentHashMap<String, Publisher<?>> publishers;
 
   @Activate
   @Modified
   private void activate(Config config) throws StreamxClientException {
+    deactivate();
     enabled = config.enabled();
-    streamxClient = streamxClientFactory
-        .createStreamxClient(config.streamxUrl(), config.authToken());
-    publishers = new HashMap<>();
+    publishers = new ConcurrentHashMap<>();
+    streamxClient = streamxClientFactory.createStreamxClient();
   }
 
   @Deactivate
@@ -228,13 +229,5 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     @AttributeDefinition(name = "Enable publication to StreamX", description =
         "If the flag is unset the publication requests will be skipped.")
     boolean enabled() default true;
-
-    @AttributeDefinition(name = "URL to StreamX", description =
-        "URL to StreamX instance that will receive publication requests.")
-    String streamxUrl();
-
-    @AttributeDefinition(name = "JWT", description =
-        "JWT that will be sent by during publication requests.")
-    String authToken();
   }
 }

@@ -11,4 +11,6 @@
     <appender-ref ref="STDOUT"/>
   </root>
 
+  <logger name="dev.streamx.sling.connector" level="DEBUG"/>
+
 </configuration>
