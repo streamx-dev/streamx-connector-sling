@@ -5,7 +5,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>dev.streamx</groupId>
-  <artifactId>sling-streamx-connector</artifactId>
+  <artifactId>streamx-connector-sling</artifactId>
   <version>0.0.1-SNAPSHOT</version>
 
   <properties>
@@ -15,7 +15,30 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 
+  <repositories>
+    <repository>
+      <id>artifact-registry</id>
+      <url>
+        artifactregistry://europe-west1-maven.pkg.dev/streamx-releases/streamx-maven-public-releases
+      </url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+  </repositories>
+
   <build>
+    <extensions>
+      <extension>
+        <groupId>com.google.cloud.artifactregistry</groupId>
+        <artifactId>artifactregistry-maven-wagon</artifactId>
+        <version>2.2.1</version>
+      </extension>
+    </extensions>
+
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -86,7 +109,7 @@
     <dependency>
       <groupId>dev.streamx</groupId>
       <artifactId>ingestion-client</artifactId>
-      <version>0.0.6-SNAPSHOT</version>
+      <version>0.0.7</version>
     </dependency>
     <!--AEM-->
     <dependency>
