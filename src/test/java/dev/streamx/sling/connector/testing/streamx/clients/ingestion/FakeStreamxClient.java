@@ -24,8 +24,8 @@ public class FakeStreamxClient implements StreamxClient {
     publications.add(new Publication("Publish", key, channel, data));
   }
 
-  public <T> void recordUnpublish(String key) {
-    publications.add(new Publication("Unpublish", key, null, null));
+  public <T> void recordUnpublish(String key, String channel) {
+    publications.add(new Publication("Unpublish", key, channel, null));
   }
 
   public List<Publication> getPublications() {

@@ -3,7 +3,6 @@ package dev.streamx.sling.connector.testing.handlers;
 import dev.streamx.sling.connector.PublicationHandler;
 import dev.streamx.sling.connector.PublishData;
 import dev.streamx.sling.connector.UnpublishData;
-import org.apache.sling.api.resource.Resource;
 
 public class ImpostorPublicationHandler implements PublicationHandler<Page> {
 
@@ -18,7 +17,7 @@ public class ImpostorPublicationHandler implements PublicationHandler<Page> {
   }
 
   @Override
-  public PublishData<Page> getPublishData(Resource resource) {
+  public PublishData<Page> getPublishData(String resourcePath) {
     return null; // ...but return null...
   }
 

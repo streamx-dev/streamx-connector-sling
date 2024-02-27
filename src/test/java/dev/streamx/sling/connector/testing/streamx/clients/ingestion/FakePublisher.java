@@ -20,7 +20,7 @@ public class FakePublisher<T> implements Publisher<T> {
 
   @Override
   public Long unpublish(String key) {
-    fakeStreamxClient.recordUnpublish(key);
+    fakeStreamxClient.recordUnpublish(key, channel);
     return null;
   }
 }

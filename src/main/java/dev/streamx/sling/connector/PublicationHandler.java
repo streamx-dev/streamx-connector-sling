@@ -1,15 +1,13 @@
 package dev.streamx.sling.connector;
 
-import org.apache.sling.api.resource.Resource;
-
 public interface PublicationHandler<T> {
 
   String getId();
 
   boolean canHandle(String resourcePath);
 
-  PublishData<T> getPublishData(Resource resource);
+  PublishData<T> getPublishData(String resourcePath) throws StreamxPublicationException;
 
-  UnpublishData<T> getUnpublishData(String resourcePath);
+  UnpublishData<T> getUnpublishData(String resourcePath) throws StreamxPublicationException;
 
 }

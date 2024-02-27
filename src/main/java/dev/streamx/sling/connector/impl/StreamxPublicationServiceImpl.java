@@ -15,10 +15,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.sling.api.resource.LoginException;
-import org.apache.sling.api.resource.Resource;
-import org.apache.sling.api.resource.ResourceResolver;
-import org.apache.sling.api.resource.ResourceResolverFactory;
 import org.apache.sling.event.jobs.Job;
 import org.apache.sling.event.jobs.JobManager;
 import org.apache.sling.event.jobs.consumer.JobConsumer;
@@ -40,7 +36,7 @@ import org.slf4j.LoggerFactory;
 @Designate(ocd = Config.class)
 public class StreamxPublicationServiceImpl implements StreamxPublicationService, JobConsumer {
 
-  static final String JOB_TOPIC = "dev/streamx/sling/connector";
+  static final String JOB_TOPIC = "dev/streamx/publications";
 
   private static final Logger LOG = LoggerFactory.getLogger(StreamxPublicationServiceImpl.class);
 
@@ -50,9 +46,6 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
 
   private static final String ACTION_PUBLISH = "PUBLISH";
   private static final String ACTION_UNPUBLISH = "UNPUBLISH";
-
-  @Reference
-  private ResourceResolverFactory resolverFactory;
 
   @Reference
   private JobManager jobManager;
@@ -89,16 +82,17 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
   }
 
   @Override
-  public void publish(List<String> pathsToPublish) {
+  public void publish(List<String> pathsToPublish) throws StreamxPublicationException {
     addPublicationToQueueIfCanHandle(ACTION_PUBLISH, pathsToPublish);
   }
 
   @Override
-  public void unpublish(List<String> pathsToUnpublish) {
+  public void unpublish(List<String> pathsToUnpublish) throws StreamxPublicationException {
     addPublicationToQueueIfCanHandle(ACTION_UNPUBLISH, pathsToUnpublish);
   }
 
-  private void addPublicationToQueueIfCanHandle(String action, List<String> resourcesPaths) {
+  private void addPublicationToQueueIfCanHandle(String action, List<String> resourcesPaths)
+      throws StreamxPublicationException {
     if (!enabled || resourcesPaths.isEmpty()) {
       return;
     }
@@ -115,7 +109,8 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     }
   }
 
-  private void addPublicationToQueue(String handlerId, String action, String resourcePath) {
+  private void addPublicationToQueue(String handlerId, String action, String resourcePath)
+      throws StreamxPublicationException {
     Map<String, Object> jobProperties = new HashMap<>();
     jobProperties.put(PN_STREAMX_HANDLER_ID, handlerId);
     jobProperties.put(PN_STREAMX_ACTION, action);
@@ -138,10 +133,20 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     }
 
     LOG.debug("Processing job: [{} - {}]", action, path);
-    return processPublication(handlerId, action, path);
+    try {
+      return processPublication(handlerId, action, path);
+    } catch (StreamxPublicationException | StreamxClientException e) {
+      LOG.error("Error while processing publication, job will be retried", e);
+      return JobResult.FAILED;
+    } catch (RuntimeException e) {
+      LOG.error("Unknown error while processing publication [{}, {}, {}]",
+          handlerId, action, path, e);
+      return JobResult.CANCEL;
+    }
   }
 
-  private JobResult processPublication(String handlerId, String action, String path) {
+  private JobResult processPublication(String handlerId, String action, String path)
+      throws StreamxPublicationException, StreamxClientException {
     PublicationHandler<?> publicationHandler = findHandler(handlerId);
     if (publicationHandler == null) {
       LOG.warn("Cannot find publication handler with id: [{}]", handlerId);
@@ -169,26 +174,14 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
         .orElse(null);
   }
 
-  private void handlePublish(PublicationHandler<?> publicationHandler, String resourcePath) {
-    try (ResourceResolver resolver = createResourceResolver()) {
-      Resource resource = resolver.getResource(resourcePath);
-      if (resource == null) {
-        LOG.error("Cannot get resource: [{}]", resourcePath);
-        return;
-      }
-      PublishData<?> publishData = publicationHandler.getPublishData(resource);
-      if (publishData == null) {
-        LOG.debug("Publish data returned by [{}] is null", publicationHandler.getClass().getName());
-        return;
-      }
-      handlePublish(publishData);
-    } catch (StreamxClientException | LoginException e) {
-      LOG.error("Cannot publish to StreamX", e);
+  private void handlePublish(PublicationHandler<?> publicationHandler, String resourcePath)
+      throws StreamxPublicationException, StreamxClientException {
+    PublishData<?> publishData = publicationHandler.getPublishData(resourcePath);
+    if (publishData == null) {
+      LOG.debug("Publish data returned by [{}] is null", publicationHandler.getClass().getName());
+      return;
     }
-  }
-
-  private ResourceResolver createResourceResolver() throws LoginException {
-    return resolverFactory.getAdministrativeResourceResolver(null);
+    handlePublish(publishData);
   }
 
   private <T> void handlePublish(PublishData<T> publishData) throws StreamxClientException {
@@ -197,18 +190,15 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     LOG.info("Published resource: [{}]", publishData.getKey());
   }
 
-  private void handleUnpublish(PublicationHandler<?> publicationHandler, String resourcePath) {
-    try {
-      UnpublishData<?> unpublishData = publicationHandler.getUnpublishData(resourcePath);
-      if (unpublishData == null) {
-        LOG.debug("Unpublish data returned by [{}] is null",
-            publicationHandler.getClass().getName());
-        return;
-      }
-      handleUnpublish(unpublishData);
-    } catch (StreamxClientException e) {
-      LOG.error("Cannot unpublish from StreamX", e);
+  private void handleUnpublish(PublicationHandler<?> publicationHandler, String resourcePath)
+      throws StreamxPublicationException, StreamxClientException {
+    UnpublishData<?> unpublishData = publicationHandler.getUnpublishData(resourcePath);
+    if (unpublishData == null) {
+      LOG.debug("Unpublish data returned by [{}] is null",
+          publicationHandler.getClass().getName());
+      return;
     }
+    handleUnpublish(unpublishData);
   }
 
   private <T> void handleUnpublish(UnpublishData<T> unpublishData) throws StreamxClientException {

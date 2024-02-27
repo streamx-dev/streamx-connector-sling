@@ -6,8 +6,8 @@ public interface StreamxPublicationService {
 
   boolean isEnabled();
 
-  void publish(List<String> paths);
+  void publish(List<String> paths) throws StreamxPublicationException;
 
-  void unpublish(List<String> paths);
+  void unpublish(List<String> paths) throws StreamxPublicationException;
 
 }

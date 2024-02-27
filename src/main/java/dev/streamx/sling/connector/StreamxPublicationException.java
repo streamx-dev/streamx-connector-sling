@@ -1,6 +1,6 @@
 package dev.streamx.sling.connector;
 
-public class StreamxPublicationException extends RuntimeException {
+public class StreamxPublicationException extends Exception {
 
   public StreamxPublicationException(String message) {
     super(message);

@@ -3,11 +3,19 @@ package dev.streamx.sling.connector.testing.handlers;
 import dev.streamx.sling.connector.PublicationHandler;
 import dev.streamx.sling.connector.PublishData;
 import dev.streamx.sling.connector.UnpublishData;
+import java.util.Objects;
 import org.apache.sling.api.resource.Resource;
+import org.apache.sling.api.resource.ResourceResolver;
 
 public class AssetPublicationHandler implements PublicationHandler<Asset> {
 
-  private static final String CHANNEL = "assets-inbox";
+  private static final String CHANNEL = "assets";
+
+  private final ResourceResolver resourceResolver;
+
+  public AssetPublicationHandler(ResourceResolver resourceResolver) {
+    this.resourceResolver = resourceResolver;
+  }
 
   @Override
   public String getId() {
@@ -20,8 +28,10 @@ public class AssetPublicationHandler implements PublicationHandler<Asset> {
   }
 
   @Override
-  public PublishData<Asset> getPublishData(Resource resource) {
-    return new PublishData<>(resource.getPath(), CHANNEL, Asset.class,
+  public PublishData<Asset> getPublishData(String resourcePath) {
+    Resource resource = resourceResolver.getResource(resourcePath);
+    Objects.requireNonNull(resource);
+    return new PublishData<>(resourcePath, CHANNEL, Asset.class,
         new Asset(resource.getName()));
   }
 
