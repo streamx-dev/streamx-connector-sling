@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>dev.streamx</groupId>
+  <artifactId>streamx-connector-sling</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+
+  <properties>
+    <bnd.version>6.4.0</bnd.version>
+    <maven.compiler.source>8</maven.compiler.source>
+    <maven.compiler.target>8</maven.compiler.target>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <repositories>
+    <repository>
+      <id>artifact-registry</id>
+      <url>
+        artifactregistry://europe-west1-maven.pkg.dev/streamx-releases/streamx-maven-public-releases
+      </url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+  </repositories>
+
+  <build>
+    <extensions>
+      <extension>
+        <groupId>com.google.cloud.artifactregistry</groupId>
+        <artifactId>artifactregistry-maven-wagon</artifactId>
+        <version>2.2.1</version>
+      </extension>
+    </extensions>
+
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>3.3.0</version>
+        <configuration>
+          <archive>
+            <manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>
+          </archive>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>biz.aQute.bnd</groupId>
+        <artifactId>bnd-maven-plugin</artifactId>
+        <version>${bnd.version}</version>
+        <executions>
+          <execution>
+            <id>bnd-process</id>
+            <goals>
+              <goal>bnd-process</goal>
+            </goals>
+            <configuration>
+              <bnd><![CDATA[
+                        Bundle-Category: streamx
+                        Bundle-Developers: Dynamic Solutions sp. z o.o. sp. k.
+                        Bundle-Description : ${Bundle-Name}
+                        Bundle-Vendor: Dynamic Solutions sp. z o.o. sp. k.
+
+                        -exportcontents: ${removeall;${packages;VERSIONED};${packages;CONDITIONAL}}
+                        -snapshot: SNAPSHOT
+                        -noextraheaders: true
+                        # generate error (instead of warning) when exported package uses private (non-exported) reference
+                        -fixupmessages:"Export *,  has \\d+,  private references"; \
+                            restrict:=warning; \
+                            is:=error
+                    ]]></bnd>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>biz.aQute.bnd</groupId>
+        <artifactId>bnd-baseline-maven-plugin</artifactId>
+        <version>${bnd.version}</version>
+        <configuration>
+          <!-- Remove after first release. -->
+          <failOnMissing>false</failOnMissing>
+        </configuration>
+        <executions>
+          <execution>
+            <id>baseline</id>
+            <goals>
+              <goal>baseline</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.2.5</version>
+      </plugin>
+    </plugins>
+  </build>
+
+  <dependencies>
+    <!-- StreamX -->
+    <dependency>
+      <groupId>dev.streamx</groupId>
+      <artifactId>ingestion-client</artifactId>
+      <version>0.0.7</version>
+    </dependency>
+    <!--AEM-->
+    <dependency>
+      <groupId>com.adobe.aem</groupId>
+      <artifactId>aem-sdk-api</artifactId>
+      <version>2021.1.4738.20210107T143101Z-201217</version>
+    </dependency>
+    <!-- Common -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>1.7.36</version>
+    </dependency>
+    <!-- Testing -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>5.10.2</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <version>3.25.3</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.sling</groupId>
+      <artifactId>org.apache.sling.testing.sling-mock.junit5</artifactId>
+      <version>3.4.10</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+</project>
