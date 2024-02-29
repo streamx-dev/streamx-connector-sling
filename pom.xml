@@ -30,6 +30,27 @@
     </repository>
   </repositories>
 
+  <distributionManagement>
+    <repository>
+      <id>streamx-maven-releases</id>
+      <url>artifactregistry://europe-west1-maven.pkg.dev/streamx-releases/streamx-maven-releases
+      </url>
+    </repository>
+    <snapshotRepository>
+      <id>streamx-maven-snapshots</id>
+      <url>artifactregistry://europe-west1-maven.pkg.dev/streamx-releases/streamx-maven-snapshots
+      </url>
+    </snapshotRepository>
+  </distributionManagement>
+
+  <scm>
+    <connection>scm:git:git@github.com:streamx-dev/streamx-connector-sling.git</connection>
+    <developerConnection>scm:git:git@github.com:streamx-dev/streamx-connector-sling.git
+    </developerConnection>
+    <tag>HEAD</tag>
+    <url>https://github.com/streamx-dev/streamx-connector-sling</url>
+  </scm>
+
   <build>
     <extensions>
       <extension>
@@ -100,6 +121,15 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>3.2.5</version>
+      </plugin>
+      <plugin>
+        <artifactId>maven-release-plugin</artifactId>
+        <configuration>
+          <scmCommentPrefix>[no ci] [maven-release-plugin]</scmCommentPrefix>
+          <tagNameFormat>@{project.version}</tagNameFormat>
+        </configuration>
+        <groupId>org.apache.maven.plugins</groupId>
+        <version>3.0.1</version>
       </plugin>
     </plugins>
   </build>
