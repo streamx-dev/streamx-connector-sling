@@ -44,3 +44,15 @@ Build
 ```
 mvn clean install
 ```
+
+To deploy bundle to an Author instance, run
+
+```
+mvn clean install -PautoInstallBundle
+```
+
+To change port, use
+
+```
+mvn clean install -PautoInstallBundle -Daem.port=4503
+```
