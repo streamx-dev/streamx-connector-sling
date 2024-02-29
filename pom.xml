@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>dev.streamx</groupId>
@@ -15,7 +17,7 @@
 
   <repositories>
     <repository>
-      <id>artifact-registry</id>
+      <id>streamx-maven-public-releases</id>
       <url>
         artifactregistry://europe-west1-maven.pkg.dev/streamx-releases/streamx-maven-public-releases
       </url>
@@ -30,8 +32,9 @@
 
   <distributionManagement>
     <repository>
-      <id>streamx-maven-releases</id>
-      <url>artifactregistry://europe-west1-maven.pkg.dev/streamx-releases/streamx-maven-releases
+      <id>streamx-maven-public-releases</id>
+      <url>
+        artifactregistry://europe-west1-maven.pkg.dev/streamx-releases/streamx-maven-public-releases
       </url>
     </repository>
     <snapshotRepository>
