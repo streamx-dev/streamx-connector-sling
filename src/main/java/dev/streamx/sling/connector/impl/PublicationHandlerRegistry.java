@@ -3,6 +3,7 @@ package dev.streamx.sling.connector.impl;
 import dev.streamx.sling.connector.PublicationHandler;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
@@ -15,7 +16,7 @@ public class PublicationHandlerRegistry {
 
   private static final Logger LOG = LoggerFactory.getLogger(PublicationHandlerRegistry.class);
 
-  private final List<PublicationHandler<?>> handlers = new ArrayList<>();
+  private final List<PublicationHandler<?>> handlers = new CopyOnWriteArrayList<>();
 
   @Reference(
       service = PublicationHandler.class,
@@ -32,7 +33,7 @@ public class PublicationHandlerRegistry {
   }
 
   List<PublicationHandler<?>> getHandlers() {
-    return handlers;
+    return new ArrayList<>(handlers);
   }
 
 }

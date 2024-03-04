@@ -9,12 +9,13 @@
   <version>0.0.4-SNAPSHOT</version>
 
   <properties>
-    <aem.host>localhost</aem.host>
-    <aem.port>4502</aem.port>
     <bnd.version>6.4.0</bnd.version>
     <maven.compiler.source>8</maven.compiler.source>
     <maven.compiler.target>8</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <sling.host>localhost</sling.host>
+    <sling.port>4502</sling.port>
+    <streamx.client.version>0.0.7</streamx.client.version>
   </properties>
 
   <repositories>
@@ -139,7 +140,7 @@
         <artifactId>sling-maven-plugin</artifactId>
         <version>2.4.0</version>
         <configuration>
-          <slingUrl>http://${aem.host}:${aem.port}/system/console</slingUrl>
+          <slingUrl>http://${sling.host}:${sling.port}/system/console</slingUrl>
           <deploymentMethod>WebConsole</deploymentMethod>
         </configuration>
       </plugin>
@@ -179,7 +180,7 @@
     <dependency>
       <groupId>dev.streamx</groupId>
       <artifactId>ingestion-client</artifactId>
-      <version>0.0.7</version>
+      <version>${streamx.client.version}</version>
       <scope>provided</scope>
     </dependency>
 

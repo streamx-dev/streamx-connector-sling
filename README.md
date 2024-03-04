@@ -45,14 +45,14 @@ Build
 mvn clean install
 ```
 
-To deploy bundle to an Author instance, run
+To deploy bundle to default Sling instance on localhost:4502, run
 
 ```
 mvn clean install -PautoInstallBundle
 ```
 
-To change port, use
+To set host and port directly, use
 
 ```
-mvn clean install -PautoInstallBundle -Daem.port=4503
+mvn clean install -PautoInstallBundle -Dsling.host=localhost -Dsling.port=4503
 ```
