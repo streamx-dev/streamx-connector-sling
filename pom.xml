@@ -191,12 +191,6 @@
       <version>4.2.12</version>
       <scope>provided</scope>
     </dependency>
-    <dependency>
-      <groupId>org.apache.sling</groupId>
-      <artifactId>org.apache.sling.testing.sling-mock.junit5</artifactId>
-      <version>3.4.10</version>
-      <scope>test</scope>
-    </dependency>
 
     <!-- OSGi Metadata (not used in runtime)-->
     <dependency>
@@ -209,6 +203,26 @@
       <groupId>org.osgi</groupId>
       <artifactId>org.osgi.service.component.annotations</artifactId>
       <version>1.4.0</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- Common -->
+    <dependency>
+      <groupId>org.apache.httpcomponents</groupId>
+      <artifactId>httpclient-osgi</artifactId>
+      <version>4.5.4</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <version>3.6</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>1.7.36</version>
       <scope>provided</scope>
     </dependency>
 
@@ -232,24 +246,12 @@
       <scope>test</scope>
     </dependency>
 
-    <!-- Common -->
+    <!-- Sling testing -->
     <dependency>
-      <groupId>org.apache.httpcomponents</groupId>
-      <artifactId>httpclient-osgi</artifactId>
-      <version>4.5.4</version>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.commons</groupId>
-      <artifactId>commons-lang3</artifactId>
-      <version>3.6</version>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-api</artifactId>
-      <version>1.7.36</version>
-      <scope>provided</scope>
+      <groupId>org.apache.sling</groupId>
+      <artifactId>org.apache.sling.testing.sling-mock.junit5</artifactId>
+      <version>3.4.10</version>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 
