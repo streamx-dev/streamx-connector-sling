@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>dev.streamx</groupId>
@@ -11,6 +13,9 @@
     <maven.compiler.source>8</maven.compiler.source>
     <maven.compiler.target>8</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <sling.host>localhost</sling.host>
+    <sling.port>4502</sling.port>
+    <streamx.client.version>0.0.7</streamx.client.version>
   </properties>
 
   <repositories>
@@ -130,35 +135,84 @@
         <groupId>org.apache.maven.plugins</groupId>
         <version>3.0.1</version>
       </plugin>
+      <plugin>
+        <groupId>org.apache.sling</groupId>
+        <artifactId>sling-maven-plugin</artifactId>
+        <version>2.4.0</version>
+        <configuration>
+          <slingUrl>http://${sling.host}:${sling.port}/system/console</slingUrl>
+          <deploymentMethod>WebConsole</deploymentMethod>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
 
+  <profiles>
+    <profile>
+      <id>autoInstallBundle</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <build>
+        <pluginManagement>
+          <plugins>
+            <plugin>
+              <groupId>org.apache.sling</groupId>
+              <artifactId>sling-maven-plugin</artifactId>
+              <executions>
+                <execution>
+                  <id>install-bundle</id>
+                  <goals>
+                    <goal>install</goal>
+                  </goals>
+                </execution>
+              </executions>
+            </plugin>
+          </plugins>
+        </pluginManagement>
+      </build>
+    </profile>
+  </profiles>
+
   <dependencies>
+
     <!-- StreamX -->
     <dependency>
       <groupId>dev.streamx</groupId>
       <artifactId>ingestion-client</artifactId>
-      <version>0.0.7</version>
+      <version>${streamx.client.version}</version>
+      <scope>provided</scope>
     </dependency>
-    <!--AEM-->
+
+    <!-- Sling -->
     <dependency>
-      <groupId>com.adobe.aem</groupId>
-      <artifactId>aem-sdk-api</artifactId>
-      <version>2021.1.4738.20210107T143101Z-201217</version>
+      <groupId>org.apache.sling</groupId>
+      <artifactId>org.apache.sling.event</artifactId>
+      <version>4.2.12</version>
+      <scope>provided</scope>
     </dependency>
-    <!-- Common -->
     <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-api</artifactId>
-      <version>1.7.36</version>
-    </dependency>
-    <!-- Testing -->
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter</artifactId>
-      <version>5.10.2</version>
+      <groupId>org.apache.sling</groupId>
+      <artifactId>org.apache.sling.testing.sling-mock.junit5</artifactId>
+      <version>3.4.10</version>
       <scope>test</scope>
     </dependency>
+
+    <!-- OSGi Metadata (not used in runtime)-->
+    <dependency>
+      <groupId>org.osgi</groupId>
+      <artifactId>org.osgi.service.metatype.annotations</artifactId>
+      <version>1.4.1</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.osgi</groupId>
+      <artifactId>org.osgi.service.component.annotations</artifactId>
+      <version>1.4.0</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- Testing -->
     <dependency>
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>
@@ -166,10 +220,36 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.sling</groupId>
-      <artifactId>org.apache.sling.testing.sling-mock.junit5</artifactId>
-      <version>3.4.10</version>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>5.10.2</version>
       <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-simple</artifactId>
+      <version>1.7.36</version>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- Common -->
+    <dependency>
+      <groupId>org.apache.httpcomponents</groupId>
+      <artifactId>httpclient-osgi</artifactId>
+      <version>4.5.4</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <version>3.6</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>1.7.36</version>
+      <scope>provided</scope>
     </dependency>
   </dependencies>
 
