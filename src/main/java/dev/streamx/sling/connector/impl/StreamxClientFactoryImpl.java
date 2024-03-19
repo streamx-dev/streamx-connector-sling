@@ -1,9 +1,11 @@
 package dev.streamx.sling.connector.impl;
 
 import dev.streamx.clients.ingestion.StreamxClient;
+import dev.streamx.clients.ingestion.StreamxClientBuilder;
 import dev.streamx.clients.ingestion.exceptions.StreamxClientException;
 import dev.streamx.sling.connector.HttpClientFactory;
 import dev.streamx.sling.connector.impl.StreamxClientFactoryImpl.Config;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -51,7 +53,7 @@ public class StreamxClientFactoryImpl implements StreamxClientFactory {
   private StreamxClient createStreamxClient(CloseableHttpClient httpClient)
       throws StreamxClientException {
     return StreamxClient.builder(config.streamxUrl())
-        .setAuthToken(config.authToken())
+        .setAuthToken(!StringUtils.isBlank(config.authToken()) ? config.authToken() : null)
         .setApacheHttpClient(httpClient)
         .build();
   }
