@@ -10,6 +10,7 @@ import dev.streamx.sling.connector.StreamxPublicationException;
 import dev.streamx.sling.connector.StreamxPublicationService;
 import dev.streamx.sling.connector.testing.handlers.AssetPublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.ImpostorPublicationHandler;
+import dev.streamx.sling.connector.testing.handlers.OtherPagePublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.PagePublicationHandler;
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJobManager;
 import dev.streamx.sling.connector.testing.streamx.clients.ingestion.FakeStreamxClient;
@@ -24,6 +25,7 @@ import org.apache.sling.api.resource.PersistenceException;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.event.jobs.JobManager;
+import org.apache.sling.testing.mock.sling.ResourceResolverType;
 import org.apache.sling.testing.mock.sling.junit5.SlingContext;
 import org.apache.sling.testing.mock.sling.junit5.SlingContextExtension;
 import org.assertj.core.groups.Tuple;
@@ -34,14 +36,16 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(SlingContextExtension.class)
 class StreamxPublicationServiceImplTest {
 
-  private final SlingContext slingContext = new SlingContext();
+  private final SlingContext slingContext = new SlingContext(ResourceResolverType.JCR_MOCK);
   private final ResourceResolver resourceResolver = slingContext.resourceResolver();
   private final Map<String, Object> publicationServiceConfig = new HashMap<>();
   private final List<PublicationHandler<?>> handlers = new ArrayList<>();
+  private final List<FakeStreamxClientConfig> fakeStreamxClientConfigs = new ArrayList<>();
 
   private StreamxPublicationService publicationService;
   private FakeJobManager fakeJobManager;
   private FakeStreamxClient fakeStreamxClient;
+  private FakeStreamxClientFactory fakeStreamxClientFactory;
 
   @BeforeEach
   void setUp() {
@@ -55,19 +59,23 @@ class StreamxPublicationServiceImplTest {
     }
 
     StreamxPublicationServiceImpl publicationServiceImpl = new StreamxPublicationServiceImpl();
-    FakeStreamxClientFactory fakeStreamxClientFactory = new FakeStreamxClientFactory();
+    StreamxClientStoreImpl streamxClientStore = new StreamxClientStoreImpl();
+    bindStreamxClientConfigs(streamxClientStore);
+
+    fakeStreamxClientFactory = new FakeStreamxClientFactory();
     slingContext.registerService(StreamxClientFactory.class, fakeStreamxClientFactory);
     fakeJobManager = new FakeJobManager(Collections.singletonList(publicationServiceImpl));
     slingContext.registerService(JobManager.class, fakeJobManager);
     for (PublicationHandler<?> handler : handlers) {
       slingContext.registerService(PublicationHandler.class, handler);
     }
+    slingContext.registerInjectActivateService(streamxClientStore);
     slingContext.registerInjectActivateService(new PublicationHandlerRegistry());
 
     slingContext.registerInjectActivateService(publicationServiceImpl, publicationServiceConfig);
 
     publicationService = publicationServiceImpl;
-    fakeStreamxClient = fakeStreamxClientFactory.getFakeClient();
+    fakeStreamxClient = fakeStreamxClientFactory.getFakeClient("/fake/streamx/instance");
   }
 
   @Test
@@ -262,6 +270,53 @@ class StreamxPublicationServiceImplTest {
     thenNoPublicationsWereMade();
   }
 
+  @Test
+  void shouldPublishToStreamxInstanceIfPathMatchesPattern()
+      throws PersistenceException, StreamxPublicationException {
+    givenPageHierarchy("/content/my-site/page-1");
+    givenPageHierarchy("/content/other-site/page-1");
+    givenAsset("/content/dam/asset-1.jpeg");
+
+    givenHandlers(
+        new PagePublicationHandler(resourceResolver),
+        new OtherPagePublicationHandler(resourceResolver),
+        new AssetPublicationHandler(resourceResolver)
+    );
+
+    givenStreamxClientInstances(
+        new FakeStreamxClientConfig("/fake/my-site/instance", new String[]{"/.*/my-site/.*", "/.*/dam/.*"}),
+        new FakeStreamxClientConfig("/fake/other-site/instance", new String[]{"/.*/other-site/.*", "/.*/dam/.*"})
+    );
+
+    whenPathsArePublished(
+        "/content/my-site/page-1",
+        "/content/other-site/page-1",
+        "/content/dam/asset-1.jpeg"
+    );
+
+    whenAllJobsAreProcessed();
+
+    thenProcessedJobsCountIs(3);
+
+    thenPublicationsContainsExactly(
+        publish("/content/my-site/page-1.html", "pages", "Page: page-1"),
+        publish("/content/other-site/page-1.html", "pages", "Page: page-1"),
+        publish("/content/dam/asset-1.jpeg", "assets", "Asset: asset-1.jpeg")
+    );
+
+    thenInstancePublicationsContainsExactly(
+        "/fake/my-site/instance",
+        publish("/content/my-site/page-1.html", "pages", "Page: page-1"),
+        publish("/content/dam/asset-1.jpeg", "assets", "Asset: asset-1.jpeg")
+    );
+
+    thenInstancePublicationsContainsExactly(
+        "/fake/other-site/instance",
+        publish("/content/other-site/page-1.html", "pages", "Page: page-1"),
+        publish("/content/dam/asset-1.jpeg", "assets", "Asset: asset-1.jpeg")
+    );
+  }
+
   private void givenPageHierarchy(String path) throws PersistenceException {
     slingContext.create().resource(path);
     resourceResolver.commit();
@@ -279,6 +334,10 @@ class StreamxPublicationServiceImplTest {
   private void givenHandlers(PublicationHandler<?>... handlers) {
     this.handlers.clear();
     this.handlers.addAll(Arrays.asList(handlers));
+  }
+
+  private void givenStreamxClientInstances(FakeStreamxClientConfig... configs) {
+    this.fakeStreamxClientConfigs.addAll(Arrays.asList(configs));
   }
 
   private void whenPathIsPublished(String path) throws StreamxPublicationException {
@@ -322,6 +381,13 @@ class StreamxPublicationServiceImplTest {
         .containsExactly(tuples);
   }
 
+  private void thenInstancePublicationsContainsExactly(String streamxInstanceUrl, Tuple... tuples) {
+    FakeStreamxClient streamxClient = fakeStreamxClientFactory.getFakeClient(streamxInstanceUrl);
+    assertThat(streamxClient.getPublications())
+        .extracting("action", "key", "channel", "data")
+        .containsExactly(tuples);
+  }
+
   private void thenNoPublicationsWereMade() {
     assertThat(fakeStreamxClient.getPublications()).isEmpty();
   }
@@ -332,5 +398,12 @@ class StreamxPublicationServiceImplTest {
 
   private Tuple unpublish(String key, String channel) {
     return tuple("Unpublish", key, channel, null);
+  }
+
+  private void bindStreamxClientConfigs(StreamxClientStoreImpl streamxClientStore) {
+    streamxClientStore.bind(new FakeStreamxClientConfig("/fake/streamx/instance", new String[]{".*"}));
+    for (FakeStreamxClientConfig config: fakeStreamxClientConfigs) {
+      streamxClientStore.bind(config);
+    }
   }
 }

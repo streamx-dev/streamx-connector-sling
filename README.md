@@ -22,12 +22,31 @@ Example:
 ```json
 {
   "configurations": {
-    "dev.streamx.sling.connector.impl.StreamxClientFactoryImpl": {
+    "dev.streamx.sling.connector.impl.StreamxClientConfigImpl~streamx-instance": {
       "streamx.url": "$[env:STREAMX_URL]",
       "authToken": "$[secret:STREAMX_AUTH_TOKEN]"
     }
   }
 }
+```
+
+Optionally, client configuration can contain `resourcePathPatterns` parameter. It defines patterns of the resource paths intended for publication on a given StreamX instance. 
+
+By default, it's set to `[".*"]` which means that all the resources would be published.
+
+Example:
+
+```json
+{
+  "configurations": {
+    "dev.streamx.sling.connector.impl.StreamxClientConfigImpl~streamx-instance": {
+      "streamx.url": "$[env:STREAMX_URL]",
+      "authToken": "$[secret:STREAMX_AUTH_TOKEN]",
+      "resourcePathPatterns": ["/.*/my-page-space/.*", "/libs/my-app/.*"]
+    }
+  }
+}
+  
 ```
 
 ## HttpClient

@@ -1,9 +1,7 @@
 package dev.streamx.sling.connector.impl;
 
-import dev.streamx.clients.ingestion.StreamxClient;
 import dev.streamx.clients.ingestion.exceptions.StreamxClientException;
 import dev.streamx.clients.ingestion.publisher.Publisher;
-import dev.streamx.sling.connector.PublicationData;
 import dev.streamx.sling.connector.PublicationHandler;
 import dev.streamx.sling.connector.PublishData;
 import dev.streamx.sling.connector.StreamxPublicationException;
@@ -13,14 +11,12 @@ import dev.streamx.sling.connector.impl.StreamxPublicationServiceImpl.Config;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.sling.event.jobs.Job;
 import org.apache.sling.event.jobs.JobManager;
 import org.apache.sling.event.jobs.consumer.JobConsumer;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
-import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
@@ -54,26 +50,14 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
   private PublicationHandlerRegistry publicationHandlerRegistry;
 
   @Reference
-  private StreamxClientFactory streamxClientFactory;
+  private StreamxClientStore streamxClientStore;
 
   private boolean enabled;
-  private StreamxClient streamxClient;
-  private ConcurrentHashMap<String, Publisher<?>> publishers;
 
   @Activate
   @Modified
-  private void activate(Config config) throws StreamxClientException {
-    deactivate();
+  private void activate(Config config) {
     enabled = config.enabled();
-    publishers = new ConcurrentHashMap<>();
-    streamxClient = streamxClientFactory.createStreamxClient();
-  }
-
-  @Deactivate
-  private void deactivate() throws StreamxClientException {
-    if (streamxClient != null) {
-      streamxClient.close();
-    }
   }
 
   @Override
@@ -181,13 +165,17 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
       LOG.debug("Publish data returned by [{}] is null", publicationHandler.getClass().getName());
       return;
     }
-    handlePublish(publishData);
+    handlePublish(publishData, resourcePath);
   }
 
-  private <T> void handlePublish(PublishData<T> publishData) throws StreamxClientException {
-    Publisher<T> publisher = getPublisher(publishData);
-    publisher.publish(publishData.getKey(), publishData.getModel());
-    LOG.info("Published resource: [{}]", publishData.getKey());
+  private <T> void handlePublish(PublishData<T> publishData, String resourcePath)
+      throws StreamxClientException {
+    List<StreamxInstanceClient> clients = streamxClientStore.getForResource(resourcePath);
+    for (StreamxInstanceClient client : clients) {
+      Publisher<T> publisher = client.getPublisher(publishData);
+      publisher.publish(publishData.getKey(), publishData.getModel());
+      LOG.info("Published resource: [{}]", publishData.getKey());
+    }
   }
 
   private void handleUnpublish(PublicationHandler<?> publicationHandler, String resourcePath)
@@ -198,19 +186,17 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
           publicationHandler.getClass().getName());
       return;
     }
-    handleUnpublish(unpublishData);
+    handleUnpublish(unpublishData, resourcePath);
   }
 
-  private <T> void handleUnpublish(UnpublishData<T> unpublishData) throws StreamxClientException {
-    Publisher<T> publisher = getPublisher(unpublishData);
-    publisher.unpublish(unpublishData.getKey());
-    LOG.info("Unpublished resource: [{}]", unpublishData.getKey());
-  }
-
-  private <T> Publisher<T> getPublisher(PublicationData<T> publication) {
-    return (Publisher<T>) publishers.computeIfAbsent(
-        publication.getChannel(),
-        channel -> streamxClient.newPublisher(channel, publication.getModelClass()));
+  private <T> void handleUnpublish(UnpublishData<T> unpublishData, String resourcePath)
+      throws StreamxClientException {
+    List<StreamxInstanceClient> clients = streamxClientStore.getForResource(resourcePath);
+    for (StreamxInstanceClient client : clients) {
+      Publisher<T> publisher = client.getPublisher(unpublishData);
+      publisher.unpublish(unpublishData.getKey());
+      LOG.info("Unpublished resource: [{}]", unpublishData.getKey());
+    }
   }
 
   @ObjectClassDefinition(name = "StreamX Connector Configuration")
