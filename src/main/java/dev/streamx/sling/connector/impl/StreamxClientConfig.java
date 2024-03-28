@@ -1,11 +1,13 @@
 package dev.streamx.sling.connector.impl;
 
+import java.util.List;
+
 public interface StreamxClientConfig {
 
   String getStreamxUrl();
 
   String getAuthToken();
 
-  String[] getResourcePathPatterns();
+  List<String> getResourcePathPatterns();
 
 }

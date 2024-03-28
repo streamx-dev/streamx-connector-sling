@@ -11,7 +11,7 @@ public @interface StreamxClientConfigOcd {
   String streamxUrl();
 
   @AttributeDefinition(name = "JWT", description =
-      "JWT that will be sent by during publication requests.")
+      "JWT that will be sent during publication requests.")
   String authToken();
 
   @AttributeDefinition(name = "Resource path patterns", description =

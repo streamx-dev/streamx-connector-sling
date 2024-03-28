@@ -25,7 +25,6 @@ import org.apache.sling.api.resource.PersistenceException;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.event.jobs.JobManager;
-import org.apache.sling.testing.mock.sling.ResourceResolverType;
 import org.apache.sling.testing.mock.sling.junit5.SlingContext;
 import org.apache.sling.testing.mock.sling.junit5.SlingContextExtension;
 import org.assertj.core.groups.Tuple;
@@ -36,7 +35,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(SlingContextExtension.class)
 class StreamxPublicationServiceImplTest {
 
-  private final SlingContext slingContext = new SlingContext(ResourceResolverType.JCR_MOCK);
+  private final SlingContext slingContext = new SlingContext();
   private final ResourceResolver resourceResolver = slingContext.resourceResolver();
   private final Map<String, Object> publicationServiceConfig = new HashMap<>();
   private final List<PublicationHandler<?>> handlers = new ArrayList<>();
@@ -60,7 +59,11 @@ class StreamxPublicationServiceImplTest {
 
     StreamxPublicationServiceImpl publicationServiceImpl = new StreamxPublicationServiceImpl();
     StreamxClientStoreImpl streamxClientStore = new StreamxClientStoreImpl();
-    bindStreamxClientConfigs(streamxClientStore);
+
+    slingContext.registerService(StreamxClientConfig.class, new FakeStreamxClientConfig("/fake/streamx/instance", Collections.singletonList(".*")));
+    for (FakeStreamxClientConfig config: fakeStreamxClientConfigs) {
+      slingContext.registerService(StreamxClientConfig.class, config);
+    }
 
     fakeStreamxClientFactory = new FakeStreamxClientFactory();
     slingContext.registerService(StreamxClientFactory.class, fakeStreamxClientFactory);
@@ -284,8 +287,8 @@ class StreamxPublicationServiceImplTest {
     );
 
     givenStreamxClientInstances(
-        new FakeStreamxClientConfig("/fake/my-site/instance", new String[]{"/.*/my-site/.*", "/.*/dam/.*"}),
-        new FakeStreamxClientConfig("/fake/other-site/instance", new String[]{"/.*/other-site/.*", "/.*/dam/.*"})
+        new FakeStreamxClientConfig("/fake/my-site/instance", Arrays.asList("/.*/my-site/.*", "/.*/dam/.*")),
+        new FakeStreamxClientConfig("/fake/other-site/instance", Arrays.asList("/.*/other-site/.*", "/.*/dam/.*"))
     );
 
     whenPathsArePublished(
@@ -398,12 +401,5 @@ class StreamxPublicationServiceImplTest {
 
   private Tuple unpublish(String key, String channel) {
     return tuple("Unpublish", key, channel, null);
-  }
-
-  private void bindStreamxClientConfigs(StreamxClientStoreImpl streamxClientStore) {
-    streamxClientStore.bind(new FakeStreamxClientConfig("/fake/streamx/instance", new String[]{".*"}));
-    for (FakeStreamxClientConfig config: fakeStreamxClientConfigs) {
-      streamxClientStore.bind(config);
-    }
   }
 }

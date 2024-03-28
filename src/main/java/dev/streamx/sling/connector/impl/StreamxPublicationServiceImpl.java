@@ -174,7 +174,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     for (StreamxInstanceClient client : clients) {
       Publisher<T> publisher = client.getPublisher(publishData);
       publisher.publish(publishData.getKey(), publishData.getModel());
-      LOG.info("Published resource: [{}]", publishData.getKey());
+      LOG.info("Published resource: [{}] to [{}]", publishData.getKey(), publishData.getChannel());
     }
   }
 
@@ -195,7 +195,8 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     for (StreamxInstanceClient client : clients) {
       Publisher<T> publisher = client.getPublisher(unpublishData);
       publisher.unpublish(unpublishData.getKey());
-      LOG.info("Unpublished resource: [{}]", unpublishData.getKey());
+      LOG.info("Unpublished resource: [{}] to [{}]", unpublishData.getKey(),
+          unpublishData.getChannel());
     }
   }
 

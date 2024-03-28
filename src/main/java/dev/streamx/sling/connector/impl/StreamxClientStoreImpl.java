@@ -11,7 +11,7 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
-import org.osgi.service.component.annotations.ReferencePolicy;
+import org.osgi.service.component.annotations.ReferencePolicyOption;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,33 +19,28 @@ import org.slf4j.LoggerFactory;
 public class StreamxClientStoreImpl implements StreamxClientStore {
 
   private static final Logger LOG = LoggerFactory.getLogger(StreamxClientStoreImpl.class);
-
-  private final Map<String, StreamxClientConfig> configs = new ConcurrentHashMap<>();
   private final Map<String, StreamxInstanceClient> streamxInstanceClients = new ConcurrentHashMap<>();
 
   @Reference
   private StreamxClientFactory streamxClientFactory;
 
-  @Reference(service = StreamxClientConfig.class,
-      cardinality = ReferenceCardinality.MULTIPLE,
-      policy = ReferencePolicy.DYNAMIC,
-      bind = "bind",
-      unbind = "unbind")
-  public synchronized void bind(StreamxClientConfig config) {
-    configs.put(config.getStreamxUrl(), config);
-  }
+  @Reference(
+      service = StreamxClientConfig.class,
+      cardinality = ReferenceCardinality.AT_LEAST_ONE,
+      policyOption = ReferencePolicyOption.GREEDY
+  )
+  private List<StreamxClientConfig> configs;
 
   public synchronized void unbind(StreamxClientConfig config) {
-    configs.remove(config.getStreamxUrl());
+    configs.remove(config);
     streamxInstanceClients.remove(config.getStreamxUrl());
   }
 
   @Activate
   @Modified
   private void activate() {
-    configs.keySet()
-        .forEach(streamxUrl -> streamxInstanceClients.computeIfAbsent(streamxUrl,
-            key -> initStreamxInstanceClient(configs.get(key))));
+    configs.forEach(config -> streamxInstanceClients.computeIfAbsent(config.getStreamxUrl(),
+            key -> initStreamxInstanceClient(config)));
   }
 
   @Override

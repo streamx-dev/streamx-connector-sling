@@ -4,13 +4,14 @@ import dev.streamx.clients.ingestion.StreamxClient;
 import dev.streamx.clients.ingestion.publisher.Publisher;
 import dev.streamx.sling.connector.PublicationData;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.StreamSupport;
 
 public class StreamxInstanceClient {
 
   private final StreamxClient streamxClient;
-  private final String[] resourcePathPatterns;
+  private final List<String> resourcePathPatterns;
 
   private final ConcurrentHashMap<String, Publisher<?>> publishers = new ConcurrentHashMap<>();
 
@@ -30,8 +31,7 @@ public class StreamxInstanceClient {
       return false;
     }
 
-    return StreamSupport.stream(Arrays.stream(resourcePathPatterns).spliterator(), false)
-        .anyMatch(resourcePath::matches);
+    return resourcePathPatterns.stream().anyMatch(resourcePath::matches);
   }
 
 }

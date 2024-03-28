@@ -1,14 +1,15 @@
 package dev.streamx.sling.connector.impl;
 
+import java.util.List;
 import org.osgi.service.component.annotations.Component;
 
 @Component(service = StreamxClientConfig.class)
 class FakeStreamxClientConfig implements StreamxClientConfig {
 
   private final String streamxUrl;
-  private final String[] resourcePathPatterns;
+  private final List<String> resourcePathPatterns;
 
-  FakeStreamxClientConfig(String streamxUrl, String[] resourcePathPatterns) {
+  FakeStreamxClientConfig(String streamxUrl, List<String> resourcePathPatterns) {
     this.streamxUrl = streamxUrl;
     this.resourcePathPatterns = resourcePathPatterns;
   }
@@ -24,7 +25,7 @@ class FakeStreamxClientConfig implements StreamxClientConfig {
   }
 
   @Override
-  public String[] getResourcePathPatterns() {
+  public List<String> getResourcePathPatterns() {
     return resourcePathPatterns;
   }
 }

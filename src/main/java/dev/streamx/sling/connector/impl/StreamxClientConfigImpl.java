@@ -1,5 +1,7 @@
 package dev.streamx.sling.connector.impl;
 
+import java.util.Arrays;
+import java.util.List;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Modified;
@@ -10,8 +12,8 @@ import org.osgi.service.metatype.annotations.Designate;
 public class StreamxClientConfigImpl implements StreamxClientConfig {
 
   private String streamxUrl;
-  private String authToke;
-  private String[] resourcePathPatterns;
+  private String authToken;
+  private List<String> resourcePathPatterns;
 
   @Override
   public String getStreamxUrl() {
@@ -20,11 +22,11 @@ public class StreamxClientConfigImpl implements StreamxClientConfig {
 
   @Override
   public String getAuthToken() {
-    return authToke;
+    return authToken;
   }
 
   @Override
-  public String[] getResourcePathPatterns() {
+  public List<String> getResourcePathPatterns() {
     return resourcePathPatterns;
   }
 
@@ -32,7 +34,7 @@ public class StreamxClientConfigImpl implements StreamxClientConfig {
   @Modified
   private void activate(StreamxClientConfigOcd config) {
     this.streamxUrl = config.streamxUrl();
-    this.authToke = config.authToken();
-    this.resourcePathPatterns = config.resourcePathPatterns();
+    this.authToken = config.authToken();
+    this.resourcePathPatterns = Arrays.asList(config.resourcePathPatterns());
   }
 }

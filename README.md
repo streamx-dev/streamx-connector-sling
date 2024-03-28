@@ -23,35 +23,39 @@ Example:
 {
   "configurations": {
     "dev.streamx.sling.connector.impl.StreamxClientConfigImpl~streamx-instance": {
-      "streamx.url": "$[env:STREAMX_URL]",
+      "streamxUrl": "$[env:STREAMX_URL]",
       "authToken": "$[secret:STREAMX_AUTH_TOKEN]"
     }
   }
 }
 ```
 
-Optionally, client configuration can contain `resourcePathPatterns` parameter. It defines patterns of the resource paths intended for publication on a given StreamX instance. 
+Optionally, client configuration can contain `resourcePathPatterns` parameter. It defines patterns
+of the resource paths intended for publication on a given StreamX instance.
 
-By default, it's set to `[".*"]` which means that all the resources would be published.
+By default, it's set to `[".*"]` which means that all the resources will be published.
 
-Example:
+Example configuration containing custom resourcePathPatterns:
 
 ```json
 {
   "configurations": {
     "dev.streamx.sling.connector.impl.StreamxClientConfigImpl~streamx-instance": {
-      "streamx.url": "$[env:STREAMX_URL]",
+      "streamxUrl": "$[env:STREAMX_URL]",
       "authToken": "$[secret:STREAMX_AUTH_TOKEN]",
-      "resourcePathPatterns": ["/.*/my-page-space/.*", "/libs/my-app/.*"]
+      "resourcePathPatterns": [
+        "/.*/my-page-space/.*",
+        "/libs/my-app/.*"
+      ]
     }
   }
 }
-  
+
 ```
 
 ## HttpClient
 
-By default module will use it's own CloseableHttpClient based on the following configuration:
+By default, module will use its own CloseableHttpClient based on the following configuration:
 [HttpClientProviderConfig](./src/main/java/dev/streamx/sling/connector/impl/HttpClientProviderConfig.java).
 If needed, clients can provide custom CloseableHttpClient by implementing
 [HttpClientFactory](./src/main/java/dev/streamx/sling/connector/HttpClientFactory.java) interface.
