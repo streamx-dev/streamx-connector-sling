@@ -23,6 +23,7 @@ Example:
 {
   "configurations": {
     "dev.streamx.sling.connector.impl.StreamxClientConfigImpl~streamx-instance": {
+      "name": "streamx-instance",
       "streamxUrl": "$[env:STREAMX_URL]",
       "authToken": "$[secret:STREAMX_AUTH_TOKEN]"
     }
@@ -41,6 +42,7 @@ Example configuration containing custom resourcePathPatterns:
 {
   "configurations": {
     "dev.streamx.sling.connector.impl.StreamxClientConfigImpl~streamx-instance": {
+      "name": "streamx-instance",
       "streamxUrl": "$[env:STREAMX_URL]",
       "authToken": "$[secret:STREAMX_AUTH_TOKEN]",
       "resourcePathPatterns": [

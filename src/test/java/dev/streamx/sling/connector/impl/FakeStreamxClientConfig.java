@@ -15,6 +15,11 @@ class FakeStreamxClientConfig implements StreamxClientConfig {
   }
 
   @Override
+  public String getName() {
+    return streamxUrl;
+  }
+
+  @Override
   public String getStreamxUrl() {
     return streamxUrl;
   }

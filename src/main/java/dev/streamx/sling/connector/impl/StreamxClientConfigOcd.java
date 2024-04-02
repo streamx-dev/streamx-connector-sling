@@ -6,6 +6,10 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 @ObjectClassDefinition(name = "StreamX client configuration")
 public @interface StreamxClientConfigOcd {
 
+  @AttributeDefinition(name = "Name", description =
+      "The client name, used to identify the client instance.")
+  String name();
+
   @AttributeDefinition(name = "URL to StreamX", description =
       "URL to StreamX instance that will receive publication requests.")
   String streamxUrl();

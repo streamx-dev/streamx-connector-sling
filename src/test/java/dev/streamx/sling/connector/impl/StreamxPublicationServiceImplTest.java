@@ -28,6 +28,7 @@ import org.apache.sling.event.jobs.JobManager;
 import org.apache.sling.testing.mock.sling.junit5.SlingContext;
 import org.apache.sling.testing.mock.sling.junit5.SlingContextExtension;
 import org.assertj.core.groups.Tuple;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -50,6 +51,7 @@ class StreamxPublicationServiceImplTest {
   void setUp() {
     handlers.add(new PagePublicationHandler(resourceResolver));
     handlers.add(new AssetPublicationHandler(resourceResolver));
+    fakeStreamxClientConfigs.add(getDefaultFakeStreamxClientConfig());
   }
 
   private void initializeComponentsIfNotInitialized() {
@@ -60,8 +62,7 @@ class StreamxPublicationServiceImplTest {
     StreamxPublicationServiceImpl publicationServiceImpl = new StreamxPublicationServiceImpl();
     StreamxClientStoreImpl streamxClientStore = new StreamxClientStoreImpl();
 
-    slingContext.registerService(StreamxClientConfig.class, new FakeStreamxClientConfig("/fake/streamx/instance", Collections.singletonList(".*")));
-    for (FakeStreamxClientConfig config: fakeStreamxClientConfigs) {
+    for (FakeStreamxClientConfig config : fakeStreamxClientConfigs) {
       slingContext.registerService(StreamxClientConfig.class, config);
     }
 
@@ -274,6 +275,25 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
+  void shouldCreatePublishJobForEachInstance()
+      throws PersistenceException, StreamxPublicationException {
+    givenPageHierarchy("/content/my-site/page-1");
+
+    givenStreamxClientInstances(
+        getDefaultFakeStreamxClientConfig(),
+        getMySiteFakeStreamxClientConfig()
+    );
+
+    whenPathsArePublished(
+        "/content/my-site/page-1"
+    );
+
+    whenAllJobsAreProcessed();
+
+    thenProcessedJobsCountIs(2);
+  }
+
+  @Test
   void shouldPublishToStreamxInstanceIfPathMatchesPattern()
       throws PersistenceException, StreamxPublicationException {
     givenPageHierarchy("/content/my-site/page-1");
@@ -287,8 +307,9 @@ class StreamxPublicationServiceImplTest {
     );
 
     givenStreamxClientInstances(
-        new FakeStreamxClientConfig("/fake/my-site/instance", Arrays.asList("/.*/my-site/.*", "/.*/dam/.*")),
-        new FakeStreamxClientConfig("/fake/other-site/instance", Arrays.asList("/.*/other-site/.*", "/.*/dam/.*"))
+        getDefaultFakeStreamxClientConfig(),
+        getMySiteFakeStreamxClientConfig(),
+        getOtherSiteFakeStreamxClientConfig()
     );
 
     whenPathsArePublished(
@@ -299,7 +320,7 @@ class StreamxPublicationServiceImplTest {
 
     whenAllJobsAreProcessed();
 
-    thenProcessedJobsCountIs(3);
+    thenProcessedJobsCountIs(7);
 
     thenPublicationsContainsExactly(
         publish("/content/my-site/page-1.html", "pages", "Page: page-1"),
@@ -340,6 +361,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   private void givenStreamxClientInstances(FakeStreamxClientConfig... configs) {
+    this.fakeStreamxClientConfigs.clear();
     this.fakeStreamxClientConfigs.addAll(Arrays.asList(configs));
   }
 
@@ -401,5 +423,22 @@ class StreamxPublicationServiceImplTest {
 
   private Tuple unpublish(String key, String channel) {
     return tuple("Unpublish", key, channel, null);
+  }
+
+  @NotNull
+  private static FakeStreamxClientConfig getOtherSiteFakeStreamxClientConfig() {
+    return new FakeStreamxClientConfig("/fake/other-site/instance",
+        Arrays.asList("/.*/other-site/.*", "/.*/dam/.*"));
+  }
+
+  @NotNull
+  private static FakeStreamxClientConfig getMySiteFakeStreamxClientConfig() {
+    return new FakeStreamxClientConfig("/fake/my-site/instance",
+        Arrays.asList("/.*/my-site/.*", "/.*/dam/.*"));
+  }
+
+  @NotNull
+  private static FakeStreamxClientConfig getDefaultFakeStreamxClientConfig() {
+    return new FakeStreamxClientConfig("/fake/streamx/instance", Collections.singletonList(".*"));
   }
 }

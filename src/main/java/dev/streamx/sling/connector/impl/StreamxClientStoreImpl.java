@@ -31,15 +31,10 @@ public class StreamxClientStoreImpl implements StreamxClientStore {
   )
   private List<StreamxClientConfig> configs;
 
-  public synchronized void unbind(StreamxClientConfig config) {
-    configs.remove(config);
-    streamxInstanceClients.remove(config.getStreamxUrl());
-  }
-
   @Activate
   @Modified
   private void activate() {
-    configs.forEach(config -> streamxInstanceClients.computeIfAbsent(config.getStreamxUrl(),
+    configs.forEach(config -> streamxInstanceClients.computeIfAbsent(config.getName(),
             key -> initStreamxInstanceClient(config)));
   }
 
@@ -49,6 +44,11 @@ public class StreamxClientStoreImpl implements StreamxClientStore {
         .filter(Objects::nonNull)
         .filter(client -> client.canProcess(resourcePath))
         .collect(Collectors.toList());
+  }
+
+  @Override
+  public StreamxInstanceClient getByName(String name) {
+    return streamxInstanceClients.get(name);
   }
 
   private StreamxInstanceClient initStreamxInstanceClient(StreamxClientConfig config) {

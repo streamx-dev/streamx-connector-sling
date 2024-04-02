@@ -6,4 +6,6 @@ public interface StreamxClientStore {
 
   List<StreamxInstanceClient> getForResource(String resourcePath);
 
+  StreamxInstanceClient getByName(String name);
+
 }

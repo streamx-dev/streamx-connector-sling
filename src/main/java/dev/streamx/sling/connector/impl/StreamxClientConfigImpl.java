@@ -11,9 +11,15 @@ import org.osgi.service.metatype.annotations.Designate;
 @Designate(ocd = StreamxClientConfigOcd.class, factory = true)
 public class StreamxClientConfigImpl implements StreamxClientConfig {
 
+  private String name;
   private String streamxUrl;
   private String authToken;
   private List<String> resourcePathPatterns;
+
+  @Override
+  public String getName() {
+    return name;
+  }
 
   @Override
   public String getStreamxUrl() {
@@ -33,6 +39,7 @@ public class StreamxClientConfigImpl implements StreamxClientConfig {
   @Activate
   @Modified
   private void activate(StreamxClientConfigOcd config) {
+    this.name = config.name();
     this.streamxUrl = config.streamxUrl();
     this.authToken = config.authToken();
     this.resourcePathPatterns = Arrays.asList(config.resourcePathPatterns());
