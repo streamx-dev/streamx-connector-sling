@@ -12,7 +12,7 @@ public class StreamxInstanceClient {
   private final List<String> resourcePathPatterns;
   private final String name;
 
-  private final ConcurrentHashMap<String, Publisher<?>> publishers = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, Publisher<?>> publishersByChannel = new ConcurrentHashMap<>();
 
   StreamxInstanceClient(StreamxClient streamxClient, StreamxClientConfig config) {
     this.streamxClient = streamxClient;
@@ -21,7 +21,7 @@ public class StreamxInstanceClient {
   }
 
   <T> Publisher<T> getPublisher(PublicationData<T> publication) {
-    return (Publisher<T>) publishers.computeIfAbsent(
+    return (Publisher<T>) publishersByChannel.computeIfAbsent(
         publication.getChannel(),
         channel -> streamxClient.newPublisher(channel, publication.getModelClass()));
   }

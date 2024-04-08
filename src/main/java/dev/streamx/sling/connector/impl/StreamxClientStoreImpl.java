@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
 public class StreamxClientStoreImpl implements StreamxClientStore {
 
   private static final Logger LOG = LoggerFactory.getLogger(StreamxClientStoreImpl.class);
-  private final Map<String, StreamxInstanceClient> streamxInstanceClients = new ConcurrentHashMap<>();
+  private final Map<String, StreamxInstanceClient> clientsByName = new ConcurrentHashMap<>();
 
   @Reference
   private StreamxClientFactory streamxClientFactory;
@@ -34,13 +34,13 @@ public class StreamxClientStoreImpl implements StreamxClientStore {
   @Activate
   @Modified
   private void activate() {
-    configs.forEach(config -> streamxInstanceClients.computeIfAbsent(config.getName(),
+    configs.forEach(config -> clientsByName.computeIfAbsent(config.getName(),
             key -> initStreamxInstanceClient(config)));
   }
 
   @Override
   public List<StreamxInstanceClient> getForResource(String resourcePath) {
-    return streamxInstanceClients.values().stream()
+    return clientsByName.values().stream()
         .filter(Objects::nonNull)
         .filter(client -> client.canProcess(resourcePath))
         .collect(Collectors.toList());
@@ -48,7 +48,7 @@ public class StreamxClientStoreImpl implements StreamxClientStore {
 
   @Override
   public StreamxInstanceClient getByName(String name) {
-    return streamxInstanceClients.get(name);
+    return clientsByName.get(name);
   }
 
   private StreamxInstanceClient initStreamxInstanceClient(StreamxClientConfig config) {
