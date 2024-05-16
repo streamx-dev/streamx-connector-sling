@@ -2,15 +2,21 @@ package dev.streamx.sling.connector.impl;
 
 import dev.streamx.clients.ingestion.exceptions.StreamxClientException;
 import dev.streamx.clients.ingestion.publisher.Publisher;
+import dev.streamx.sling.connector.PublicationAction;
 import dev.streamx.sling.connector.PublicationHandler;
 import dev.streamx.sling.connector.PublishData;
+import dev.streamx.sling.connector.RelatedResource;
+import dev.streamx.sling.connector.RelatedResourcesSelector;
 import dev.streamx.sling.connector.StreamxPublicationException;
 import dev.streamx.sling.connector.StreamxPublicationService;
 import dev.streamx.sling.connector.UnpublishData;
 import dev.streamx.sling.connector.impl.StreamxPublicationServiceImpl.Config;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Predicate;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.sling.event.jobs.Job;
 import org.apache.sling.event.jobs.JobManager;
@@ -41,14 +47,15 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
   private static final String PN_STREAMX_ACTION = "streamx.action";
   private static final String PN_STREAMX_PATH = "streamx.path";
 
-  private static final String ACTION_PUBLISH = "PUBLISH";
-  private static final String ACTION_UNPUBLISH = "UNPUBLISH";
 
   @Reference
   private JobManager jobManager;
 
   @Reference
   private PublicationHandlerRegistry publicationHandlerRegistry;
+
+  @Reference
+  private RelatedResourcesSelectorRegistry relatedResourcesSelectorRegistry;
 
   @Reference
   private StreamxClientStore streamxClientStore;
@@ -68,40 +75,89 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
 
   @Override
   public void publish(List<String> pathsToPublish) throws StreamxPublicationException {
-    addPublicationToQueueIfCanHandle(ACTION_PUBLISH, pathsToPublish);
+    handlePublication(PublicationAction.PUBLISH, pathsToPublish);
   }
 
   @Override
   public void unpublish(List<String> pathsToUnpublish) throws StreamxPublicationException {
-    addPublicationToQueueIfCanHandle(ACTION_UNPUBLISH, pathsToUnpublish);
+    handlePublication(PublicationAction.UNPUBLISH, pathsToUnpublish);
   }
 
-  private void addPublicationToQueueIfCanHandle(String action, List<String> resourcesPaths)
+  private void handlePublication(PublicationAction action, List<String> resourcesPaths)
       throws StreamxPublicationException {
     if (!enabled || resourcesPaths.isEmpty()) {
       return;
     }
 
+    Set<RelatedResource> relatedResources = new LinkedHashSet<>();
     for (String resourcePath : resourcesPaths) {
       if (StringUtils.isBlank(resourcePath)) {
         continue;
       }
-      for (PublicationHandler<?> handler : publicationHandlerRegistry.getHandlers()) {
-        if (handler.canHandle(resourcePath)) {
-          addPublicationToQueue(handler.getId(), action, resourcePath);
-        }
+
+      boolean isHandled = handlePublication(resourcePath, action);
+      if (isHandled) {
+        relatedResources.addAll(findRelatedResources(resourcePath, action));
+      }
+    }
+    handleRelatedResourcesPublication(relatedResources,
+        shouldPublishResourcePredicate(resourcesPaths, action));
+  }
+
+  private boolean handlePublication(String resourcePath, PublicationAction action)
+      throws StreamxPublicationException {
+    boolean handled = false;
+    for (PublicationHandler<?> handler : publicationHandlerRegistry.getHandlers()) {
+      if (handler.canHandle(resourcePath)) {
+        addPublicationToQueue(handler.getId(), action, resourcePath);
+        handled = true;
+      }
+    }
+    return handled;
+  }
+
+  private void handleRelatedResourcesPublication(Set<RelatedResource> relatedResources,
+      Predicate<RelatedResource> shouldPublish)
+      throws StreamxPublicationException {
+    for (RelatedResource relatedResource : relatedResources) {
+      if (shouldPublish.test(relatedResource)) {
+        handlePublication(relatedResource.getResourcePath(), relatedResource.getAction());
       }
     }
   }
 
-  private void addPublicationToQueue(String handlerId, String action, String resourcePath)
+  private Predicate<RelatedResource> shouldPublishResourcePredicate(List<String> publishedResources,
+      PublicationAction action) {
+    return relatedResource -> !isPublished(relatedResource, publishedResources, action);
+  }
+
+  private boolean isPublished(RelatedResource relatedResource, List<String> publishedResources,
+      PublicationAction action) {
+    return relatedResource.getAction().equals(action) && publishedResources.contains(
+        relatedResource.getResourcePath());
+  }
+
+  private Set<RelatedResource> findRelatedResources(String resourcePath, PublicationAction action)
+      throws StreamxPublicationException {
+    Set<RelatedResource> relatedResources = new LinkedHashSet<>();
+    for (RelatedResourcesSelector relatedResourcesSelector : relatedResourcesSelectorRegistry.getSelectors()) {
+      if (relatedResourcesSelector.canProcess(resourcePath)) {
+        relatedResources.addAll(relatedResourcesSelector.getRelatedResources(resourcePath, action));
+      }
+    }
+    return relatedResources;
+  }
+
+  private void addPublicationToQueue(String handlerId, PublicationAction action,
+      String resourcePath)
       throws StreamxPublicationException {
     for (StreamxInstanceClient client : streamxClientStore.getForResource(resourcePath)) {
       addPublicationToQueue(handlerId, action, resourcePath, client.getName());
     }
   }
 
-  private void addPublicationToQueue(String handlerId, String action, String resourcePath,
+  private void addPublicationToQueue(String handlerId, PublicationAction action,
+      String resourcePath,
       String clientName)
       throws StreamxPublicationException {
     Map<String, Object> jobProperties = new HashMap<>();
@@ -120,7 +176,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
   public JobResult process(Job job) {
     String handlerId = job.getProperty(PN_STREAMX_HANDLER_ID, String.class);
     String clientName = job.getProperty(PN_STREAMX_CLIENT_NAME, String.class);
-    String action = job.getProperty(PN_STREAMX_ACTION, String.class);
+    PublicationAction action = job.getProperty(PN_STREAMX_ACTION, PublicationAction.class);
     String path = job.getProperty(PN_STREAMX_PATH, String.class);
     if (StringUtils.isEmpty(path)) {
       LOG.warn("Publication job has no path");
@@ -140,7 +196,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     }
   }
 
-  private JobResult processPublication(String handlerId, String action, String path,
+  private JobResult processPublication(String handlerId, PublicationAction action, String path,
       String clientName)
       throws StreamxPublicationException, StreamxClientException {
     PublicationHandler<?> publicationHandler = findHandler(handlerId);
@@ -155,10 +211,10 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     }
 
     switch (action) {
-      case ACTION_PUBLISH:
+      case PUBLISH:
         handlePublish(publicationHandler, streamxInstanceClient, path);
         break;
-      case ACTION_UNPUBLISH:
+      case UNPUBLISH:
         handleUnpublish(publicationHandler, streamxInstanceClient, path);
         break;
       default:
