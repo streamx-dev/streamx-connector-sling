@@ -9,11 +9,6 @@ import java.util.Collection;
 public class RelatedPagesSelector implements RelatedResourcesSelector {
 
   @Override
-  public boolean canProcess(String resourcePath) {
-    return resourcePath.startsWith("/content/my-site");
-  }
-
-  @Override
   public Collection<RelatedResource> getRelatedResources(String resourcePath,
       PublicationAction action) {
     return Arrays.asList(
