@@ -64,9 +64,9 @@ If needed, clients can provide custom CloseableHttpClient by implementing
 
 ## Related resources
 
-In dynamic components, there may arise a necessity to refresh the content of associated resources
-when certain resources are published. An illustrative scenario is a dynamic blog article list
-dependent on published blog article pages. While it's possible to manually publish pages containing
+Publication of some resources may arise a necessity to refresh the content of associated resources
+when certain resources are published. An illustrative scenario is a blog articles list dependent on
+published blog article pages. While it's possible to manually publish pages containing
 the blog list each time a new article is published, we've introduced
 the [RelatedResourcesSelector](./src/main/java/dev/streamx/sling/connector/RelatedResourcesSelector.java)
 interface to automate this process.

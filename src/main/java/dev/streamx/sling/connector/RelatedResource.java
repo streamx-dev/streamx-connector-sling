@@ -1,19 +1,39 @@
 package dev.streamx.sling.connector;
 
+/**
+ * The {@code RelatedResource} class encapsulates information about related resources
+ * along with their publication actions, indicating whether they should be published or unpublished.
+ */
 public class RelatedResource {
 
   private final String resourcePath;
   private final PublicationAction action;
 
+  /**
+   * Constructs a {@code RelatedResource} object with the specified resource path and publication action.
+   *
+   * @param resourcePath the path of the related resource
+   * @param action the publication action for the related resource
+   */
   public RelatedResource(String resourcePath, PublicationAction action) {
     this.resourcePath = resourcePath;
     this.action = action;
   }
 
+  /**
+   * Returns the path of the related resource.
+   *
+   * @return the resource path
+   */
   public String getResourcePath() {
     return resourcePath;
   }
 
+  /**
+   * Returns the publication action for the related resource.
+   *
+   * @return the publication action
+   */
   public PublicationAction getAction() {
     return action;
   }
