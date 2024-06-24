@@ -23,19 +23,21 @@ public interface PublicationHandler<T> {
   boolean canHandle(String resourcePath);
 
   /**
-   * Prepares the data to publish for the specified resource path.
+   * Prepares the data to publish for the specified resource path. 
+   * May return null if nothing to publish.
    *
    * @param resourcePath the path of the resource
-   * @return the publish data for the resource
+   * @return the publish data for the resource, may be null
    * @throws StreamxPublicationException if a temporary error occurs and the operation should be retried
    */
   PublishData<T> getPublishData(String resourcePath) throws StreamxPublicationException;
 
   /**
-   * Prepares the data to unpublish for the specified resource path.
+   * Prepares the data to unpublish for the specified resource path. 
+   * May return null if nothing to unpublish.
    *
    * @param resourcePath the path of the resource
-   * @return the unpublish data for the resource
+   * @return the unpublish data for the resource, may be null
    * @throws StreamxPublicationException if a temporary error occurs and the operation should be retried
    */
   UnpublishData<T> getUnpublishData(String resourcePath) throws StreamxPublicationException;
