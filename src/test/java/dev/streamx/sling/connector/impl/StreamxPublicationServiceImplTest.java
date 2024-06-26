@@ -6,12 +6,14 @@ import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssumptions.given;
 
 import dev.streamx.sling.connector.PublicationHandler;
+import dev.streamx.sling.connector.RelatedResourcesSelector;
 import dev.streamx.sling.connector.StreamxPublicationException;
 import dev.streamx.sling.connector.StreamxPublicationService;
 import dev.streamx.sling.connector.testing.handlers.AssetPublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.ImpostorPublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.OtherPagePublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.PagePublicationHandler;
+import dev.streamx.sling.connector.testing.selectors.RelatedPagesSelector;
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJobManager;
 import dev.streamx.sling.connector.testing.streamx.clients.ingestion.FakeStreamxClient;
 import java.util.ArrayList;
@@ -40,6 +42,7 @@ class StreamxPublicationServiceImplTest {
   private final ResourceResolver resourceResolver = slingContext.resourceResolver();
   private final Map<String, Object> publicationServiceConfig = new HashMap<>();
   private final List<PublicationHandler<?>> handlers = new ArrayList<>();
+  private final List<RelatedResourcesSelector> relatedResourcesSelectors = new ArrayList<>();
   private final List<FakeStreamxClientConfig> fakeStreamxClientConfigs = new ArrayList<>();
 
   private StreamxPublicationService publicationService;
@@ -73,8 +76,13 @@ class StreamxPublicationServiceImplTest {
     for (PublicationHandler<?> handler : handlers) {
       slingContext.registerService(PublicationHandler.class, handler);
     }
+    for (RelatedResourcesSelector selector : relatedResourcesSelectors) {
+      slingContext.registerService(RelatedResourcesSelector.class, selector);
+    }
     slingContext.registerInjectActivateService(streamxClientStore);
     slingContext.registerInjectActivateService(new PublicationHandlerRegistry());
+
+    slingContext.registerInjectActivateService(new RelatedResourcesSelectorRegistry());
 
     slingContext.registerInjectActivateService(publicationServiceImpl, publicationServiceConfig);
 
@@ -341,6 +349,106 @@ class StreamxPublicationServiceImplTest {
     );
   }
 
+  @Test
+  void shouldUpdateContentOnStreamxForRelatedResources()
+      throws PersistenceException, StreamxPublicationException {
+    givenPageHierarchy("/content/my-site/page-1");
+    givenPageHierarchy("/content/my-site/related-page-to-publish");
+    givenPageHierarchy("/content/my-site/related-page-to-unpublish");
+
+    givenRelatedResourcesSelectors(new RelatedPagesSelector());
+
+    whenPathsArePublished(
+        "/content/my-site/page-1"
+    );
+
+    whenAllJobsAreProcessed();
+
+    thenProcessedJobsCountIs(3);
+
+    thenPublicationsContainsExactly(
+        publish("/content/my-site/page-1.html", "pages", "Page: page-1"),
+        publish("/content/my-site/related-page-to-publish.html", "pages", "Page: related-page-to-publish"),
+        unpublish("/content/my-site/related-page-to-unpublish.html", "pages")
+    );
+  }
+
+  @Test
+  void shouldUpdateRelatedResourcesJustOnceEvenIfWillBeReturnedByMultipleSelectors()
+      throws PersistenceException, StreamxPublicationException {
+    givenPageHierarchy("/content/my-site/page-1");
+    givenPageHierarchy("/content/my-site/related-page-to-publish");
+    givenPageHierarchy("/content/my-site/related-page-to-unpublish");
+
+    givenRelatedResourcesSelectors(new RelatedPagesSelector(), new RelatedPagesSelector(), new RelatedPagesSelector());
+
+    whenPathsArePublished(
+        "/content/my-site/page-1"
+    );
+
+    whenAllJobsAreProcessed();
+
+    thenProcessedJobsCountIs(3);
+
+    thenPublicationsContainsExactly(
+        publish("/content/my-site/page-1.html", "pages", "Page: page-1"),
+        publish("/content/my-site/related-page-to-publish.html", "pages", "Page: related-page-to-publish"),
+        unpublish("/content/my-site/related-page-to-unpublish.html", "pages")
+    );
+  }
+
+  @Test
+  void shouldUpdateRelatedResourcesJustOnceEvenIfRelatesToMultiplePublishedResources()
+      throws PersistenceException, StreamxPublicationException {
+    givenPageHierarchy("/content/my-site/page-1");
+    givenPageHierarchy("/content/my-site/page-2");
+    givenPageHierarchy("/content/my-site/related-page-to-publish");
+    givenPageHierarchy("/content/my-site/related-page-to-unpublish");
+
+    givenRelatedResourcesSelectors(new RelatedPagesSelector());
+
+    whenPathsArePublished(
+        "/content/my-site/page-1",
+        "/content/my-site/page-2"
+    );
+
+    whenAllJobsAreProcessed();
+
+    thenProcessedJobsCountIs(4);
+
+    thenPublicationsContainsExactly(
+        publish("/content/my-site/page-1.html", "pages", "Page: page-1"),
+        publish("/content/my-site/page-2.html", "pages", "Page: page-2"),
+        publish("/content/my-site/related-page-to-publish.html", "pages", "Page: related-page-to-publish"),
+        unpublish("/content/my-site/related-page-to-unpublish.html", "pages")
+    );
+  }
+
+  @Test
+  void shouldNotSendExtraUpdateToRelatedResourcesIfItIsPublishedExplicitly()
+      throws PersistenceException, StreamxPublicationException {
+    givenPageHierarchy("/content/my-site/page-1");
+    givenPageHierarchy("/content/my-site/related-page-to-publish");
+    givenPageHierarchy("/content/my-site/related-page-to-unpublish");
+
+    givenRelatedResourcesSelectors(new RelatedPagesSelector());
+
+    whenPathsArePublished(
+        "/content/my-site/page-1",
+        "/content/my-site/related-page-to-publish"
+    );
+
+    whenAllJobsAreProcessed();
+
+    thenProcessedJobsCountIs(3);
+
+    thenPublicationsContainsExactly(
+        publish("/content/my-site/page-1.html", "pages", "Page: page-1"),
+        publish("/content/my-site/related-page-to-publish.html", "pages", "Page: related-page-to-publish"),
+        unpublish("/content/my-site/related-page-to-unpublish.html", "pages")
+    );
+  }
+
   private void givenPageHierarchy(String path) throws PersistenceException {
     slingContext.create().resource(path);
     resourceResolver.commit();
@@ -353,6 +461,11 @@ class StreamxPublicationServiceImplTest {
 
   private void givenPublicationService(Consumer<Map<String, Object>> propertiesModifier) {
     propertiesModifier.accept(publicationServiceConfig);
+  }
+
+  private void givenRelatedResourcesSelectors(RelatedResourcesSelector... selectors) {
+    this.relatedResourcesSelectors.clear();
+    this.relatedResourcesSelectors.addAll(Arrays.asList(selectors));
   }
 
   private void givenHandlers(PublicationHandler<?>... handlers) {

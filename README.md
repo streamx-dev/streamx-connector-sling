@@ -62,6 +62,18 @@ By default, module will use its own CloseableHttpClient based on the following c
 If needed, clients can provide custom CloseableHttpClient by implementing
 [HttpClientFactory](./src/main/java/dev/streamx/sling/connector/HttpClientFactory.java) interface.
 
+## Related resources
+
+Publication of some resources may arise a necessity to refresh the content of associated resources
+when certain resources are published. An illustrative scenario is a blog articles list dependent on
+published blog article pages. While it's possible to manually publish pages containing
+the blog list each time a new article is published, we've introduced
+the [RelatedResourcesSelector](./src/main/java/dev/streamx/sling/connector/RelatedResourcesSelector.java)
+interface to automate this process.
+
+Its implementation is intended to provide a list of resource paths along with the corresponding
+action to be taken when a particular resource is published.
+
 # Usage:
 
 Build
