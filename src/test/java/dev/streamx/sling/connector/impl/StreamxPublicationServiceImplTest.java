@@ -6,6 +6,7 @@ import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssumptions.given;
 
 import dev.streamx.sling.connector.PublicationHandler;
+import dev.streamx.sling.connector.PublicationRetryPolicy;
 import dev.streamx.sling.connector.RelatedResourcesSelector;
 import dev.streamx.sling.connector.StreamxPublicationException;
 import dev.streamx.sling.connector.StreamxPublicationService;
@@ -27,6 +28,7 @@ import org.apache.sling.api.resource.PersistenceException;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.event.jobs.JobManager;
+import org.apache.sling.event.jobs.consumer.JobExecutor;
 import org.apache.sling.testing.mock.sling.junit5.SlingContext;
 import org.apache.sling.testing.mock.sling.junit5.SlingContextExtension;
 import org.assertj.core.groups.Tuple;
@@ -63,6 +65,7 @@ class StreamxPublicationServiceImplTest {
     }
 
     StreamxPublicationServiceImpl publicationServiceImpl = new StreamxPublicationServiceImpl();
+    JobExecutor publicationJobExecutor = new PublicationJobExecutor();
     StreamxClientStoreImpl streamxClientStore = new StreamxClientStoreImpl();
 
     for (FakeStreamxClientConfig config : fakeStreamxClientConfigs) {
@@ -71,8 +74,9 @@ class StreamxPublicationServiceImplTest {
 
     fakeStreamxClientFactory = new FakeStreamxClientFactory();
     slingContext.registerService(StreamxClientFactory.class, fakeStreamxClientFactory);
-    fakeJobManager = new FakeJobManager(Collections.singletonList(publicationServiceImpl));
+    fakeJobManager = new FakeJobManager(Collections.singletonList(publicationJobExecutor));
     slingContext.registerService(JobManager.class, fakeJobManager);
+    slingContext.registerService(PublicationRetryPolicy.class, new DefaultPublicationRetryPolicy());
     for (PublicationHandler<?> handler : handlers) {
       slingContext.registerService(PublicationHandler.class, handler);
     }
@@ -85,6 +89,7 @@ class StreamxPublicationServiceImplTest {
     slingContext.registerInjectActivateService(new RelatedResourcesSelectorRegistry());
 
     slingContext.registerInjectActivateService(publicationServiceImpl, publicationServiceConfig);
+    slingContext.registerInjectActivateService(publicationJobExecutor);
 
     publicationService = publicationServiceImpl;
     fakeStreamxClient = fakeStreamxClientFactory.getFakeClient("/fake/streamx/instance");

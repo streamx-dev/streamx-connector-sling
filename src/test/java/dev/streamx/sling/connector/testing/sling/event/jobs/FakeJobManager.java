@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import org.apache.sling.event.impl.jobs.queues.JobExecutionContextImpl;
 import org.apache.sling.event.jobs.Job;
 import org.apache.sling.event.jobs.JobBuilder;
 import org.apache.sling.event.jobs.JobManager;
@@ -13,15 +14,16 @@ import org.apache.sling.event.jobs.ScheduledJobInfo;
 import org.apache.sling.event.jobs.Statistics;
 import org.apache.sling.event.jobs.TopicStatistics;
 import org.apache.sling.event.jobs.consumer.JobConsumer;
+import org.apache.sling.event.jobs.consumer.JobExecutor;
 
 public class FakeJobManager implements JobManager {
 
-  private final List<JobConsumer> consumers;
+  private final List<JobExecutor> executors;
   private final List<FakeJob> jobQueue = new LinkedList<>();
   private final List<FakeJob> processedJobs = new LinkedList<>();
 
-  public FakeJobManager(List<JobConsumer> consumers) {
-    this.consumers = new ArrayList<>(consumers);
+  public FakeJobManager(List<JobExecutor> executors) {
+    this.executors = new ArrayList<>(executors);
   }
 
   @Override
@@ -105,8 +107,8 @@ public class FakeJobManager implements JobManager {
   public void processAllJobs() {
     while (!jobQueue.isEmpty()) {
       FakeJob fakeJob = jobQueue.remove(0);
-      for (JobConsumer consumer : consumers) {
-        consumer.process(fakeJob);
+      for (JobExecutor executor : executors) {
+        executor.process(fakeJob, new FakeJobExecutionContext());
       }
       processedJobs.add(fakeJob);
     }
