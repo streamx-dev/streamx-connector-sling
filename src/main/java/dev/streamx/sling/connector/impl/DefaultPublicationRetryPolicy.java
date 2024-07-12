@@ -25,7 +25,7 @@ public class DefaultPublicationRetryPolicy implements PublicationRetryPolicy {
 
   @Override
   public Integer getRetryDelay(Job job) {
-    int retries = job.getRetryCount() + 1;
+    int retries = job.getRetryCount();
     int calculatedDelay = (int) (retryDelay * Math.pow(retryMultiplication, retries));
     return Math.min(calculatedDelay, maxRetryDelay);
   }
