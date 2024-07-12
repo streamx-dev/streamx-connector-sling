@@ -84,8 +84,8 @@ example:
 
 Additionally, it's possible to define
 a [PublicationRetryPolicy](./src/main/java/dev/streamx/sling/connector/PublicationRetryPolicy.java)
-A custom implementation can be provided, but by default, the `DefaultPublicationRetryPolicy` will be
-used. This policy implementation have its default configuration, but can be customized with an OSGI
+A custom implementation can be provided, but by default, the `DefaultPublicationRetryPolicy` is
+used. This policy implementation has its default configuration, but can be customized with an OSGI
 configuration as follows:
 
 ```json
