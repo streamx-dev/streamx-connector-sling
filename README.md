@@ -55,6 +55,51 @@ Example configuration containing custom resourcePathPatterns:
 
 ```
 
+### Publication Jobs
+
+Publication events are sent
+using [Apache Sling Jobs](https://sling.apache.org/documentation/bundles/apache-sling-eventing-and-job-handling.html#jobs-guarantee-of-processing).
+Events are added to the queue named `dev/streamx/publications`, which is managed by
+the `Apache Sling Job Default Queue`. However, it is possible to define a custom Job Handler. For
+example:
+
+```json
+{
+  "configurations": {
+    "org.apache.sling.event.jobs.QueueConfiguration~streamx-publication-actions": {
+      "queue.name": "StreamX Publication Action Queue",
+      "queue.topics": [
+        "dev/streamx/publications"
+      ],
+      "queue.type": "UNORDERED",
+      "queue.retries": 60,
+      "queue.maxparallel": 0.5,
+      "service.ranking": 1
+    }
+  }
+}
+```
+
+#### Retry delay policy
+
+Additionally, it's possible to define
+a [PublicationRetryPolicy](./src/main/java/dev/streamx/sling/connector/PublicationRetryPolicy.java)
+A custom implementation can be provided, but by default, the `DefaultPublicationRetryPolicy` is
+used. This policy implementation has its default configuration, but can be customized with an OSGI
+configuration as follows:
+
+```json
+{
+  "configurations": {
+    "dev.streamx.sling.connector.impl.DefaultPublicationRetryPolicy": {
+      "retry.delay": 2000,
+      "retry.multiplication": 2,
+      "max.retry.delay": 60000
+    }
+  }
+}
+```
+
 ## HttpClient
 
 By default, module will use its own CloseableHttpClient based on the following configuration:
