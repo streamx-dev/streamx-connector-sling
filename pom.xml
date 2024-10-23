@@ -13,7 +13,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <sling.host>localhost</sling.host>
     <sling.port>4502</sling.port>
-    <streamx.client.version>0.0.35</streamx.client.version>
+    <streamx.client.version>0.0.42</streamx.client.version>
   </properties>
 
   <repositories>
