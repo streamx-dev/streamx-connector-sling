@@ -45,9 +45,12 @@ public class PublicationJobExecutor implements JobExecutor {
 
   @Override
   public JobExecutionResult process(Job job, JobExecutionContext context) {
+    LOG.trace("Processing {}", job);
     String handlerId = job.getProperty(PN_STREAMX_HANDLER_ID, String.class);
     String clientName = job.getProperty(PN_STREAMX_CLIENT_NAME, String.class);
-    PublicationAction action = job.getProperty(PN_STREAMX_ACTION, PublicationAction.class);
+    PublicationAction action = PublicationAction.of(
+        job.getProperty(PN_STREAMX_ACTION, String.class)
+    );
     String path = job.getProperty(PN_STREAMX_PATH, String.class);
     if (StringUtils.isEmpty(path)) {
       LOG.warn("Publication job has no path");

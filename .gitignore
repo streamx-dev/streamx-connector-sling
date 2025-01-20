@@ -5,6 +5,8 @@ target/
 
 ### IntelliJ IDEA ###
 .idea/*
+!.idea/codeStyles/
+!.idea/codeStyles/*
 *.iws
 *.iml
 *.ipr
@@ -33,7 +35,6 @@ build/
 
 ### Mac OS ###
 .DS_Store
-/.idea/
 
 # https://github.com/takari/maven-wrapper#usage-without-binary-jar
 .mvn/wrapper/maven-wrapper.jar
