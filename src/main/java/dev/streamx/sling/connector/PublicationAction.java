@@ -1,5 +1,6 @@
 package dev.streamx.sling.connector;
 
+import java.util.Optional;
 import java.util.stream.Stream;
 
 /**
@@ -8,22 +9,21 @@ import java.util.stream.Stream;
 public enum PublicationAction {
 
   PUBLISH,
-  UNPUBLISH,
-  UNDEFINED;
+  UNPUBLISH;
 
   /**
-   * Returns the {@code PublicationAction} corresponding to the specified {@link String}, ignoring
-   * case.
+   * Returns the {@link Optional} containing the {@code PublicationAction} corresponding to the specified
+   * {@link String}, ignoring case. If the specified {@link String} does not match any {@code PublicationAction},
+   * an empty {@link Optional} is returned.
    *
    * @param stringRepresentation {@link String} representation of the requested
    *                             {@code PublicationAction}
-   * @return {@code PublicationAction} represented by the specified {@link String}
+   * @return {@link Optional} containing the {@code PublicationAction} corresponding to the specified {@link String}
    */
-  public static PublicationAction of(String stringRepresentation) {
+  public static Optional<PublicationAction> of(String stringRepresentation) {
     return Stream.of(values())
         .filter(
             publicationAction -> publicationAction.toString().equalsIgnoreCase(stringRepresentation)
-        ).findFirst()
-        .orElse(PublicationAction.UNDEFINED);
+        ).findFirst();
   }
 }
