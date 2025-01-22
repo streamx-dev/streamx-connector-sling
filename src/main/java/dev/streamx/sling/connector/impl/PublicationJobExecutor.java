@@ -1,15 +1,8 @@
 package dev.streamx.sling.connector.impl;
 
-import static dev.streamx.sling.connector.impl.PublicationJobExecutor.JOB_TOPIC;
-
 import dev.streamx.clients.ingestion.exceptions.StreamxClientException;
 import dev.streamx.clients.ingestion.publisher.Publisher;
-import dev.streamx.sling.connector.PublicationAction;
-import dev.streamx.sling.connector.PublicationHandler;
-import dev.streamx.sling.connector.PublicationRetryPolicy;
-import dev.streamx.sling.connector.PublishData;
-import dev.streamx.sling.connector.StreamxPublicationException;
-import dev.streamx.sling.connector.UnpublishData;
+import dev.streamx.sling.connector.*;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.sling.event.jobs.Job;
 import org.apache.sling.event.jobs.consumer.JobExecutionContext;
@@ -19,6 +12,10 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Optional;
+
+import static dev.streamx.sling.connector.impl.PublicationJobExecutor.JOB_TOPIC;
 
 @Component(
     service = JobExecutor.class,
@@ -45,16 +42,21 @@ public class PublicationJobExecutor implements JobExecutor {
 
   @Override
   public JobExecutionResult process(Job job, JobExecutionContext context) {
+    LOG.trace("Processing {}", job);
     String handlerId = job.getProperty(PN_STREAMX_HANDLER_ID, String.class);
     String clientName = job.getProperty(PN_STREAMX_CLIENT_NAME, String.class);
-    PublicationAction action = job.getProperty(PN_STREAMX_ACTION, PublicationAction.class);
-    String path = job.getProperty(PN_STREAMX_PATH, String.class);
-    if (StringUtils.isEmpty(path)) {
-      LOG.warn("Publication job has no path");
+    Optional<PublicationAction> actionNullable = PublicationAction.of(job.getProperty(PN_STREAMX_ACTION, String.class));
+    if (actionNullable.isEmpty()) {
+      LOG.warn("Publication action is not set, job will be cancelled: {}", job);
       return context.result().cancelled();
     }
-
-    LOG.debug("Processing job: [{} - {}]", action, path);
+    PublicationAction action = actionNullable.orElseThrow();
+    String path = job.getProperty(PN_STREAMX_PATH, String.class);
+    if (StringUtils.isEmpty(path)) {
+      LOG.warn("This publication job has no path: {}", job);
+      return context.result().cancelled();
+    }
+    LOG.debug("Processing action: [{} - {}]", action, path);
     try {
       return processPublication(handlerId, action, path, clientName, context);
     } catch (StreamxPublicationException | StreamxClientException e) {

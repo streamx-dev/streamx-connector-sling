@@ -78,6 +78,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService 
 
   private void handlePublication(PublicationAction action, List<String> resourcesPaths)
       throws StreamxPublicationException {
+    LOG.trace("Handling publication for paths: {}", resourcesPaths);
     if (!enabled || resourcesPaths.isEmpty()) {
       return;
     }
@@ -95,6 +96,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService 
   private Set<RelatedResource> findRelatedResources(List<String> resourcesPaths,
       PublicationAction action)
       throws StreamxPublicationException {
+    LOG.trace("Searching for related resources for {} and these paths: {}", action, resourcesPaths);
     Set<RelatedResource> relatedResources = new LinkedHashSet<>();
     for (String resourcePath : resourcesPaths) {
       relatedResources.addAll(findRelatedResources(resourcePath, action));
@@ -119,6 +121,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService 
 
   private void handlePublication(String resourcePath, PublicationAction action)
       throws JobCreationException {
+    LOG.trace("Handling publication for resource: {}", resourcePath);
     for (PublicationHandler<?> handler : publicationHandlerRegistry.getHandlers()) {
       if (handler.canHandle(resourcePath)) {
         addPublicationToQueue(handler.getId(), action, resourcePath);
@@ -155,6 +158,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService 
 
   private void addPublicationToQueue(String handlerId, PublicationAction action,
       String resourcePath) throws JobCreationException {
+    LOG.debug("Adding publication request for [{}: {}] to queue", handlerId, resourcePath);
     for (StreamxInstanceClient client : streamxClientStore.getForResource(resourcePath)) {
       addPublicationToQueue(handlerId, action, resourcePath, client.getName());
     }
@@ -166,13 +170,15 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService 
     Map<String, Object> jobProperties = new HashMap<>();
     jobProperties.put(PN_STREAMX_HANDLER_ID, handlerId);
     jobProperties.put(PN_STREAMX_CLIENT_NAME, clientName);
-    jobProperties.put(PN_STREAMX_ACTION, action);
+    jobProperties.put(PN_STREAMX_ACTION, action.toString());
     jobProperties.put(PN_STREAMX_PATH, resourcePath);
     Job job = jobManager.addJob(JOB_TOPIC, jobProperties);
     if (job == null) {
       throw new JobCreationException("Publication job could not be created by JobManager");
     }
-    LOG.debug("Publication request for [{}: {}] added to queue", handlerId, resourcePath);
+    LOG.debug(
+        "Publication request for [{}: {}] added to queue. Job: {}", handlerId, resourcePath, job
+    );
   }
 
   @ObjectClassDefinition(name = "StreamX Connector Configuration")
