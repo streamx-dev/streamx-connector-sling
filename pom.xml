@@ -186,7 +186,7 @@
     <dependency>
       <groupId>org.apache.sling</groupId>
       <artifactId>org.apache.sling.event</artifactId>
-      <version>4.2.12</version>
+      <version>4.3.14</version>
       <scope>provided</scope>
     </dependency>
 
