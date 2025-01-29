@@ -4,7 +4,7 @@
 
   <groupId>dev.streamx</groupId>
   <artifactId>streamx-connector-sling</artifactId>
-  <version>0.2.4-SNAPSHOT</version>
+  <version>0.2.4</version>
 
   <properties>
     <bnd.version>6.4.0</bnd.version>
@@ -49,7 +49,7 @@
     <connection>scm:git:git@github.com:streamx-dev/streamx-connector-sling.git</connection>
     <developerConnection>scm:git:git@github.com:streamx-dev/streamx-connector-sling.git
     </developerConnection>
-    <tag>HEAD</tag>
+    <tag>0.2.4</tag>
     <url>https://github.com/streamx-dev/streamx-connector-sling</url>
   </scm>
 
