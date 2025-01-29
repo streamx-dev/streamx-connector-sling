@@ -6,10 +6,14 @@ import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.metatype.annotations.Designate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Component(service = StreamxClientConfig.class)
 @Designate(ocd = StreamxClientConfigOcd.class, factory = true)
 public class StreamxClientConfigImpl implements StreamxClientConfig {
+
+  private static final Logger LOG = LoggerFactory.getLogger(StreamxClientConfigImpl.class);
 
   private String name;
   private String streamxUrl;
@@ -43,5 +47,9 @@ public class StreamxClientConfigImpl implements StreamxClientConfig {
     this.streamxUrl = config.streamxUrl();
     this.authToken = config.authToken();
     this.resourcePathPatterns = Arrays.asList(config.resourcePathPatterns());
+    LOG.trace(
+            "Applied configuration. Name: '{}'. URL: '{}'. Resource path patterns: '{}'.",
+            name, streamxUrl, resourcePathPatterns
+    );
   }
 }
