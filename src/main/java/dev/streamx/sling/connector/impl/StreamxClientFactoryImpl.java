@@ -43,6 +43,7 @@ public class StreamxClientFactoryImpl implements StreamxClientFactory {
         .setAuthToken(!StringUtils.isBlank(config.getAuthToken()) ? config.getAuthToken() : null)
         .setApacheHttpClient(httpClient)
         .build();
+    LOG.trace("Created StreamX client for: '{}'", config.getStreamxUrl());
     return new StreamxInstanceClient(streamxClient, config);
   }
 

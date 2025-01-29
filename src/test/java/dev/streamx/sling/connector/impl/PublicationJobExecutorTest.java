@@ -42,7 +42,7 @@ class PublicationJobExecutorTest {
     slingContext.registerService(StreamxClientFactory.class, new FakeStreamxClientFactory());
 
     slingContext.registerInjectActivateService(new DefaultPublicationRetryPolicy());
-    slingContext.registerInjectActivateService(new StreamxClientStoreImpl());
+    slingContext.registerInjectActivateService(StreamxClientStoreImpl.class);
     slingContext.registerInjectActivateService(new PublicationHandlerRegistry());
     slingContext.registerInjectActivateService(publicationJobExecutor);
   }

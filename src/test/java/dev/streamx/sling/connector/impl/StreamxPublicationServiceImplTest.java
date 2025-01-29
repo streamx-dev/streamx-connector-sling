@@ -1,15 +1,6 @@
 package dev.streamx.sling.connector.impl;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.tuple;
-import static org.assertj.core.api.BDDAssertions.then;
-import static org.assertj.core.api.BDDAssumptions.given;
-
-import dev.streamx.sling.connector.PublicationHandler;
-import dev.streamx.sling.connector.PublicationRetryPolicy;
-import dev.streamx.sling.connector.RelatedResourcesSelector;
-import dev.streamx.sling.connector.StreamxPublicationException;
-import dev.streamx.sling.connector.StreamxPublicationService;
+import dev.streamx.sling.connector.*;
 import dev.streamx.sling.connector.testing.handlers.AssetPublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.ImpostorPublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.OtherPagePublicationHandler;
@@ -17,13 +8,6 @@ import dev.streamx.sling.connector.testing.handlers.PagePublicationHandler;
 import dev.streamx.sling.connector.testing.selectors.RelatedPagesSelector;
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJobManager;
 import dev.streamx.sling.connector.testing.streamx.clients.ingestion.FakeStreamxClient;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Consumer;
 import org.apache.sling.api.resource.PersistenceException;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
@@ -36,6 +20,14 @@ import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+
+import java.util.*;
+import java.util.function.Consumer;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
+import static org.assertj.core.api.BDDAssertions.then;
+import static org.assertj.core.api.BDDAssumptions.given;
 
 @ExtendWith(SlingContextExtension.class)
 class StreamxPublicationServiceImplTest {
@@ -66,7 +58,6 @@ class StreamxPublicationServiceImplTest {
 
     StreamxPublicationServiceImpl publicationServiceImpl = new StreamxPublicationServiceImpl();
     JobExecutor publicationJobExecutor = new PublicationJobExecutor();
-    StreamxClientStoreImpl streamxClientStore = new StreamxClientStoreImpl();
 
     for (FakeStreamxClientConfig config : fakeStreamxClientConfigs) {
       slingContext.registerService(StreamxClientConfig.class, config);
@@ -83,7 +74,7 @@ class StreamxPublicationServiceImplTest {
     for (RelatedResourcesSelector selector : relatedResourcesSelectors) {
       slingContext.registerService(RelatedResourcesSelector.class, selector);
     }
-    slingContext.registerInjectActivateService(streamxClientStore);
+    slingContext.registerInjectActivateService(StreamxClientStoreImpl.class);
     slingContext.registerInjectActivateService(new PublicationHandlerRegistry());
 
     slingContext.registerInjectActivateService(new RelatedResourcesSelectorRegistry());
