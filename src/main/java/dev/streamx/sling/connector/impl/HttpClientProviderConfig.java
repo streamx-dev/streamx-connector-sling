@@ -1,6 +1,7 @@
 package dev.streamx.sling.connector.impl;
 
 import org.osgi.service.metatype.annotations.AttributeDefinition;
+import org.osgi.service.metatype.annotations.AttributeType;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 
 @ObjectClassDefinition(name = "HTTP connection config")
@@ -13,6 +14,20 @@ public @interface HttpClientProviderConfig {
   int DEFAULT_SOCKET_TIMEOUT_IN_MILLIS = 5000;
   int DEFAULT_IDLE_CONNECTION_KEEP_ALIVE_TIME_IN_MILLIS = 30000;
   int DEFAULT_KEEP_ALIVE_TIME_IN_MILLIS = 60000;
+
+  /**
+   * Method that returns a boolean that indicates if the client should trust all TLS certificates,
+   * including self-signed and expired ones.
+   * @return {@code true} if the client should trust all TLS certificates; {@code false} otherwise.
+   */
+  @AttributeDefinition(
+      name = "Do trust all TLS certificates",
+      description = "Indicates if the client should trust all TLS certificates, "
+                  + "including self-signed and expired ones.",
+      type = AttributeType.BOOLEAN,
+      defaultValue = "false"
+  )
+  boolean do$_$trust$_$all$_$tls$_$certs() default false;
 
   /**
    * Method that returns an int that contains the maximum number of total open connections.
