@@ -16,7 +16,7 @@ public @interface HttpClientProviderConfig {
   int DEFAULT_KEEP_ALIVE_TIME_IN_MILLIS = 60000;
 
   /**
-   * Method that returns a boolean that indicates if the client should trust all TLS certificates,
+   * Indicates if the client should trust all TLS certificates,
    * including self-signed and expired ones.
    * @return {@code true} if the client should trust all TLS certificates; {@code false} otherwise.
    */
@@ -27,7 +27,7 @@ public @interface HttpClientProviderConfig {
       type = AttributeType.BOOLEAN,
       defaultValue = "false"
   )
-  boolean do$_$trust$_$all$_$tls$_$certs() default false;
+  boolean insecure() default false;
 
   /**
    * Method that returns an int that contains the maximum number of total open connections.

@@ -214,7 +214,7 @@ class DefaultHttpClientFactoryTest {
     SlingContext context = new SlingContext();
     context.registerService(HttpClientBuilderFactory.class, HttpClients::custom);
     DefaultHttpClientFactory factory = context.registerInjectActivateService(
-        DefaultHttpClientFactory.class, Map.of("do-trust-all-tls-certs", true)
+        DefaultHttpClientFactory.class, Map.of("insecure", true)
     );
 
     try (CloseableHttpClient client = factory.createNewClient()) {

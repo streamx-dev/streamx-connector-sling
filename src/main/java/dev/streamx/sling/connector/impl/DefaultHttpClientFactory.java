@@ -70,7 +70,7 @@ public class DefaultHttpClientFactory {
   }
 
   private PoolingHttpClientConnectionManager connectionManager() {
-    boolean doTrustAllTlsCerts = config.get().do$_$trust$_$all$_$tls$_$certs();
+    boolean doTrustAllTlsCerts = config.get().insecure();
     PoolingHttpClientConnectionManager connMgr;
     if (doTrustAllTlsCerts) {
       connMgr = withTrustAllTlsCertificates()
