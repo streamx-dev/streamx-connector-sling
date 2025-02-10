@@ -74,7 +74,8 @@ public class DefaultHttpClientFactory {
     PoolingHttpClientConnectionManager connMgr;
     if (doTrustAllTlsCerts) {
       connMgr = withTrustAllTlsCertificates()
-          .map(sslSocketFactory -> {
+          .map(
+              sslSocketFactory -> {
                 PlainConnectionSocketFactory plainSocketFactory
                     = PlainConnectionSocketFactory.getSocketFactory();
                 return RegistryBuilder.<ConnectionSocketFactory>create()
@@ -82,11 +83,12 @@ public class DefaultHttpClientFactory {
                     .register("https", sslSocketFactory)
                     .build();
               }
-          ).map(registry -> {
-            LOG.debug("Using custom connection manager");
-            return new PoolingHttpClientConnectionManager(registry);
-          })
-          .orElse(new PoolingHttpClientConnectionManager());
+          ).map(
+              registry -> {
+                LOG.debug("Using custom connection manager");
+                return new PoolingHttpClientConnectionManager(registry);
+              }
+          ).orElseThrow();
     } else {
       connMgr = new PoolingHttpClientConnectionManager();
     }
