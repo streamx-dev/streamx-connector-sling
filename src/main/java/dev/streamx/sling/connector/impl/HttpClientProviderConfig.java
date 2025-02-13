@@ -4,7 +4,7 @@ import org.osgi.service.metatype.annotations.AttributeDefinition;
 import org.osgi.service.metatype.annotations.AttributeType;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 
-@ObjectClassDefinition(name = "HTTP connection config")
+@ObjectClassDefinition(name = "HTTP client provider config")
 public @interface HttpClientProviderConfig {
 
   int DEFAULT_NUMBER_OF_OPEN_CONNECTIONS = 50;
