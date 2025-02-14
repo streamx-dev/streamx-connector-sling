@@ -24,12 +24,17 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.propertytypes.ServiceDescription;
 import org.osgi.service.metatype.annotations.Designate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Component(service = DefaultHttpClientFactory.class)
+@Component(
+    service = DefaultHttpClientFactory.class,
+    immediate = true
+)
 @Designate(ocd = HttpClientProviderConfig.class)
+@ServiceDescription("Default HTTP client factory")
 public class DefaultHttpClientFactory {
 
   private static final Logger LOG = LoggerFactory.getLogger(DefaultHttpClientFactory.class);

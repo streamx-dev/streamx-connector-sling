@@ -1,55 +1,77 @@
 package dev.streamx.sling.connector.impl;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Modified;
+import org.osgi.service.component.propertytypes.ServiceDescription;
 import org.osgi.service.metatype.annotations.Designate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Component(service = StreamxClientConfig.class)
-@Designate(ocd = StreamxClientConfigOcd.class, factory = true)
+@Component(
+    service = StreamxClientConfig.class,
+    immediate = true
+)
+@Designate(
+    ocd = StreamxClientConfigOcd.class,
+    factory = true
+)
+@ServiceDescription(StreamxClientConfigImpl.SERVICE_DESCRIPTION)
 public class StreamxClientConfigImpl implements StreamxClientConfig {
 
+  static final String SERVICE_DESCRIPTION = "Configuration of the client of StreamX "
+      + "REST Ingestion Service";
   private static final Logger LOG = LoggerFactory.getLogger(StreamxClientConfigImpl.class);
+  private final AtomicReference<String> name;
+  private final AtomicReference<String> streamxUrl;
+  private final AtomicReference<String> authToken;
+  private final AtomicReference<List<String>> resourcePathPatterns;
 
-  private String name;
-  private String streamxUrl;
-  private String authToken;
-  private List<String> resourcePathPatterns;
+  @Activate
+  public StreamxClientConfigImpl(StreamxClientConfigOcd config) {
+    this.name = new AtomicReference<>(config.name());
+    this.streamxUrl = new AtomicReference<>(config.streamxUrl());
+    this.authToken = new AtomicReference<>(config.authToken());
+    this.resourcePathPatterns = new AtomicReference<>(Arrays.asList(config.resourcePathPatterns()));
+    LOG.trace(
+        "Applied configuration. Name: '{}'. URL: '{}'. Resource path patterns: '{}'.",
+        name, streamxUrl, resourcePathPatterns
+    );
+  }
+
+  @Modified
+  private void configure(StreamxClientConfigOcd config) {
+    name.set(config.name());
+    streamxUrl.set(config.streamxUrl());
+    authToken.set(config.authToken());
+    resourcePathPatterns.set(Arrays.asList(config.resourcePathPatterns()));
+    LOG.trace(
+        "Applied configuration. Name: '{}'. URL: '{}'. Resource path patterns: '{}'.",
+        name, streamxUrl, resourcePathPatterns
+    );
+  }
 
   @Override
   public String getName() {
-    return name;
+    return name.get();
   }
 
   @Override
   public String getStreamxUrl() {
-    return streamxUrl;
+    return streamxUrl.get();
   }
 
   @Override
   public String getAuthToken() {
-    return authToken;
+    return authToken.get();
   }
 
   @Override
   public List<String> getResourcePathPatterns() {
-    return resourcePathPatterns;
-  }
-
-  @Activate
-  @Modified
-  private void activate(StreamxClientConfigOcd config) {
-    this.name = config.name();
-    this.streamxUrl = config.streamxUrl();
-    this.authToken = config.authToken();
-    this.resourcePathPatterns = Arrays.asList(config.resourcePathPatterns());
-    LOG.trace(
-            "Applied configuration. Name: '{}'. URL: '{}'. Resource path patterns: '{}'.",
-            name, streamxUrl, resourcePathPatterns
-    );
+    return Collections.unmodifiableList(resourcePathPatterns.get());
   }
 }
