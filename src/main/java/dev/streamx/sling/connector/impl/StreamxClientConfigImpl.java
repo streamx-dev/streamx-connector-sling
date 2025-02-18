@@ -28,14 +28,14 @@ public class StreamxClientConfigImpl implements StreamxClientConfig {
   private static final Logger LOG = LoggerFactory.getLogger(StreamxClientConfigImpl.class);
   private final AtomicReference<String> name;
   private final AtomicReference<String> streamxUrl;
-  private final AtomicReference<String> authToken;
+  private final AtomicReference<OSGiSecret> authToken;
   private final AtomicReference<List<String>> resourcePathPatterns;
 
   @Activate
   public StreamxClientConfigImpl(StreamxClientConfigOcd config) {
     this.name = new AtomicReference<>(config.name());
     this.streamxUrl = new AtomicReference<>(config.streamxUrl());
-    this.authToken = new AtomicReference<>(config.authToken());
+    this.authToken = new AtomicReference<>(new OSGiSecret(config.authToken()));
     this.resourcePathPatterns = new AtomicReference<>(Arrays.asList(config.resourcePathPatterns()));
     LOG.trace(
         "Applied configuration. Name: '{}'. URL: '{}'. Resource path patterns: '{}'.",
@@ -47,7 +47,7 @@ public class StreamxClientConfigImpl implements StreamxClientConfig {
   private void configure(StreamxClientConfigOcd config) {
     name.set(config.name());
     streamxUrl.set(config.streamxUrl());
-    authToken.set(config.authToken());
+    authToken.set(new OSGiSecret(config.authToken()));
     resourcePathPatterns.set(Arrays.asList(config.resourcePathPatterns()));
     LOG.trace(
         "Applied configuration. Name: '{}'. URL: '{}'. Resource path patterns: '{}'.",
@@ -67,7 +67,7 @@ public class StreamxClientConfigImpl implements StreamxClientConfig {
 
   @Override
   public String getAuthToken() {
-    return authToken.get();
+    return authToken.get().get();
   }
 
   @Override
