@@ -5,7 +5,7 @@ package dev.streamx.sling.connector;
  *
  * @param <T> the type of the data
  */
-public class UnpublishData<T> extends PublicationData<T> {
+public class UnpublishData<T> extends IngestionData<T> {
 
   /**
    * Constructs a new {@code UnpublishData} instance.
