@@ -6,9 +6,9 @@ import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX
 import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PATH;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import dev.streamx.sling.connector.PublicationAction;
-import dev.streamx.sling.connector.PublicationHandler;
-import dev.streamx.sling.connector.testing.handlers.FakeThrowablePublicationHandler;
+import dev.streamx.sling.connector.IngestionActionType;
+import dev.streamx.sling.connector.IngestionDataFactory;
+import dev.streamx.sling.connector.testing.handlers.FakeThrowableIngestionDataFactory;
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJobExecutionContext;
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeRetriedJob;
 import java.util.Collections;
@@ -33,12 +33,12 @@ class PublicationJobExecutorTest {
   private final PublicationJobExecutor publicationJobExecutor = new PublicationJobExecutor();
 
   private final StreamxClientConfig streamxClientConfig = getFakeStreamxClientConfig();
-  private final FakeThrowablePublicationHandler publicationHandler = new FakeThrowablePublicationHandler();
+  private final FakeThrowableIngestionDataFactory publicationHandler = new FakeThrowableIngestionDataFactory();
 
   @BeforeEach
   public void init() {
     slingContext.registerService(StreamxClientConfig.class, streamxClientConfig);
-    slingContext.registerService(PublicationHandler.class, publicationHandler);
+    slingContext.registerService(IngestionDataFactory.class, publicationHandler);
     slingContext.registerService(StreamxClientFactory.class, new FakeStreamxClientFactory());
 
     slingContext.registerInjectActivateService(new DefaultPublicationRetryPolicy());
@@ -87,7 +87,7 @@ class PublicationJobExecutorTest {
     properties.put(PN_STREAMX_PATH, "/resource/path/");
     properties.put(PN_STREAMX_HANDLER_ID, "fake-handler");
     properties.put(PN_STREAMX_CLIENT_NAME, "/fake/streamx/instance");
-    properties.put(PN_STREAMX_ACTION, PublicationAction.PUBLISH.name());
+    properties.put(PN_STREAMX_ACTION, IngestionActionType.PUBLISH.name());
     return new FakeRetriedJob(PublicationJobExecutor.JOB_TOPIC, properties, retries);
   }
 

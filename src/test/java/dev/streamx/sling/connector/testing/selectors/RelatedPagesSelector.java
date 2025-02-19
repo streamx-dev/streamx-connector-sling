@@ -1,6 +1,6 @@
 package dev.streamx.sling.connector.testing.selectors;
 
-import dev.streamx.sling.connector.PublicationAction;
+import dev.streamx.sling.connector.IngestionActionType;
 import dev.streamx.sling.connector.RelatedResource;
 import dev.streamx.sling.connector.RelatedResourcesSelector;
 import java.util.Arrays;
@@ -10,12 +10,12 @@ public class RelatedPagesSelector implements RelatedResourcesSelector {
 
   @Override
   public Collection<RelatedResource> getRelatedResources(String resourcePath,
-      PublicationAction action) {
+      IngestionActionType ingestionActionType) {
     return Arrays.asList(
         new RelatedResource("/content/my-site/related-page-to-publish",
-            PublicationAction.PUBLISH),
+            IngestionActionType.PUBLISH),
         new RelatedResource("/content/my-site/related-page-to-unpublish",
-            PublicationAction.UNPUBLISH)
+            IngestionActionType.UNPUBLISH)
     );
   }
 }

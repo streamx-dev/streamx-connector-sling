@@ -1,20 +1,42 @@
 package dev.streamx.sling.connector;
 
 /**
- * The {@code UnpublishData} class encapsulates the data required to unpublish a resource.
- *
- * @param <T> the type of the data
+ * {@link IngestionData} for {@link IngestionActionType#UNPUBLISH}.
  */
-public class UnpublishData<T> extends PublicationData<T> {
+public class UnpublishData<T> implements IngestionData<T> {
+
+  private final IngestionDataKey ingestionDataKey;
+  private final StreamXChannel channel;
+  private final Class<T> modelClass;
 
   /**
-   * Constructs a new {@code UnpublishData} instance.
+   * Constructs a new instance of this class.
    *
-   * @param key the unique key identifying the publish data
-   * @param channel the channel through which the data will be unpublished
-   * @param dataClass the class type of the model to be unpublished
+   * @param ingestionDataKey {@link IngestionDataKey}
+   * @param channel          {@link StreamXChannel} through which the data is supposed to be
+   *                         ingested by StreamX
+   * @param modelClass       type modelling the data ingested by StreamX
    */
-  public UnpublishData(String key, String channel, Class<T> dataClass) {
-    super(key, channel, dataClass);
+  public UnpublishData(
+      IngestionDataKey ingestionDataKey, StreamXChannel channel, Class<T> modelClass
+  ) {
+    this.ingestionDataKey = ingestionDataKey;
+    this.channel = channel;
+    this.modelClass = modelClass;
+  }
+
+  @Override
+  public IngestionDataKey key() {
+    return ingestionDataKey;
+  }
+
+  @Override
+  public StreamXChannel channel() {
+    return channel;
+  }
+
+  @Override
+  public Class<T> modelClass() {
+    return modelClass;
   }
 }

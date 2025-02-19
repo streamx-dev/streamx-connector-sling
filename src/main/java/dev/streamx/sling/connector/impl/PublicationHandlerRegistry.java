@@ -1,6 +1,6 @@
 package dev.streamx.sling.connector.impl;
 
-import dev.streamx.sling.connector.PublicationHandler;
+import dev.streamx.sling.connector.IngestionDataFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -16,23 +16,23 @@ public class PublicationHandlerRegistry {
 
   private static final Logger LOG = LoggerFactory.getLogger(PublicationHandlerRegistry.class);
 
-  private final List<PublicationHandler<?>> handlers = new CopyOnWriteArrayList<>();
+  private final List<IngestionDataFactory<?>> handlers = new CopyOnWriteArrayList<>();
 
   @Reference(
-      service = PublicationHandler.class,
+      service = IngestionDataFactory.class,
       cardinality = ReferenceCardinality.AT_LEAST_ONE,
       policy = ReferencePolicy.DYNAMIC)
-  private void bindOperation(PublicationHandler<?> handler) {
+  private void bindOperation(IngestionDataFactory<?> handler) {
     handlers.add(handler);
     LOG.info("Added: {}, handlers count: {}", handler.getClass().getName(), handlers.size());
   }
 
-  private void unbindOperation(PublicationHandler<?> handler) {
+  private void unbindOperation(IngestionDataFactory<?> handler) {
     handlers.remove(handler);
     LOG.info("Removed: {}, handlers count: {}", handler.getClass().getName(), handlers.size());
   }
 
-  List<PublicationHandler<?>> getHandlers() {
+  List<IngestionDataFactory<?>> getHandlers() {
     return new ArrayList<>(handlers);
   }
 

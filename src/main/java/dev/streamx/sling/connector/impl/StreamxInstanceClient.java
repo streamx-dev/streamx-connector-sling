@@ -3,7 +3,7 @@ package dev.streamx.sling.connector.impl;
 import dev.streamx.clients.ingestion.StreamxClient;
 import dev.streamx.clients.ingestion.exceptions.StreamxClientException;
 import dev.streamx.clients.ingestion.publisher.Publisher;
-import dev.streamx.sling.connector.PublicationData;
+import dev.streamx.sling.connector.IngestionData;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -22,13 +22,13 @@ public class StreamxInstanceClient {
     this.name = config.getName();
   }
 
-  <T> Publisher<T> getPublisher(PublicationData<T> publication) throws StreamxClientException {
+  <T> Publisher<T> getPublisher(IngestionData<T> publication) throws StreamxClientException {
     try {
       return (Publisher<T>) publishersByChannel.computeIfAbsent(
-          publication.getChannel(),
+          publication.channel().name(),
           channel -> {
             try {
-              return streamxClient.newPublisher(channel, publication.getModelClass());
+              return streamxClient.newPublisher(channel, publication.modelClass());
             } catch (StreamxClientException e) {
               throw new RuntimeException(e);
             }

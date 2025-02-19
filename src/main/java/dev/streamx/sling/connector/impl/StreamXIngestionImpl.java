@@ -6,13 +6,13 @@ import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX
 import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PATH;
 import static dev.streamx.sling.connector.impl.PublicationJobExecutor.JOB_TOPIC;
 
-import dev.streamx.sling.connector.PublicationAction;
-import dev.streamx.sling.connector.PublicationHandler;
+import dev.streamx.sling.connector.IngestionActionType;
+import dev.streamx.sling.connector.IngestionDataFactory;
 import dev.streamx.sling.connector.RelatedResource;
 import dev.streamx.sling.connector.RelatedResourcesSelector;
 import dev.streamx.sling.connector.StreamxPublicationException;
-import dev.streamx.sling.connector.StreamxPublicationService;
-import dev.streamx.sling.connector.impl.StreamxPublicationServiceImpl.Config;
+import dev.streamx.sling.connector.StreamXIngestion;
+import dev.streamx.sling.connector.impl.StreamXIngestionImpl.Config;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -34,12 +34,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Component(
-    service = StreamxPublicationService.class
+    service = StreamXIngestion.class
 )
 @Designate(ocd = Config.class)
-public class StreamxPublicationServiceImpl implements StreamxPublicationService {
+public class StreamXIngestionImpl implements StreamXIngestion {
 
-  private static final Logger LOG = LoggerFactory.getLogger(StreamxPublicationServiceImpl.class);
+  private static final Logger LOG = LoggerFactory.getLogger(StreamXIngestionImpl.class);
 
   @Reference
   private JobManager jobManager;
@@ -68,25 +68,25 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService 
 
   @Override
   public void publish(List<String> pathsToPublish) throws StreamxPublicationException {
-    handlePublication(PublicationAction.PUBLISH, pathsToPublish);
+    handlePublication(IngestionActionType.PUBLISH, pathsToPublish);
   }
 
   @Override
   public void unpublish(List<String> pathsToUnpublish) throws StreamxPublicationException {
-    handlePublication(PublicationAction.UNPUBLISH, pathsToUnpublish);
+    handlePublication(IngestionActionType.UNPUBLISH, pathsToUnpublish);
   }
 
-  private void handlePublication(PublicationAction action, List<String> resourcesPaths)
+  private void handlePublication(IngestionActionType ingestionActionType, List<String> resourcesPaths)
       throws StreamxPublicationException {
     LOG.trace("Handling publication for paths: {}", resourcesPaths);
     if (!enabled || resourcesPaths.isEmpty()) {
       return;
     }
 
-    Set<RelatedResource> relatedResources = findRelatedResources(resourcesPaths, action);
+    Set<RelatedResource> relatedResources = findRelatedResources(resourcesPaths, ingestionActionType);
 
     try {
-      handleResourcesPublication(resourcesPaths, action);
+      handleResourcesPublication(resourcesPaths, ingestionActionType);
       handleRelatedResourcesPublication(relatedResources);
     } catch (JobCreationException e) {
       throw new StreamxPublicationException("Can't handle publication. " + e.getMessage());
@@ -94,37 +94,37 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService 
   }
 
   private Set<RelatedResource> findRelatedResources(List<String> resourcesPaths,
-      PublicationAction action)
+      IngestionActionType ingestionActionType)
       throws StreamxPublicationException {
-    LOG.trace("Searching for related resources for {} and these paths: {}", action, resourcesPaths);
+    LOG.trace("Searching for related resources for {} and these paths: {}", ingestionActionType, resourcesPaths);
     Set<RelatedResource> relatedResources = new LinkedHashSet<>();
     for (String resourcePath : resourcesPaths) {
-      relatedResources.addAll(findRelatedResources(resourcePath, action));
+      relatedResources.addAll(findRelatedResources(resourcePath, ingestionActionType));
     }
 
     Predicate<RelatedResource> shouldBePublished = shouldPublishResourcePredicate(resourcesPaths,
-        action);
+        ingestionActionType);
     return relatedResources.stream().filter(shouldBePublished)
         .collect(Collectors.toCollection(LinkedHashSet::new));
   }
 
-  private void handleResourcesPublication(List<String> resourcesPaths, PublicationAction action)
+  private void handleResourcesPublication(List<String> resourcesPaths, IngestionActionType ingestionActionType)
       throws JobCreationException {
     for (String resourcePath : resourcesPaths) {
       if (StringUtils.isBlank(resourcePath)) {
         continue;
       }
 
-      handlePublication(resourcePath, action);
+      handlePublication(resourcePath, ingestionActionType);
     }
   }
 
-  private void handlePublication(String resourcePath, PublicationAction action)
+  private void handlePublication(String resourcePath, IngestionActionType ingestionActionType)
       throws JobCreationException {
     LOG.trace("Handling publication for resource: {}", resourcePath);
-    for (PublicationHandler<?> handler : publicationHandlerRegistry.getHandlers()) {
-      if (handler.canHandle(resourcePath)) {
-        addPublicationToQueue(handler.getId(), action, resourcePath);
+    for (IngestionDataFactory<?> handler : publicationHandlerRegistry.getHandlers()) {
+      if (handler.canProduce(() -> resourcePath)) {
+        addPublicationToQueue(handler.getId(), ingestionActionType, resourcePath);
       }
     }
   }
@@ -132,45 +132,45 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService 
   private void handleRelatedResourcesPublication(Set<RelatedResource> relatedResources)
       throws JobCreationException {
     for (RelatedResource relatedResource : relatedResources) {
-      handlePublication(relatedResource.getResourcePath(), relatedResource.getAction());
+      handlePublication(relatedResource.getResourcePath(), relatedResource.getIngestionActionType());
     }
   }
 
   private Predicate<RelatedResource> shouldPublishResourcePredicate(List<String> publishedResources,
-      PublicationAction action) {
-    return relatedResource -> !isPublished(relatedResource, publishedResources, action);
+      IngestionActionType ingestionActionType) {
+    return relatedResource -> !isPublished(relatedResource, publishedResources, ingestionActionType);
   }
 
   private boolean isPublished(RelatedResource relatedResource, List<String> publishedResources,
-      PublicationAction action) {
-    return relatedResource.getAction().equals(action) && publishedResources.contains(
+      IngestionActionType ingestionActionType) {
+    return relatedResource.getIngestionActionType().equals(ingestionActionType) && publishedResources.contains(
         relatedResource.getResourcePath());
   }
 
-  private Set<RelatedResource> findRelatedResources(String resourcePath, PublicationAction action)
+  private Set<RelatedResource> findRelatedResources(String resourcePath, IngestionActionType ingestionActionType)
       throws StreamxPublicationException {
     Set<RelatedResource> relatedResources = new LinkedHashSet<>();
     for (RelatedResourcesSelector relatedResourcesSelector : relatedResourcesSelectorRegistry.getSelectors()) {
-      relatedResources.addAll(relatedResourcesSelector.getRelatedResources(resourcePath, action));
+      relatedResources.addAll(relatedResourcesSelector.getRelatedResources(resourcePath, ingestionActionType));
     }
     return relatedResources;
   }
 
-  private void addPublicationToQueue(String handlerId, PublicationAction action,
+  private void addPublicationToQueue(String handlerId, IngestionActionType ingestionActionType,
       String resourcePath) throws JobCreationException {
     LOG.debug("Adding publication request for [{}: {}] to queue", handlerId, resourcePath);
     for (StreamxInstanceClient client : streamxClientStore.getForResource(resourcePath)) {
-      addPublicationToQueue(handlerId, action, resourcePath, client.getName());
+      addPublicationToQueue(handlerId, ingestionActionType, resourcePath, client.getName());
     }
   }
 
-  private void addPublicationToQueue(String handlerId, PublicationAction action,
+  private void addPublicationToQueue(String handlerId, IngestionActionType ingestionActionType,
       String resourcePath,
       String clientName) throws JobCreationException {
     Map<String, Object> jobProperties = new HashMap<>();
     jobProperties.put(PN_STREAMX_HANDLER_ID, handlerId);
     jobProperties.put(PN_STREAMX_CLIENT_NAME, clientName);
-    jobProperties.put(PN_STREAMX_ACTION, action.toString());
+    jobProperties.put(PN_STREAMX_ACTION, ingestionActionType.toString());
     jobProperties.put(PN_STREAMX_PATH, resourcePath);
     Job job = jobManager.addJob(JOB_TOPIC, jobProperties);
     if (job == null) {

@@ -1,11 +1,12 @@
 package dev.streamx.sling.connector.testing.handlers;
 
-import dev.streamx.sling.connector.PublicationHandler;
+import dev.streamx.sling.connector.IngestionDataFactory;
+import dev.streamx.sling.connector.IngestionDataKey;
 import dev.streamx.sling.connector.PublishData;
 import dev.streamx.sling.connector.StreamxPublicationException;
 import dev.streamx.sling.connector.UnpublishData;
 
-public class FakeThrowablePublicationHandler implements PublicationHandler<String> {
+public class FakeThrowableIngestionDataFactory implements IngestionDataFactory<String> {
 
   private boolean throwException = false;
   private boolean throwRuntimeException = false;
@@ -16,20 +17,20 @@ public class FakeThrowablePublicationHandler implements PublicationHandler<Strin
   }
 
   @Override
-  public boolean canHandle(String resourcePath) {
+  public boolean canProduce(IngestionDataKey ingestionDataKey) {
     return true;
   }
 
   @Override
-  public PublishData<String> getPublishData(String resourcePath) throws StreamxPublicationException {
+  public PublishData<String> producePublishData(IngestionDataKey ingestionDataKey) throws StreamxPublicationException {
     process();
-    return new PublishData<>(resourcePath, "channel", String.class, "Success");
+    return new PublishData<>(ingestionDataKey, () -> "channel", String.class, "Success");
   }
 
   @Override
-  public UnpublishData<String> getUnpublishData(String resourcePath) throws StreamxPublicationException {
+  public UnpublishData<String> produceUnpublishData(IngestionDataKey ingestionDataKey) throws StreamxPublicationException {
     process();
-    return new UnpublishData<>(resourcePath, "channel", String.class);
+    return new UnpublishData<>(ingestionDataKey, () -> "channel", String.class);
   }
 
   public void throwException() {

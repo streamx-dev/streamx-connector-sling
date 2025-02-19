@@ -1,33 +1,54 @@
 package dev.streamx.sling.connector;
 
 /**
- * The {@code PublishData} class encapsulates the data required to publish a resource.
- *
- * @param <T> the type of the data
+ * {@link IngestionData} for {@link IngestionActionType#PUBLISH}.
  */
-public class PublishData<T> extends PublicationData<T> {
+public class PublishData<T> implements IngestionData<T> {
 
+  private final IngestionDataKey ingestionDataKey;
+  private final StreamXChannel channel;
+  private final Class<T> modelClass;
   private final T model;
 
   /**
-   * Constructs a new {@code PublishData} instance.
+   * Constructs a new instance of this class.
    *
-   * @param key the unique key identifying the publish data
-   * @param channel the channel through which the data will be published
-   * @param modelClass the class type of the model to be published
-   * @param model the instance of the model to be published
+   * @param ingestionDataKey {@link IngestionDataKey}
+   * @param channel          {@link StreamXChannel} through which the data is supposed to be
+   *                         ingested by StreamX
+   * @param modelClass       type modelling the data ingested by StreamX
+   * @param model            instance of the type modelling the data ingested by StreamX
    */
-  public PublishData(String key, String channel, Class<T> modelClass, T model) {
-    super(key, channel, modelClass);
+  public PublishData(
+      IngestionDataKey ingestionDataKey, StreamXChannel channel, Class<T> modelClass, T model
+  ) {
+    this.ingestionDataKey = ingestionDataKey;
+    this.channel = channel;
+    this.modelClass = modelClass;
     this.model = model;
   }
 
-  /**
-   *
-   * @return the model to be published
-   */
-  public T getModel() {
-    return model;
+  @Override
+  public IngestionDataKey key() {
+    return ingestionDataKey;
   }
 
+  @Override
+  public StreamXChannel channel() {
+    return channel;
+  }
+
+  @Override
+  public Class<T> modelClass() {
+    return modelClass;
+  }
+
+  /**
+   * Returns the instance of the type modelling the data ingested by StreamX.
+   *
+   * @return instance of the type modelling the data ingested by StreamX
+   */
+  public T model() {
+    return model;
+  }
 }

@@ -1,23 +1,24 @@
 package dev.streamx.sling.connector;
 
 /**
- * The {@code RelatedResource} class encapsulates information about related resources
- * along with their publication actions, indicating whether they should be published or unpublished.
+ * The {@code RelatedResource} class encapsulates information about related resources along with
+ * their publication actions, indicating whether they should be published or unpublished.
  */
 public class RelatedResource {
 
   private final String resourcePath;
-  private final PublicationAction action;
+  private final IngestionActionType ingestionActionType;
 
   /**
-   * Constructs a {@code RelatedResource} object with the specified resource path and publication action.
+   * Constructs a {@code RelatedResource} object with the specified resource path and publication
+   * action.
    *
-   * @param resourcePath the path of the related resource
-   * @param action the publication action for the related resource
+   * @param resourcePath        the path of the related resource
+   * @param ingestionActionType the publication action for the related resource
    */
-  public RelatedResource(String resourcePath, PublicationAction action) {
+  public RelatedResource(String resourcePath, IngestionActionType ingestionActionType) {
     this.resourcePath = resourcePath;
-    this.action = action;
+    this.ingestionActionType = ingestionActionType;
   }
 
   /**
@@ -34,8 +35,8 @@ public class RelatedResource {
    *
    * @return the publication action
    */
-  public PublicationAction getAction() {
-    return action;
+  public IngestionActionType getIngestionActionType() {
+    return ingestionActionType;
   }
 
   @Override
@@ -49,13 +50,15 @@ public class RelatedResource {
       return false;
     }
 
-    if (resourcePath == null && ((RelatedResource) o).resourcePath == null && action == null
-        && ((RelatedResource) o).action == null) {
+    if (resourcePath == null && ((RelatedResource) o).resourcePath == null
+        && ingestionActionType == null
+        && ((RelatedResource) o).ingestionActionType == null) {
       return true;
     }
 
     return resourcePath != null && resourcePath.equals(((RelatedResource) o).getResourcePath())
-        && action != null && action.equals(((RelatedResource) o).action);
+        && ingestionActionType
+        != null && ingestionActionType.equals(((RelatedResource) o).ingestionActionType);
   }
 
 }

@@ -14,11 +14,11 @@ public interface RelatedResourcesSelector {
    * Retrieves a collection of related resources based on the specified resource path and publication action.
    *
    * @param resourcePath the path of the resource for which related resources are to be selected
-   * @param action the publication action to be applied to the related resources
+   * @param ingestionActionType the publication action to be applied to the related resources
    * @return a collection of {@code RelatedResource} objects that are related to the specified resource
    * @throws StreamxPublicationException if a temporary error occurs and the operation should be retried
    */
-  Collection<RelatedResource> getRelatedResources(String resourcePath, PublicationAction action)
+  Collection<RelatedResource> getRelatedResources(String resourcePath, IngestionActionType ingestionActionType)
       throws StreamxPublicationException;
 
 }
