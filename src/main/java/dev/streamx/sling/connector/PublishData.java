@@ -5,7 +5,7 @@ package dev.streamx.sling.connector;
  *
  * @param <T> the type of the data
  */
-public class PublishData<T> extends PublicationData<T> {
+public class PublishData<T> extends IngestionData<T> {
 
   private final T model;
 

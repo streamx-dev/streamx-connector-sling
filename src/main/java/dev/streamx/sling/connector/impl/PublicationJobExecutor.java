@@ -1,8 +1,16 @@
 package dev.streamx.sling.connector.impl;
 
+import static dev.streamx.sling.connector.impl.PublicationJobExecutor.JOB_TOPIC;
+
 import dev.streamx.clients.ingestion.exceptions.StreamxClientException;
 import dev.streamx.clients.ingestion.publisher.Publisher;
-import dev.streamx.sling.connector.*;
+import dev.streamx.sling.connector.IngestionActionType;
+import dev.streamx.sling.connector.PublicationHandler;
+import dev.streamx.sling.connector.PublicationRetryPolicy;
+import dev.streamx.sling.connector.PublishData;
+import dev.streamx.sling.connector.StreamxPublicationException;
+import dev.streamx.sling.connector.UnpublishData;
+import java.util.Optional;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.sling.event.jobs.Job;
 import org.apache.sling.event.jobs.consumer.JobExecutionContext;
@@ -12,10 +20,6 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Optional;
-
-import static dev.streamx.sling.connector.impl.PublicationJobExecutor.JOB_TOPIC;
 
 @Component(
     service = JobExecutor.class,
@@ -28,7 +32,7 @@ public class PublicationJobExecutor implements JobExecutor {
   static final String JOB_TOPIC = "dev/streamx/publications";
   static final String PN_STREAMX_HANDLER_ID = "streamx.handler.id";
   static final String PN_STREAMX_CLIENT_NAME = "streamx.client.name";
-  static final String PN_STREAMX_ACTION = "streamx.action";
+  static final String PN_STREAMX_INGESTION_TYPE = "streamx.ingestion.type";
   static final String PN_STREAMX_PATH = "streamx.path";
 
   @Reference
@@ -45,12 +49,13 @@ public class PublicationJobExecutor implements JobExecutor {
     LOG.trace("Processing {}", job);
     String handlerId = job.getProperty(PN_STREAMX_HANDLER_ID, String.class);
     String clientName = job.getProperty(PN_STREAMX_CLIENT_NAME, String.class);
-    Optional<PublicationAction> actionNullable = PublicationAction.of(job.getProperty(PN_STREAMX_ACTION, String.class));
+    Optional<IngestionActionType> actionNullable = IngestionActionType.of(job.getProperty(
+        PN_STREAMX_INGESTION_TYPE, String.class));
     if (actionNullable.isEmpty()) {
       LOG.warn("Publication action is not set, job will be cancelled: {}", job);
       return context.result().cancelled();
     }
-    PublicationAction action = actionNullable.orElseThrow();
+    IngestionActionType action = actionNullable.orElseThrow();
     String path = job.getProperty(PN_STREAMX_PATH, String.class);
     if (StringUtils.isEmpty(path)) {
       LOG.warn("This publication job has no path: {}", job);
@@ -70,7 +75,7 @@ public class PublicationJobExecutor implements JobExecutor {
     }
   }
 
-  private JobExecutionResult processPublication(String handlerId, PublicationAction action, String path,
+  private JobExecutionResult processPublication(String handlerId, IngestionActionType action, String path,
       String clientName, JobExecutionContext context)
       throws StreamxPublicationException, StreamxClientException {
     PublicationHandler<?> publicationHandler = findHandler(handlerId);
@@ -122,7 +127,7 @@ public class PublicationJobExecutor implements JobExecutor {
     Publisher<T> publisher = streamxInstanceClient.getPublisher(publishData);
     publisher.publish(publishData.getKey(), publishData.getModel());
     LOG.info("Published resource: [{}] to [{}: {}]", publishData.getKey(),
-        streamxInstanceClient.getName(), publishData.getChannel());
+        streamxInstanceClient.getName(), publishData.getChannelName());
   }
 
   private void handleUnpublish(PublicationHandler<?> publicationHandler,
@@ -143,7 +148,7 @@ public class PublicationJobExecutor implements JobExecutor {
     Publisher<T> publisher = streamxInstanceClient.getPublisher(unpublishData);
     publisher.unpublish(unpublishData.getKey());
     LOG.info("Unpublished resource: [{}] from [{}: {}]", unpublishData.getKey(),
-        streamxInstanceClient.getName(), unpublishData.getChannel());
+        streamxInstanceClient.getName(), unpublishData.getChannelName());
   }
 
 }

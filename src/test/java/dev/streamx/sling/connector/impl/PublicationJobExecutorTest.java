@@ -1,12 +1,12 @@
 package dev.streamx.sling.connector.impl;
 
-import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_ACTION;
+import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_INGESTION_TYPE;
 import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_CLIENT_NAME;
 import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_HANDLER_ID;
 import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PATH;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import dev.streamx.sling.connector.PublicationAction;
+import dev.streamx.sling.connector.IngestionActionType;
 import dev.streamx.sling.connector.PublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.FakeThrowablePublicationHandler;
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJobExecutionContext;
@@ -87,7 +87,7 @@ class PublicationJobExecutorTest {
     properties.put(PN_STREAMX_PATH, "/resource/path/");
     properties.put(PN_STREAMX_HANDLER_ID, "fake-handler");
     properties.put(PN_STREAMX_CLIENT_NAME, "/fake/streamx/instance");
-    properties.put(PN_STREAMX_ACTION, PublicationAction.PUBLISH.name());
+    properties.put(PN_STREAMX_INGESTION_TYPE, IngestionActionType.PUBLISH.name());
     return new FakeRetriedJob(PublicationJobExecutor.JOB_TOPIC, properties, retries);
   }
 

@@ -5,7 +5,7 @@ import dev.streamx.sling.connector.testing.handlers.AssetPublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.ImpostorPublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.OtherPagePublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.PagePublicationHandler;
-import dev.streamx.sling.connector.testing.selectors.RelatedPagesSelector;
+import dev.streamx.sling.connector.testing.selectors.RelatedPagesSearch;
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJobManager;
 import dev.streamx.sling.connector.testing.streamx.clients.ingestion.FakeStreamxClient;
 import org.apache.sling.api.resource.PersistenceException;
@@ -30,16 +30,16 @@ import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssumptions.given;
 
 @ExtendWith(SlingContextExtension.class)
-class StreamxPublicationServiceImplTest {
+class StreamXIngestionImplTest {
 
   private final SlingContext slingContext = new SlingContext();
   private final ResourceResolver resourceResolver = slingContext.resourceResolver();
   private final Map<String, Object> publicationServiceConfig = new HashMap<>();
   private final List<PublicationHandler<?>> handlers = new ArrayList<>();
-  private final List<RelatedResourcesSelector> relatedResourcesSelectors = new ArrayList<>();
+  private final List<RelatedDataSearch> relatedResourcesSelectors = new ArrayList<>();
   private final List<FakeStreamxClientConfig> fakeStreamxClientConfigs = new ArrayList<>();
 
-  private StreamxPublicationService publicationService;
+  private StreamXIngestion publicationService;
   private FakeJobManager fakeJobManager;
   private FakeStreamxClient fakeStreamxClient;
   private FakeStreamxClientFactory fakeStreamxClientFactory;
@@ -56,7 +56,7 @@ class StreamxPublicationServiceImplTest {
       return;
     }
 
-    StreamxPublicationServiceImpl publicationServiceImpl = new StreamxPublicationServiceImpl();
+    StreamXIngestionImpl publicationServiceImpl = new StreamXIngestionImpl();
     JobExecutor publicationJobExecutor = new PublicationJobExecutor();
 
     for (FakeStreamxClientConfig config : fakeStreamxClientConfigs) {
@@ -71,13 +71,13 @@ class StreamxPublicationServiceImplTest {
     for (PublicationHandler<?> handler : handlers) {
       slingContext.registerService(PublicationHandler.class, handler);
     }
-    for (RelatedResourcesSelector selector : relatedResourcesSelectors) {
-      slingContext.registerService(RelatedResourcesSelector.class, selector);
+    for (RelatedDataSearch selector : relatedResourcesSelectors) {
+      slingContext.registerService(RelatedDataSearch.class, selector);
     }
     slingContext.registerInjectActivateService(StreamxClientStoreImpl.class);
     slingContext.registerInjectActivateService(new PublicationHandlerRegistry());
 
-    slingContext.registerInjectActivateService(new RelatedResourcesSelectorRegistry());
+    slingContext.registerInjectActivateService(new RelatedDataSearches());
 
     slingContext.registerInjectActivateService(publicationServiceImpl, publicationServiceConfig);
     slingContext.registerInjectActivateService(publicationJobExecutor);
@@ -352,7 +352,7 @@ class StreamxPublicationServiceImplTest {
     givenPageHierarchy("/content/my-site/related-page-to-publish");
     givenPageHierarchy("/content/my-site/related-page-to-unpublish");
 
-    givenRelatedResourcesSelectors(new RelatedPagesSelector());
+    givenRelatedResourcesSelectors(new RelatedPagesSearch());
 
     whenPathsArePublished(
         "/content/my-site/page-1"
@@ -376,7 +376,7 @@ class StreamxPublicationServiceImplTest {
     givenPageHierarchy("/content/my-site/related-page-to-publish");
     givenPageHierarchy("/content/my-site/related-page-to-unpublish");
 
-    givenRelatedResourcesSelectors(new RelatedPagesSelector(), new RelatedPagesSelector(), new RelatedPagesSelector());
+    givenRelatedResourcesSelectors(new RelatedPagesSearch(), new RelatedPagesSearch(), new RelatedPagesSearch());
 
     whenPathsArePublished(
         "/content/my-site/page-1"
@@ -401,7 +401,7 @@ class StreamxPublicationServiceImplTest {
     givenPageHierarchy("/content/my-site/related-page-to-publish");
     givenPageHierarchy("/content/my-site/related-page-to-unpublish");
 
-    givenRelatedResourcesSelectors(new RelatedPagesSelector());
+    givenRelatedResourcesSelectors(new RelatedPagesSearch());
 
     whenPathsArePublished(
         "/content/my-site/page-1",
@@ -427,7 +427,7 @@ class StreamxPublicationServiceImplTest {
     givenPageHierarchy("/content/my-site/related-page-to-publish");
     givenPageHierarchy("/content/my-site/related-page-to-unpublish");
 
-    givenRelatedResourcesSelectors(new RelatedPagesSelector());
+    givenRelatedResourcesSelectors(new RelatedPagesSearch());
 
     whenPathsArePublished(
         "/content/my-site/page-1",
@@ -459,7 +459,7 @@ class StreamxPublicationServiceImplTest {
     propertiesModifier.accept(publicationServiceConfig);
   }
 
-  private void givenRelatedResourcesSelectors(RelatedResourcesSelector... selectors) {
+  private void givenRelatedResourcesSelectors(RelatedDataSearch... selectors) {
     this.relatedResourcesSelectors.clear();
     this.relatedResourcesSelectors.addAll(Arrays.asList(selectors));
   }
