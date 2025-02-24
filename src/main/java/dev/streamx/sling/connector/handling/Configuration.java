@@ -6,7 +6,6 @@ package dev.streamx.sling.connector.handling;
 @SuppressWarnings("InterfaceNeverImplemented")
 public interface Configuration {
 
-
   /**
    * Returns the regex to match paths of resources that should be ingested by StreamX.
    *

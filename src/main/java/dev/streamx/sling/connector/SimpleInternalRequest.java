@@ -11,8 +11,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.sling.api.SlingHttpServletResponse;
-import org.apache.sling.api.resource.Resource;
+import org.apache.sling.api.resource.LoginException;
 import org.apache.sling.api.resource.ResourceResolver;
+import org.apache.sling.api.resource.ResourceResolverFactory;
 import org.apache.sling.api.uri.SlingUri;
 import org.apache.sling.engine.SlingRequestProcessor;
 import org.apache.sling.servlethelpers.MockSlingHttpServletResponse;
@@ -29,25 +30,25 @@ public class SimpleInternalRequest {
 
   private static final Logger LOG = LoggerFactory.getLogger(SimpleInternalRequest.class);
 
-  private final ResourceResolver resourceResolver;
+  private final ResourceResolverFactory resourceResolverFactory;
   private final SlingRequestProcessor slingRequestProcessor;
   private final SlingUri slingUri;
 
   /**
    * Constructs a new instance of this class.
    *
-   * @param slingUri              {@link SlingUri} to request
-   * @param slingRequestProcessor {@link SlingRequestProcessor} to use for request processing
-   * @param resourceResolver      {@link ResourceResolver} to use for accessing {@link Resource}s
+   * @param slingUri                {@link SlingUri} to request
+   * @param slingRequestProcessor   {@link SlingRequestProcessor} to use for request processing
+   * @param resourceResolverFactory {@link ResourceResolverFactory} to use for resource resolution
    */
   public SimpleInternalRequest(
       SlingUri slingUri,
       SlingRequestProcessor slingRequestProcessor,
-      ResourceResolver resourceResolver
+      ResourceResolverFactory resourceResolverFactory
   ) {
-    this.resourceResolver = resourceResolver;
     this.slingUri = slingUri;
     this.slingRequestProcessor = slingRequestProcessor;
+    this.resourceResolverFactory = resourceResolverFactory;
   }
 
   /**
@@ -56,17 +57,24 @@ public class SimpleInternalRequest {
    * @return content type of the HTTP response
    */
   public String contentType() {
+    String contentType = executedInternalRequest(slingUri)
+        .flatMap(this::extractResponse)
+        .map(SlingHttpServletResponse::getContentType)
+        .orElse(StringUtils.EMPTY);
+    LOG.trace("Content type for '{}' is '{}'", slingUri, contentType);
+    return contentType;
+  }
+
+  private Optional<SlingHttpServletResponse> extractResponse(InternalRequest internalRequest) {
     try {
-      String contentType = internalRequest()
-          .execute()
-          .getResponse()
-          .getContentType();
-      LOG.trace("Content type for '{}' is '{}'", slingUri, contentType);
-      return contentType;
+      SlingHttpServletResponse response = internalRequest.getResponse();
+      return Optional.of(response);
     } catch (IOException exception) {
-      String message = String.format("Failed to determine content type for '%s'", slingUri);
+      String message = String.format(
+          "Failed to extract response for '%s' from '%s'", slingUri, internalRequest
+      );
       LOG.error(message, exception);
-      return StringUtils.EMPTY;
+      return Optional.empty();
     }
   }
 
@@ -77,38 +85,41 @@ public class SimpleInternalRequest {
    * returned if the response body cannot be retrieved
    */
   public Optional<InputStream> getResponseAsInputStream() {
-    try {
-      SlingHttpServletResponse response = internalRequest()
-          .execute()
-          .getResponse();
-      Optional<InputStream> inputStream = Optional.of(response)
-          .filter(MockSlingHttpServletResponse.class::isInstance)
-          .map(MockSlingHttpServletResponse.class::cast)
-          .map(MockSlingHttpServletResponse::getOutput)
-          .map(ByteArrayInputStream::new);
-      LOG.debug("Generated {} for '{}'", inputStream, slingUri);
-      return inputStream;
-    } catch (IOException exception) {
-      String message = String.format("Failed to generate response for '%s'", slingUri);
-      LOG.error(message, exception);
-      return Optional.empty();
-    }
+    return executedInternalRequest(slingUri)
+        .flatMap(this::extractResponse)
+        .filter(MockSlingHttpServletResponse.class::isInstance)
+        .map(MockSlingHttpServletResponse.class::cast)
+        .map(MockSlingHttpServletResponse::getOutput)
+        .map(
+            output -> {
+              LOG.debug("Generated output of {} bytes for '{}'", output.length, slingUri);
+              return new ByteArrayInputStream(output);
+            }
+        );
   }
 
-  private InternalRequest internalRequest() {
+  @SuppressWarnings({"squid:S1874", "deprecation"})
+  private Optional<InternalRequest> executedInternalRequest(SlingUri slingUri) {
     AbstractMap.SimpleEntry<String, String> wcmmode = new AbstractMap.SimpleEntry<>(
         "wcmmode", "disabled"
     );
     Map<String, Object> pathParameters = Stream.concat(
         slingUri.getPathParameters().entrySet().stream(), Stream.of(wcmmode)
     ).collect(Collectors.toMap(Entry::getKey, Entry::getValue));
-    String path = Optional.ofNullable(slingUri.getResourcePath()).orElse(StringUtils.EMPTY);
-    LOG.trace("Creating internal request for '{}'. Resolved path: {}", slingUri, path);
-    return new SlingInternalRequest(
-        resourceResolver, slingRequestProcessor, path
-    ).withExtension(slingUri.getExtension())
-        .withSelectors(slingUri.getSelectors())
-        .withParameters(pathParameters);
+    LOG.trace("Creating internal request for '{}'", slingUri);
+    try (
+        ResourceResolver resourceResolver
+            = resourceResolverFactory.getAdministrativeResourceResolver(null)
+    ) {
+      InternalRequest executedInternalRequest = new SlingInternalRequest(
+          resourceResolver, slingRequestProcessor, slingUri.toString()
+      ).withParameters(pathParameters).execute();
+      return Optional.of(executedInternalRequest);
+    } catch (IOException | LoginException exception) {
+      String message = String.format("Failed to execute internal request for '%s'", slingUri);
+      LOG.error(message, exception);
+      return Optional.empty();
+    }
   }
 
   /**
@@ -118,19 +129,25 @@ public class SimpleInternalRequest {
    * returned if the response body cannot be retrieved
    */
   public String getResponseAsString() {
-    try {
-      String responseAsString = internalRequest()
-          .execute()
-          .getResponseAsString();
-      LOG.debug(
-          "Generated response as string for '{}'. Response length: {}",
-          slingUri, responseAsString.length()
-      );
-      return responseAsString;
-    } catch (IOException exception) {
-      String message = String.format("Failed to generate response as string for '%s'", slingUri);
-      LOG.error(message, exception);
-      return StringUtils.EMPTY;
-    }
+    String responseAsString = executedInternalRequest(slingUri)
+        .flatMap(
+            internalRequest -> {
+              try {
+                return Optional.of(internalRequest.getResponseAsString());
+              } catch (IOException exception) {
+                String message = String.format(
+                    "Failed to get response as string for '%s'", slingUri
+                );
+                LOG.error(message, exception);
+                return Optional.empty();
+              }
+
+            }
+        ).orElse(StringUtils.EMPTY);
+    LOG.debug(
+        "Generated response as string for '{}'. Response length: {}",
+        slingUri, responseAsString.length()
+    );
+    return responseAsString;
   }
 }

@@ -79,7 +79,7 @@ public abstract class InternalResourcesHandler<T> implements PublicationHandler<
   ) {
     SlingUri slingUri = SlingUriBuilder.parse(resourcePath, resourceResolver).build();
     SimpleInternalRequest simpleInternalRequest = new SimpleInternalRequest(
-        slingUri, slingRequestProcessor, resourceResolver
+        slingUri, slingRequestProcessor, resourceResolverFactory
     );
     try (InputStream inputStream = simpleInternalRequest.getResponseAsInputStream().orElseThrow()) {
       String channel = configuration().channel();
