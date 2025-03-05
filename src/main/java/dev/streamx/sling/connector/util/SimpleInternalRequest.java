@@ -1,4 +1,4 @@
-package dev.streamx.sling.connector;
+package dev.streamx.sling.connector.util;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;

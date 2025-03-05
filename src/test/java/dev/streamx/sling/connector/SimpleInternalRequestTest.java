@@ -3,6 +3,7 @@ package dev.streamx.sling.connector;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import dev.streamx.sling.connector.util.SimpleInternalRequest;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Optional;

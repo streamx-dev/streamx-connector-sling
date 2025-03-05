@@ -2,7 +2,7 @@ package dev.streamx.sling.connector.handlers.resourcepath;
 
 import dev.streamx.sling.connector.PublicationHandler;
 import dev.streamx.sling.connector.PublishData;
-import dev.streamx.sling.connector.SimpleInternalRequest;
+import dev.streamx.sling.connector.util.SimpleInternalRequest;
 import dev.streamx.sling.connector.StreamxPublicationException;
 import dev.streamx.sling.connector.UnpublishData;
 import java.io.IOException;

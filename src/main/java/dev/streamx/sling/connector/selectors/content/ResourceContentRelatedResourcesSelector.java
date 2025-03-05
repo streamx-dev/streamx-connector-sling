@@ -3,7 +3,7 @@ package dev.streamx.sling.connector.selectors.content;
 import dev.streamx.sling.connector.PublicationAction;
 import dev.streamx.sling.connector.RelatedResource;
 import dev.streamx.sling.connector.RelatedResourcesSelector;
-import dev.streamx.sling.connector.SimpleInternalRequest;
+import dev.streamx.sling.connector.util.SimpleInternalRequest;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
