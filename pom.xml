@@ -109,7 +109,6 @@
         <artifactId>bnd-baseline-maven-plugin</artifactId>
         <version>${bnd.version}</version>
         <configuration>
-          <!-- Remove after first release. -->
           <failOnMissing>false</failOnMissing>
         </configuration>
         <executions>
