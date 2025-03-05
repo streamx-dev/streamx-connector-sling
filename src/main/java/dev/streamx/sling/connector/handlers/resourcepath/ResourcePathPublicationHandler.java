@@ -1,4 +1,4 @@
-package dev.streamx.sling.connector.handling.resourcepath;
+package dev.streamx.sling.connector.handlers.resourcepath;
 
 import dev.streamx.sling.connector.PublicationHandler;
 import dev.streamx.sling.connector.PublishData;

@@ -1,4 +1,4 @@
-package dev.streamx.sling.connector.handling.resourcepath;
+package dev.streamx.sling.connector.handlers.resourcepath;
 
 /**
  * Configuration for {@link ResourcePathPublicationHandler}.
