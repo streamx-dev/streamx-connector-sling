@@ -37,7 +37,7 @@ class ResourceFilter {
             = resourceResolverFactory.getAdministrativeResourceResolver(null)
     ) {
       String requiredPrimaryNTRegex
-          = pathsExtractionConfig.required$_$primary$_$node$_$type_regex();
+          = pathsExtractionConfig.resource_required$_$primary$_$node$_$type_regex();
       String resourcePathUnwrapped = resourcePath.get();
       boolean doesMatchPrimaryNT = Optional.ofNullable(
               resourceResolver.getResource(resourcePathUnwrapped)
@@ -69,7 +69,7 @@ class ResourceFilter {
   }
 
   private boolean matchesPath(ResourcePath resourcePath) {
-    String requiredPathRegex = pathsExtractionConfig.required$_$path_regex();
+    String requiredPathRegex = pathsExtractionConfig.resource_required$_$path_regex();
     boolean doesMatchPath = resourcePath.matches(requiredPathRegex);
     LOG.trace(
         "Does resource at path '{}' match this path regex: '{}'? Answer: {}",

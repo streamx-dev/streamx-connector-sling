@@ -1,10 +1,10 @@
-package dev.streamx.sling.connector.handling;
+package dev.streamx.sling.connector.handling.resourcepath;
 
 /**
- * Configuration for {@link InternalResourcesHandler}.
+ * Configuration for {@link ResourcePathPublicationHandler}.
  */
 @SuppressWarnings("InterfaceNeverImplemented")
-public interface Configuration {
+public interface ResourcePathPublicationHandlerConfig {
 
   /**
    * Returns the regex to match paths of resources that should be ingested by StreamX.

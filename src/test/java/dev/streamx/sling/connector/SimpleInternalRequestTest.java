@@ -113,10 +113,6 @@ class SimpleInternalRequestTest {
             "<html><body><h1>Not Found</h1></body></html>",
             unknownRequest.getResponseAsString()
         ),
-        () -> assertEquals("text/html", plainMarsRequest.contentType()),
-        () -> assertEquals("text/html", usualMarsRequest.contentType()),
-        () -> assertEquals("text/html", unknownRequest.contentType()),
-        () -> assertEquals("application/octet-stream", binaryRequest.contentType()),
         () -> assertEquals(
             50, plainMarsRequest.getResponseAsInputStream().orElseThrow().readAllBytes().length
         ),

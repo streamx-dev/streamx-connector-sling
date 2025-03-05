@@ -51,20 +51,6 @@ public class SimpleInternalRequest {
     this.resourceResolverFactory = resourceResolverFactory;
   }
 
-  /**
-   * Returns the content type of the HTTP response.
-   *
-   * @return content type of the HTTP response
-   */
-  public String contentType() {
-    String contentType = executedInternalRequest(slingUri)
-        .flatMap(this::extractResponse)
-        .map(SlingHttpServletResponse::getContentType)
-        .orElse(StringUtils.EMPTY);
-    LOG.trace("Content type for '{}' is '{}'", slingUri, contentType);
-    return contentType;
-  }
-
   private Optional<SlingHttpServletResponse> extractResponse(InternalRequest internalRequest) {
     try {
       SlingHttpServletResponse response = internalRequest.getResponse();

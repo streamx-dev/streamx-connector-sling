@@ -20,7 +20,7 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
  * </ul>
  *
  * <p>The textual representation of a {@link Resource} is obtained by issuing an internal Sling request.
- * If {@link #postfix$_$to$_$append()} is provided, that postfix is appended to the {@link Resource}
+ * If {@link #resource$_$path_postfix$_$to$_$append()} is provided, that postfix is appended to the {@link Resource}
  * path before the request. Then the specified regexes are applied to the response to discover
  * candidate paths, which can subsequently be excluded or accepted based on the provided
  * filtering regexes.
@@ -37,12 +37,12 @@ public @interface PathsExtractionConfig {
    * {@link Resource}
    */
   @AttributeDefinition(
-      name = "Search Regexes",
+      name = "References Search Regexes",
       description = "Array of regex patterns used to search for paths within "
           + "the textual representation of a Resource.",
       type = AttributeType.STRING
   )
-  String[] search_regexes() default {};
+  String[] references_search$_$regexes() default {};
 
   /**
    * A regex pattern used to exclude certain paths from the final extracted results. Any path
@@ -51,12 +51,12 @@ public @interface PathsExtractionConfig {
    * @return regex pattern used to exclude certain paths from the final extracted results.
    */
   @AttributeDefinition(
-      name = "Regex to Exclude from Result",
+      name = "References Regex to Exclude from Result",
       description = "Regex pattern used to exclude certain paths from the final extracted results.",
       type = AttributeType.STRING,
       defaultValue = StringUtils.EMPTY
   )
-  String exclude$_$from$_$result_regex() default StringUtils.EMPTY;
+  String references_exclude$_$from$_$result_regex() default StringUtils.EMPTY;
 
   /**
    * Specifies a postfix to append to the {@link Resource} path before performing the internal Sling
@@ -68,12 +68,12 @@ public @interface PathsExtractionConfig {
    * request to retrieve the text representation of that {@link Resource}.
    */
   @AttributeDefinition(
-      name = "Postfix to Append",
+      name = "Resource Path Postfix to Append",
       description = "Postfix to append to the Resource path before performing the internal Sling request to retrieve the text representation of that Resource. Specified value must not be prepended with a dot (.).",
       type = AttributeType.STRING,
       defaultValue = StringUtils.EMPTY
   )
-  String postfix$_$to$_$append() default StringUtils.EMPTY;
+  String resource$_$path_postfix$_$to$_$append() default StringUtils.EMPTY;
 
   /**
    * A regex pattern that the {@link Resource} path must match in order for the {@link Resource} to
@@ -82,12 +82,12 @@ public @interface PathsExtractionConfig {
    * @return a regex pattern that the {@link Resource} path must match.
    */
   @AttributeDefinition(
-      name = "Path Regex",
+      name = "Resource Path Regex",
       description = "Regex pattern that the Resource path must match.",
       type = AttributeType.STRING,
       defaultValue = ".*"
   )
-  String required$_$path_regex() default ".*";
+  String resource_required$_$path_regex() default ".*";
 
   /**
    * A regex pattern that the {@link Resource}'s primary {@link NodeType} must match for the
@@ -96,11 +96,12 @@ public @interface PathsExtractionConfig {
    * @return regex pattern that the {@link Resource}'s primary {@link NodeType} must match for the
    * {@link Resource} to be considered acceptable.
    */
+  @SuppressWarnings("NewMethodNamingConvention")
   @AttributeDefinition(
-      name = "Node Type Regex",
-      description = "Regex pattern that the Resource's primary NodeType must match for the Resource to be considered acceptable.",
+      name = "Resource Node Primary Type Regex",
+      description = "Regex pattern that the Resource's primary Node Type must match for the Resource to be considered acceptable.",
       type = AttributeType.STRING,
       defaultValue = ".*"
   )
-  String required$_$primary$_$node$_$type_regex() default ".*";
+  String resource_required$_$primary$_$node$_$type_regex() default ".*";
 }

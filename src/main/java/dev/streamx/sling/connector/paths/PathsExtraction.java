@@ -111,7 +111,7 @@ public class PathsExtraction implements RelatedResourcesSelector {
    * are found
    */
   private Collection<ResourcePath> extract(PathToTextResource pathToTextResource) {
-    List<Pattern> patterns = Stream.of(config.get().search_regexes())
+    List<Pattern> patterns = Stream.of(config.get().references_search$_$regexes())
         .map(Pattern::compile)
         .collect(Collectors.toUnmodifiableList());
     LOG.trace("Recognizing paths for '{}' with these patterns: {}", pathToTextResource, patterns);
@@ -127,7 +127,7 @@ public class PathsExtraction implements RelatedResourcesSelector {
             }
         ).sorted()
         .distinct()
-        .filter(path -> !path.matches(config.get().exclude$_$from$_$result_regex()))
+        .filter(path -> !path.matches(config.get().references_exclude$_$from$_$result_regex()))
         .map(ResourcePath::new)
         .collect(Collectors.toUnmodifiableList());
     LOG.debug("From '{}' these paths were extracted: {}", pathToTextResource, extractedPaths);
@@ -142,7 +142,7 @@ public class PathsExtraction implements RelatedResourcesSelector {
     ) {
       String rawUri = String.format(
           "%s%s", pathToTextResource.get(),
-          Optional.ofNullable(config.get().postfix$_$to$_$append()).orElse(StringUtils.EMPTY)
+          Optional.ofNullable(config.get().resource$_$path_postfix$_$to$_$append()).orElse(StringUtils.EMPTY)
       );
       SlingUri slingUri = SlingUriBuilder.parse(rawUri, resourceResolver).build();
       return new SimpleInternalRequest(

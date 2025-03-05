@@ -1,4 +1,4 @@
-package dev.streamx.sling.connector.handling;
+package dev.streamx.sling.connector.handling.resourcepath;
 
 import dev.streamx.sling.connector.PublicationHandler;
 import dev.streamx.sling.connector.PublishData;
@@ -7,7 +7,6 @@ import dev.streamx.sling.connector.StreamxPublicationException;
 import dev.streamx.sling.connector.UnpublishData;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Optional;
 import org.apache.sling.api.resource.LoginException;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.resource.ResourceResolverFactory;
@@ -18,18 +17,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * {@link PublicationHandler} for resources that are retrieved via internal requests.
+ * {@link PublicationHandler} for resources that are retrieved via internal requests to extract the
+ * resource path which is published.
  *
  * @param <T> type of the model to be ingested by StreamX
  */
 @SuppressWarnings({"WeakerAccess", "unused"})
-public abstract class InternalResourcesHandler<T> implements PublicationHandler<T> {
+public abstract class ResourcePathPublicationHandler<T> implements PublicationHandler<T> {
 
-  private static final Logger LOG = LoggerFactory.getLogger(InternalResourcesHandler.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ResourcePathPublicationHandler.class);
   private final ResourceResolverFactory resourceResolverFactory;
   private final SlingRequestProcessor slingRequestProcessor;
 
-  protected InternalResourcesHandler(
+  protected ResourcePathPublicationHandler(
       ResourceResolverFactory resourceResolverFactory,
       SlingRequestProcessor slingRequestProcessor
   ) {
@@ -61,22 +61,17 @@ public abstract class InternalResourcesHandler<T> implements PublicationHandler<
         ResourceResolver resourceResolver
             = resourceResolverFactory.getAdministrativeResourceResolver(null)
     ) {
-      return generatePublishData(resourcePath, resourceResolver)
-          .orElseThrow(
-              () -> new StreamxPublicationException(
-                  String.format("Failed to generate publish data for %s", resourcePath)
-              )
-          );
-    } catch (LoginException exception) {
+      return generatePublishData(resourcePath, resourceResolver);
+    } catch (LoginException | IOException exception) {
       throw new StreamxPublicationException(
           String.format("Failed to generate publish data for '%s'", resourcePath), exception
       );
     }
   }
 
-  private Optional<PublishData<T>> generatePublishData(
+  private PublishData<T> generatePublishData(
       String resourcePath, ResourceResolver resourceResolver
-  ) {
+  ) throws IOException {
     SlingUri slingUri = SlingUriBuilder.parse(resourcePath, resourceResolver).build();
     SimpleInternalRequest simpleInternalRequest = new SimpleInternalRequest(
         slingUri, slingRequestProcessor, resourceResolverFactory
@@ -89,11 +84,7 @@ public abstract class InternalResourcesHandler<T> implements PublicationHandler<
           resourcePath, channel, modelCLass, model
       );
       LOG.trace("Generated {} for {}", publishData, resourcePath);
-      return Optional.of(publishData);
-    } catch (IOException exception) {
-      String message = String.format("Failed to generate publish data for %s", resourcePath);
-      LOG.error(message, exception);
-      return Optional.empty();
+      return publishData;
     }
   }
 
@@ -105,11 +96,11 @@ public abstract class InternalResourcesHandler<T> implements PublicationHandler<
   }
 
   /**
-   * Returns the {@link Configuration} for this handler.
+   * Returns the {@link ResourcePathPublicationHandlerConfig} for this handler.
    *
-   * @return {@link Configuration} for this handler
+   * @return {@link ResourcePathPublicationHandlerConfig} for this handler
    */
-  public abstract Configuration configuration();
+  public abstract ResourcePathPublicationHandlerConfig configuration();
 
   /**
    * Returns the class type of the model to be ingested by StreamX.

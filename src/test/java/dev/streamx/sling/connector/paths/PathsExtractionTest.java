@@ -68,14 +68,14 @@ class PathsExtractionTest {
     PathsExtraction pathsExtraction = context.registerInjectActivateService(
         PathsExtraction.class,
         Map.of(
-            "search.regexes", new String[]{
+            "references.search-regexes", new String[]{
                 "(/[^\"'\\s]*\\.coreimg\\.[^\"'\\s]*)",
                 "(/[^\"'\\s]*etc\\.clientlibs[^\"'\\s]*)"
             },
-            "exclude-from-result.regex", ".*\\{\\.width\\}.*",
-            "required-path.regex", "^/content/.*",
-            "postfix-to-append", ".html",
-            "required-primary-node-type.regex", JcrResourceConstants.NT_SLING_FOLDER
+            "references.exclude-from-result.regex", ".*\\{\\.width\\}.*",
+            "resource-path.postfix-to-append", ".html",
+            "resource.required-path.regex", "^/content/.*",
+            "resource.required-primary-node-type.regex", JcrResourceConstants.NT_SLING_FOLDER
         )
     );
     List<RelatedResource> expectedResources = Stream.of(
