@@ -1,4 +1,4 @@
-package dev.streamx.sling.connector.paths;
+package dev.streamx.sling.connector.selectors.content;
 
 import org.apache.sling.api.resource.Resource;
 

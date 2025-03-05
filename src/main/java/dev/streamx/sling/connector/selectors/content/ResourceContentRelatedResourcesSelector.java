@@ -1,4 +1,4 @@
-package dev.streamx.sling.connector.paths;
+package dev.streamx.sling.connector.selectors.content;
 
 import dev.streamx.sling.connector.PublicationAction;
 import dev.streamx.sling.connector.RelatedResource;
@@ -31,24 +31,26 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Component(
-    service = {PathsExtraction.class, RelatedResourcesSelector.class},
+    service = {ResourceContentRelatedResourcesSelector.class, RelatedResourcesSelector.class},
     immediate = true,
     configurationPolicy = ConfigurationPolicy.REQUIRE
 )
 @Designate(
-    ocd = PathsExtractionConfig.class,
+    ocd = ResourceContentRelatedResourcesSelectorConfig.class,
     factory = true
 )
-public class PathsExtraction implements RelatedResourcesSelector {
+public class ResourceContentRelatedResourcesSelector implements RelatedResourcesSelector {
 
-  private static final Logger LOG = LoggerFactory.getLogger(PathsExtraction.class);
-  private final AtomicReference<PathsExtractionConfig> config;
+  private static final Logger LOG = LoggerFactory.getLogger(
+      ResourceContentRelatedResourcesSelector.class
+  );
+  private final AtomicReference<ResourceContentRelatedResourcesSelectorConfig> config;
   private final SlingRequestProcessor slingRequestProcessor;
   private final ResourceResolverFactory resourceResolverFactory;
 
   @Activate
-  public PathsExtraction(
-      PathsExtractionConfig config,
+  public ResourceContentRelatedResourcesSelector(
+      ResourceContentRelatedResourcesSelectorConfig config,
       @Reference(cardinality = ReferenceCardinality.MANDATORY)
       SlingRequestProcessor slingRequestProcessor,
       @Reference(cardinality = ReferenceCardinality.MANDATORY)
@@ -60,7 +62,7 @@ public class PathsExtraction implements RelatedResourcesSelector {
   }
 
   @Modified
-  void configure(PathsExtractionConfig config) {
+  void configure(ResourceContentRelatedResourcesSelectorConfig config) {
     this.config.set(config);
   }
 
@@ -142,7 +144,8 @@ public class PathsExtraction implements RelatedResourcesSelector {
     ) {
       String rawUri = String.format(
           "%s%s", pathToTextResource.get(),
-          Optional.ofNullable(config.get().resource$_$path_postfix$_$to$_$append()).orElse(StringUtils.EMPTY)
+          Optional.ofNullable(config.get().resource$_$path_postfix$_$to$_$append())
+              .orElse(StringUtils.EMPTY)
       );
       SlingUri slingUri = SlingUriBuilder.parse(rawUri, resourceResolver).build();
       return new SimpleInternalRequest(

@@ -1,4 +1,4 @@
-package dev.streamx.sling.connector.paths;
+package dev.streamx.sling.connector.selectors.content;
 
 import javax.jcr.nodetype.NodeType;
 import org.apache.commons.lang3.StringUtils;
@@ -11,7 +11,7 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
  * OSGi configuration interface that defines how paths are recognized, filtered, and extracted from
  * a {@link Resource}'s textual representation.
  *
- * <p>This configuration is used by {@link PathsExtraction} to:
+ * <p>This configuration is used by {@link ResourceContentRelatedResourcesSelector} to:
  * <ul>
  *   <li>Determine how to search for and extract paths via regex patterns.</li>
  *   <li>Filter out unwanted paths.</li>
@@ -25,8 +25,9 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
  * candidate paths, which can subsequently be excluded or accepted based on the provided
  * filtering regexes.
  */
+@SuppressWarnings("NewClassNamingConvention")
 @ObjectClassDefinition
-public @interface PathsExtractionConfig {
+public @interface ResourceContentRelatedResourcesSelectorConfig {
 
   /**
    * An array of regex patterns used to search for paths within the textual representation of a

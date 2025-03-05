@@ -1,4 +1,4 @@
-package dev.streamx.sling.connector.paths;
+package dev.streamx.sling.connector.selectors.content;
 
 import java.util.Optional;
 import javax.jcr.Node;
@@ -14,14 +14,14 @@ import org.slf4j.LoggerFactory;
 class ResourceFilter {
 
   private static final Logger LOG = LoggerFactory.getLogger(ResourceFilter.class);
-  private final PathsExtractionConfig pathsExtractionConfig;
+  private final ResourceContentRelatedResourcesSelectorConfig config;
   private final ResourceResolverFactory resourceResolverFactory;
 
   ResourceFilter(
-      PathsExtractionConfig pathsExtractionConfig,
+      ResourceContentRelatedResourcesSelectorConfig config,
       ResourceResolverFactory resourceResolverFactory
   ) {
-    this.pathsExtractionConfig = pathsExtractionConfig;
+    this.config = config;
     this.resourceResolverFactory = resourceResolverFactory;
   }
 
@@ -37,7 +37,7 @@ class ResourceFilter {
             = resourceResolverFactory.getAdministrativeResourceResolver(null)
     ) {
       String requiredPrimaryNTRegex
-          = pathsExtractionConfig.resource_required$_$primary$_$node$_$type_regex();
+          = config.resource_required$_$primary$_$node$_$type_regex();
       String resourcePathUnwrapped = resourcePath.get();
       boolean doesMatchPrimaryNT = Optional.ofNullable(
               resourceResolver.getResource(resourcePathUnwrapped)
@@ -69,7 +69,7 @@ class ResourceFilter {
   }
 
   private boolean matchesPath(ResourcePath resourcePath) {
-    String requiredPathRegex = pathsExtractionConfig.resource_required$_$path_regex();
+    String requiredPathRegex = config.resource_required$_$path_regex();
     boolean doesMatchPath = resourcePath.matches(requiredPathRegex);
     LOG.trace(
         "Does resource at path '{}' match this path regex: '{}'? Answer: {}",

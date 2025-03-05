@@ -1,4 +1,4 @@
-package dev.streamx.sling.connector.paths;
+package dev.streamx.sling.connector.selectors;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.streamx.sling.connector.PublicationAction;
 import dev.streamx.sling.connector.RelatedResource;
+import dev.streamx.sling.connector.selectors.content.ResourceContentRelatedResourcesSelector;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
@@ -28,7 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(SlingContextExtension.class)
-class PathsExtractionTest {
+class ResourceContentRelatedResourcesSelectorTest {
 
   private final SlingContext context = new SlingContext(ResourceResolverType.JCR_OAK);
 
@@ -41,7 +42,7 @@ class PathsExtractionTest {
       String requestURI = request.getRequestURI();
       if (requestURI.equals("/content/firsthops/us/en.html")) {
         String sampleHtml = IOUtils.resourceToString(
-            "sample-page.html", StandardCharsets.UTF_8, PathsExtractionTest.class.getClassLoader()
+            "sample-page.html", StandardCharsets.UTF_8, ResourceContentRelatedResourcesSelectorTest.class.getClassLoader()
         );
         response.setContentType("text/html");
         response.getWriter().write(sampleHtml);
@@ -65,8 +66,8 @@ class PathsExtractionTest {
   @Test
   void dontHandleUsualAssets() {
     String path = "/content/firsthops/us/en";
-    PathsExtraction pathsExtraction = context.registerInjectActivateService(
-        PathsExtraction.class,
+    ResourceContentRelatedResourcesSelector resourceContentRelatedResourcesSelector = context.registerInjectActivateService(
+        ResourceContentRelatedResourcesSelector.class,
         Map.of(
             "references.search-regexes", new String[]{
                 "(/[^\"'\\s]*\\.coreimg\\.[^\"'\\s]*)",
@@ -107,7 +108,7 @@ class PathsExtractionTest {
             "/etc.clientlibs/firsthops/clientlibs/clientlib-site.lc-d91e521f6b4cc63fe57186d1b172e7e9-lc.min.js"
         ).map(expectedPath -> new RelatedResource(expectedPath, PublicationAction.PUBLISH))
         .collect(Collectors.toUnmodifiableList());
-    Collection<RelatedResource> actualResources = pathsExtraction.getRelatedResources(
+    Collection<RelatedResource> actualResources = resourceContentRelatedResourcesSelector.getRelatedResources(
         path, PublicationAction.PUBLISH
     );
     assertAll(
