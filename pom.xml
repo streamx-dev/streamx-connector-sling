@@ -108,9 +108,6 @@
         <groupId>biz.aQute.bnd</groupId>
         <artifactId>bnd-baseline-maven-plugin</artifactId>
         <version>${bnd.version}</version>
-        <configuration>
-          <failOnMissing>false</failOnMissing>
-        </configuration>
         <executions>
           <execution>
             <id>baseline</id>
