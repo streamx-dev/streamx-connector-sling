@@ -69,7 +69,7 @@ class ResourceContentRelatedResourcesSelectorTest {
         ResourceContentRelatedResourcesSelector.class,
         Map.of(
             "references.search-regexes", new String[]{
-                "(/[^\"'\\s]*\\.coreimg\\.[^\"'\\s]*)",
+                "(/content[^\"'\\s]*\\.coreimg\\.[^\"'\\s]*)",
                 "(/[^\"'\\s]*etc\\.clientlibs[^\"'\\s]*)"
             },
             "references.exclude-from-result.regex", ".*\\{\\.width\\}.*",
