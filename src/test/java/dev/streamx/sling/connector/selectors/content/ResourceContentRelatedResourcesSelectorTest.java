@@ -1,4 +1,4 @@
-package dev.streamx.sling.connector.selectors;
+package dev.streamx.sling.connector.selectors.content;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.streamx.sling.connector.PublicationAction;
 import dev.streamx.sling.connector.RelatedResource;
-import dev.streamx.sling.connector.selectors.content.ResourceContentRelatedResourcesSelector;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
