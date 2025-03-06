@@ -132,6 +132,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService 
   private void handleRelatedResourcesPublication(Set<RelatedResource> relatedResources)
       throws JobCreationException {
     for (RelatedResource relatedResource : relatedResources) {
+      LOG.trace("Handling related resource publication: {}", relatedResource);
       handlePublication(relatedResource.getResourcePath(), relatedResource.getAction());
     }
   }
