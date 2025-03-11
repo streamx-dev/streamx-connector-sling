@@ -1,5 +1,6 @@
-package dev.streamx.sling.connector;
+package dev.streamx.sling.connector.impl;
 
+import dev.streamx.sling.connector.PublicationAction;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -18,10 +19,10 @@ import org.slf4j.LoggerFactory;
 /**
  * Trigger to ingest data into Streamx.
  */
-@SuppressWarnings({"StaticMethodOnlyUsedInOneClass", "WeakerAccess"})
-public class IngestionTrigger {
+@SuppressWarnings("StaticMethodOnlyUsedInOneClass")
+class IngestionTrigger {
 
-  public static final String JOB_TOPIC = "dev/streamx/ingestion-trigger";
+  static final String JOB_TOPIC = "dev/streamx/ingestion-trigger";
   private static final String PN_STREAMX_INGESTION_ACTION = "streamx.ingestionAction";
   private static final String PN_STREAMX_URIS_TO_INGEST = "streamx.urisToIngest";
   private static final Logger LOG = LoggerFactory.getLogger(IngestionTrigger.class);
@@ -36,7 +37,7 @@ public class IngestionTrigger {
    * @param resourceResolverFactory {@link ResourceResolverFactory} to be used by the newly created
    *                                {@link IngestionTrigger}
    */
-  public IngestionTrigger(Job job, ResourceResolverFactory resourceResolverFactory) {
+  IngestionTrigger(Job job, ResourceResolverFactory resourceResolverFactory) {
     LOG.trace("Decomposing {}", job);
     String ingestionActionRaw = job.getProperty(PN_STREAMX_INGESTION_ACTION, String.class);
     this.ingestionAction = PublicationAction.of(ingestionActionRaw).orElseThrow();
@@ -55,7 +56,7 @@ public class IngestionTrigger {
    * @param urisToIngest    {@link List} of {@link SlingUri}s to be ingested as the result of this
    *                        {@link IngestionTrigger} activation
    */
-  public IngestionTrigger(PublicationAction ingestionAction, List<SlingUri> urisToIngest) {
+  IngestionTrigger(PublicationAction ingestionAction, List<SlingUri> urisToIngest) {
     this.ingestionAction = ingestionAction;
     this.urisToIngest = Collections.unmodifiableList(urisToIngest);
   }
@@ -67,7 +68,7 @@ public class IngestionTrigger {
    * @return {@link PublicationAction} to be performed as the result of this
    * {@link IngestionTrigger}
    */
-  public PublicationAction ingestionAction() {
+  PublicationAction ingestionAction() {
     return ingestionAction;
   }
 
@@ -78,7 +79,7 @@ public class IngestionTrigger {
    * @return {@link List} of {@link SlingUri}s to be ingested as the result of this
    * {@link IngestionTrigger} activation
    */
-  public List<SlingUri> urisToIngest() {
+  List<SlingUri> urisToIngest() {
     return urisToIngest;
   }
 
@@ -90,9 +91,14 @@ public class IngestionTrigger {
         ResourceResolver resourceResolver
             = resourceResolverFactory.getAdministrativeResourceResolver(null)
     ) {
-      SlingUri slingUri = SlingUriBuilder.parse(rawUri, resourceResolver).build();
-      LOG.trace("Parsed URI: {}", slingUri);
-      return Optional.of(slingUri);
+      return Optional.ofNullable(rawUri)
+          .map(
+              rawUriNonNull -> {
+                SlingUri slingUri = SlingUriBuilder.parse(rawUriNonNull, resourceResolver).build();
+                LOG.trace("Parsed URI: {}", slingUri);
+                return slingUri;
+              }
+          );
     } catch (LoginException exception) {
       String message = String.format("Unable to parse URI: '%s'", rawUri);
       LOG.error(message, exception);
@@ -108,7 +114,7 @@ public class IngestionTrigger {
    * this {@link IngestionTrigger} can be created
    */
   @SuppressWarnings("unused")
-  public Map<String, Object> asJobProps() {
+  Map<String, Object> asJobProps() {
     return Map.of(
         PN_STREAMX_INGESTION_ACTION,
         ingestionAction.toString(),

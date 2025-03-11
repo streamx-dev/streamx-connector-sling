@@ -1,8 +1,9 @@
-package dev.streamx.sling.connector;
+package dev.streamx.sling.connector.impl;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
 
+import dev.streamx.sling.connector.PublicationAction;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -18,6 +19,7 @@ import org.apache.sling.api.uri.SlingUriBuilder;
 import org.apache.sling.event.jobs.Job;
 import org.apache.sling.testing.mock.sling.junit5.SlingContext;
 import org.apache.sling.testing.mock.sling.junit5.SlingContextExtension;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -54,7 +56,7 @@ class IngestionTriggerTest {
         });
     IngestionTrigger ingestionTrigger = new IngestionTrigger(fakeJob, resourceResolverFactory);
     assertAll(
-        () -> assertEquals(PublicationAction.PUBLISH, ingestionTrigger.ingestionAction()),
+        () -> Assertions.assertEquals(PublicationAction.PUBLISH, ingestionTrigger.ingestionAction()),
         () -> assertEquals(2, ingestionTrigger.urisToIngest().size()),
         () -> assertEquals(
             "http://localhost:4502/content/we-retail/us/en",
