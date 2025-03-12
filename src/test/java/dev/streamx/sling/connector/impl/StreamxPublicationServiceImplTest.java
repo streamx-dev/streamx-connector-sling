@@ -6,11 +6,15 @@ import dev.streamx.sling.connector.testing.handlers.ImpostorPublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.OtherPagePublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.PagePublicationHandler;
 import dev.streamx.sling.connector.testing.selectors.RelatedPagesSelector;
+import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJobExecutionContext;
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJobManager;
 import dev.streamx.sling.connector.testing.streamx.clients.ingestion.FakeStreamxClient;
+import java.util.stream.Collectors;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.sling.api.resource.PersistenceException;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
+import org.apache.sling.event.jobs.Job;
 import org.apache.sling.event.jobs.JobManager;
 import org.apache.sling.event.jobs.consumer.JobExecutor;
 import org.apache.sling.testing.mock.sling.junit5.SlingContext;
@@ -28,6 +32,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssumptions.given;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(SlingContextExtension.class)
 class StreamxPublicationServiceImplTest {
@@ -51,12 +61,41 @@ class StreamxPublicationServiceImplTest {
     fakeStreamxClientConfigs.add(getDefaultFakeStreamxClientConfig());
   }
 
-  private void initializeComponentsIfNotInitialized() {
+  @SuppressWarnings("ReturnOfNull")
+  private void initializeComponentsIfNotInitialized() throws StreamxPublicationException {
     if (publicationService != null) {
       return;
     }
 
-    StreamxPublicationServiceImpl publicationServiceImpl = new StreamxPublicationServiceImpl();
+    StreamxPublicationServiceImpl publicationServiceImpl = spy(new StreamxPublicationServiceImpl());
+    doAnswer(
+        invocation -> {
+          @SuppressWarnings("unchecked")
+          String[] paths = ((List<String>) invocation
+              .getArgument(NumberUtils.INTEGER_ZERO, List.class))
+              .toArray(new String[0]);
+          Job job = mock(Job.class);
+          when(job.getProperty("streamx.urisToIngest", String[].class)).thenReturn(paths);
+          when(job.getProperty("streamx.ingestionAction", String.class)).thenReturn("PUBLISH");
+          publicationServiceImpl.process(job, new FakeJobExecutionContext());
+          return null;
+        }
+    ).when(publicationServiceImpl).publish(anyList());
+
+    doAnswer(
+        invocation -> {
+          @SuppressWarnings("unchecked")
+          String[] paths = ((List<String>) invocation
+              .getArgument(NumberUtils.INTEGER_ZERO, List.class))
+              .toArray(new String[0]);
+          Job job = mock(Job.class);
+          when(job.getProperty("streamx.urisToIngest", String[].class)).thenReturn(paths);
+          when(job.getProperty("streamx.ingestionAction", String.class)).thenReturn("UNPUBLISH");
+          publicationServiceImpl.process(job, new FakeJobExecutionContext());
+          return null;
+        }
+    ).when(publicationServiceImpl).unpublish(anyList());
+
     JobExecutor publicationJobExecutor = new PublicationJobExecutor();
 
     for (FakeStreamxClientConfig config : fakeStreamxClientConfigs) {
@@ -364,7 +403,8 @@ class StreamxPublicationServiceImplTest {
 
     thenPublicationsContainsExactly(
         publish("/content/my-site/page-1.html", "pages", "Page: page-1"),
-        publish("/content/my-site/related-page-to-publish.html", "pages", "Page: related-page-to-publish"),
+        publish("/content/my-site/related-page-to-publish.html", "pages",
+            "Page: related-page-to-publish"),
         unpublish("/content/my-site/related-page-to-unpublish.html", "pages")
     );
   }
@@ -376,7 +416,8 @@ class StreamxPublicationServiceImplTest {
     givenPageHierarchy("/content/my-site/related-page-to-publish");
     givenPageHierarchy("/content/my-site/related-page-to-unpublish");
 
-    givenRelatedResourcesSelectors(new RelatedPagesSelector(), new RelatedPagesSelector(), new RelatedPagesSelector());
+    givenRelatedResourcesSelectors(new RelatedPagesSelector(), new RelatedPagesSelector(),
+        new RelatedPagesSelector());
 
     whenPathsArePublished(
         "/content/my-site/page-1"
@@ -388,7 +429,8 @@ class StreamxPublicationServiceImplTest {
 
     thenPublicationsContainsExactly(
         publish("/content/my-site/page-1.html", "pages", "Page: page-1"),
-        publish("/content/my-site/related-page-to-publish.html", "pages", "Page: related-page-to-publish"),
+        publish("/content/my-site/related-page-to-publish.html", "pages",
+            "Page: related-page-to-publish"),
         unpublish("/content/my-site/related-page-to-unpublish.html", "pages")
     );
   }
@@ -415,7 +457,8 @@ class StreamxPublicationServiceImplTest {
     thenPublicationsContainsExactly(
         publish("/content/my-site/page-1.html", "pages", "Page: page-1"),
         publish("/content/my-site/page-2.html", "pages", "Page: page-2"),
-        publish("/content/my-site/related-page-to-publish.html", "pages", "Page: related-page-to-publish"),
+        publish("/content/my-site/related-page-to-publish.html", "pages",
+            "Page: related-page-to-publish"),
         unpublish("/content/my-site/related-page-to-unpublish.html", "pages")
     );
   }
@@ -440,7 +483,8 @@ class StreamxPublicationServiceImplTest {
 
     thenPublicationsContainsExactly(
         publish("/content/my-site/page-1.html", "pages", "Page: page-1"),
-        publish("/content/my-site/related-page-to-publish.html", "pages", "Page: related-page-to-publish"),
+        publish("/content/my-site/related-page-to-publish.html", "pages",
+            "Page: related-page-to-publish"),
         unpublish("/content/my-site/related-page-to-unpublish.html", "pages")
     );
   }
