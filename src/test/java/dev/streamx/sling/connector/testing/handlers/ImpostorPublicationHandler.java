@@ -1,5 +1,6 @@
 package dev.streamx.sling.connector.testing.handlers;
 
+import dev.streamx.sling.connector.IngestedData;
 import dev.streamx.sling.connector.PublicationHandler;
 import dev.streamx.sling.connector.PublishData;
 import dev.streamx.sling.connector.UnpublishData;
@@ -12,8 +13,8 @@ public class ImpostorPublicationHandler implements PublicationHandler<Page> {
   }
 
   @Override
-  public boolean canHandle(String resourcePath) {
-    return resourcePath.contains("impostor"); // Say you can handle...
+  public boolean canHandle(IngestedData ingestedData) {
+    return ingestedData.uriToIngest().toString().contains("impostor"); // Say you can handle...
   }
 
   @Override

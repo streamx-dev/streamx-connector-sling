@@ -3,7 +3,6 @@ package dev.streamx.sling.connector.handlers.resourcepath;
 /**
  * Configuration for {@link ResourcePathPublicationHandler}.
  */
-@SuppressWarnings("InterfaceNeverImplemented")
 public interface ResourcePathPublicationHandlerConfig {
 
   /**
@@ -11,7 +10,7 @@ public interface ResourcePathPublicationHandlerConfig {
    *
    * @return regex to match paths of resources that should be ingested by StreamX
    */
-  String resourcePathRegex();
+  String slingUriRegex();
 
   /**
    * Returns name of the channel in StreamX to publish resources to.

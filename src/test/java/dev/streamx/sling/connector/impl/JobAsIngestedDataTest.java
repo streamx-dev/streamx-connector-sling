@@ -1,16 +1,14 @@
 package dev.streamx.sling.connector.impl;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
 
+import dev.streamx.sling.connector.IngestedData;
 import dev.streamx.sling.connector.PublicationAction;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.sling.api.resource.LoginException;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.resource.ResourceResolverFactory;
@@ -29,9 +27,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @ExtendWith({SlingContextExtension.class, MockitoExtension.class})
-class IngestionTriggerTest {
+class JobAsIngestedDataTest {
 
-  private static final Logger LOG = LoggerFactory.getLogger(IngestionTriggerTest.class);
+  private static final Logger LOG = LoggerFactory.getLogger(JobAsIngestedDataTest.class);
   private final SlingContext context = new SlingContext();
   private ResourceResolverFactory resourceResolverFactory;
 
@@ -49,57 +47,59 @@ class IngestionTriggerTest {
   void mustCreateOutOfJob() {
     when(fakeJob.getProperty("streamx.ingestionAction", String.class))
         .thenReturn("PUBLISH");
-    when(fakeJob.getProperty("streamx.urisToIngest", String[].class))
-        .thenReturn(new String[]{
-            "http://localhost:4502/content/we-retail/us/en",
-            "/content/wknd/us/en"
-        });
-    IngestionTrigger ingestionTrigger = new IngestionTrigger(fakeJob, resourceResolverFactory);
+    when(fakeJob.getProperty("streamx.uriToIngest", String.class))
+        .thenReturn("http://localhost:4502/content/we-retail/us/en");
+    JobAsIngestedData jobAsIngestedData = new JobAsIngestedData(fakeJob, resourceResolverFactory);
     assertAll(
-        () -> Assertions.assertEquals(PublicationAction.PUBLISH, ingestionTrigger.ingestionAction()),
-        () -> assertEquals(2, ingestionTrigger.urisToIngest().size()),
+        () -> Assertions.assertEquals(PublicationAction.PUBLISH,
+            jobAsIngestedData.ingestionAction()),
         () -> assertEquals(
             "http://localhost:4502/content/we-retail/us/en",
-            ingestionTrigger.urisToIngest().get(NumberUtils.INTEGER_ZERO).toString()
-        ),
-        () -> assertEquals(
-            "/content/wknd/us/en",
-            ingestionTrigger.urisToIngest().get(NumberUtils.INTEGER_ONE).toString()
+            jobAsIngestedData.uriToIngest().toString()
         )
     );
   }
 
   @Test
   void mustCreateOutOfObjects() {
-    List<SlingUri> slingUris = Stream.of(
-        "http://localhost:4502/content/we-retail/us/en",
-            "/content/wknd/us/en"
-        ).map(uri -> toSlingUri(uri, resourceResolverFactory))
-        .flatMap(Optional::stream)
-        .collect(Collectors.toUnmodifiableList());
-    IngestionTrigger ingestionTrigger = new IngestionTrigger(PublicationAction.PUBLISH, slingUris);
-    Map<String, Object> jobProps = ingestionTrigger.asJobProps();
+    SlingUri slingUri = toSlingUri(
+        "http://localhost:4502/content/we-retail/us/en", resourceResolverFactory
+    ).orElseThrow();
+    JobAsIngestedData jobAsIngestedData = new JobAsIngestedData(
+        new IngestedData() {
+          @Override
+          public PublicationAction ingestionAction() {
+            return PublicationAction.PUBLISH;
+          }
+
+          @Override
+          public SlingUri uriToIngest() {
+            return slingUri;
+          }
+
+          @Override
+          public Map<String, Object> properties() {
+            return Map.of();
+          }
+        }
+    );
+    Map<String, Object> jobProps = jobAsIngestedData.asJobProps();
     String rawPublicationAction = Optional.ofNullable(jobProps.get("streamx.ingestionAction"))
         .map(String.class::cast)
         .orElseThrow();
-    String[] urisToIngest  = Optional.ofNullable(jobProps.get("streamx.urisToIngest"))
-        .map(String[].class::cast)
+    String uriToIngest = Optional.ofNullable(jobProps.get("streamx.uriToIngest"))
+        .map(String.class::cast)
         .orElseThrow();
     assertAll(
         () -> assertEquals(PublicationAction.PUBLISH.toString(), rawPublicationAction),
-        () -> assertEquals(2, urisToIngest.length),
         () -> assertEquals(
             "http://localhost:4502/content/we-retail/us/en",
-            urisToIngest[NumberUtils.INTEGER_ZERO]
-        ),
-        () -> assertEquals(
-            "/content/wknd/us/en",
-            urisToIngest[NumberUtils.INTEGER_ONE]
+            uriToIngest
         )
     );
   }
 
-  @SuppressWarnings("deprecation")
+  @SuppressWarnings({"deprecation", "SameParameterValue"})
   private Optional<SlingUri> toSlingUri(
       String rawUri, ResourceResolverFactory resourceResolverFactory
   ) {

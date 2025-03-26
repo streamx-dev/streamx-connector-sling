@@ -1,5 +1,6 @@
 package dev.streamx.sling.connector.testing.handlers;
 
+import dev.streamx.sling.connector.IngestedData;
 import dev.streamx.sling.connector.PublicationHandler;
 import dev.streamx.sling.connector.PublishData;
 import dev.streamx.sling.connector.UnpublishData;
@@ -26,8 +27,8 @@ public class PagePublicationHandler implements PublicationHandler<Page> {
   }
 
   @Override
-  public boolean canHandle(String resourcePath) {
-    return resourcePath.startsWith("/content/my-site");
+  public boolean canHandle(IngestedData ingestedData) {
+    return ingestedData.uriToIngest().toString().startsWith("/content/my-site");
   }
 
   @Override
