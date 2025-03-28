@@ -7,11 +7,9 @@ import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX
 
 import dev.streamx.sling.connector.IngestedData;
 import dev.streamx.sling.connector.PublicationAction;
-import dev.streamx.sling.connector.PublicationHandler;
 import dev.streamx.sling.connector.RelatedResource;
 import dev.streamx.sling.connector.StreamxPublicationException;
 import dev.streamx.sling.connector.StreamxPublicationService;
-import dev.streamx.sling.connector.impl.StreamxPublicationServiceImpl.Config;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -35,9 +33,7 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
-import org.osgi.service.metatype.annotations.AttributeDefinition;
 import org.osgi.service.metatype.annotations.Designate;
-import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +42,7 @@ import org.slf4j.LoggerFactory;
     property = JobExecutor.PROPERTY_TOPICS + "=" + JobAsIngestedData.JOB_TOPIC,
     immediate = true
 )
-@Designate(ocd = Config.class)
+@Designate(ocd = StreamxPublicationServiceImplConfig.class)
 public class StreamxPublicationServiceImpl implements StreamxPublicationService, JobExecutor {
 
   private static final Logger LOG = LoggerFactory.getLogger(StreamxPublicationServiceImpl.class);
@@ -56,7 +52,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
   private final RelatedResourcesSelectorRegistry relatedResourcesSelectorRegistry;
   private final StreamxClientStore streamxClientStore;
   private final ResourceResolverFactory resourceResolverFactory;
-  private final AtomicReference<Config> config;
+  private final AtomicReference<StreamxPublicationServiceImplConfig> config;
 
   @Activate
   @SuppressWarnings("ConstructorWithTooManyParameters")
@@ -71,7 +67,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
       StreamxClientStore streamxClientStore,
       @Reference(cardinality = ReferenceCardinality.MANDATORY)
       ResourceResolverFactory resourceResolverFactory,
-      Config config
+      StreamxPublicationServiceImplConfig config
   ) {
     this.jobManager = jobManager;
     this.publicationHandlerRegistry = publicationHandlerRegistry;
@@ -82,7 +78,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
   }
 
   @Modified
-  void activate(Config config) {
+  void configure(StreamxPublicationServiceImplConfig config) {
     this.config.set(config);
   }
 
@@ -94,7 +90,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
   @Override
   public void ingest(IngestedData ingestedData) {
     Map<String, Object> jobProps = new JobAsIngestedData(ingestedData).asJobProps();
-    LOG.trace("Adding job with properties: {}", jobProps);
+    LOG.trace("Adding job with these properties: {}", jobProps);
     Job addedJob = jobManager.addJob(JobAsIngestedData.JOB_TOPIC, jobProps);
     LOG.debug("Added job: {}", addedJob);
   }
@@ -112,6 +108,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     }
   }
 
+  @SuppressWarnings("squid:S1130")
   private void executeIngestion(IngestedData ingestedData) throws StreamxPublicationException {
     LOG.trace("Executing ingestion of {}", ingestedData);
     if (!config.get().enabled()) {
@@ -124,14 +121,16 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     List<IngestedData> allIngestedData = Stream.concat(
         Stream.of(ingestedData), relatedResources.stream()
     ).collect(Collectors.toUnmodifiableList());
-
-    for (PublicationHandler<?> handler : publicationHandlerRegistry.getHandlers()) {
-      allIngestedData.stream()
-          .filter(handler::canHandle)
-          .forEach(
-              filteredIngestedData -> submitIngestionJob(handler.getId(), filteredIngestedData)
-          );
-    }
+    LOG.trace("Resolved these data to ingest: {}", allIngestedData);
+    publicationHandlerRegistry.getHandlers().forEach(
+        handler -> allIngestedData.stream()
+            .filter(handler::canHandle)
+            .forEach(
+                filteredIngestedData -> submitIngestionJob(
+                    handler.getId(), filteredIngestedData
+                )
+            )
+    );
   }
 
   private Set<IngestedData> findRelatedResources(IngestedData ingestedData) {
@@ -184,17 +183,18 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
   }
 
   private void submitIngestionJob(String handlerId, IngestedData ingestedData, String clientName) {
-    LOG.trace("Submitting ingestion job for [{}: {} | {}]", handlerId, ingestedData, clientName);
+    SlingUri slingUri = ingestedData.uriToIngest();
+    LOG.trace("Submitting ingestion job for [{}: {} | {}]", handlerId, slingUri, clientName);
     Map<String, Object> jobProperties = new HashMap<>();
     jobProperties.put(PN_STREAMX_HANDLER_ID, handlerId);
     jobProperties.put(PN_STREAMX_CLIENT_NAME, clientName);
     jobProperties.put(PN_STREAMX_ACTION, ingestedData.ingestionAction().toString());
-    jobProperties.put(PN_STREAMX_PATH, ingestedData.uriToIngest().toString());
+    jobProperties.put(PN_STREAMX_PATH, slingUri.toString());
     Optional.ofNullable(
         jobManager.addJob(PublicationJobExecutor.JOB_TOPIC, jobProperties)
     ).ifPresentOrElse(
         job -> LOG.debug(
-            "Publication request for [{}: {}] added to queue. Job: {}", handlerId, ingestedData, job
+            "Publication request for [{}: {}] added to queue. Job: {}", handlerId, slingUri, job
         ),
         () -> {
           throw new JobCreationException(
@@ -204,11 +204,4 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     );
   }
 
-  @ObjectClassDefinition(name = "StreamX Connector Configuration")
-  public @interface Config {
-
-    @AttributeDefinition(name = "Enable publication to StreamX", description =
-        "If the flag is unset the publication requests will be skipped.")
-    boolean enabled() default true;
-  }
 }

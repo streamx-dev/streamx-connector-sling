@@ -1,21 +1,26 @@
 package dev.streamx.sling.connector.handlers.resourcepath;
 
+import org.apache.sling.api.uri.SlingUri;
+import org.apache.sling.api.resource.Resource;
+
 /**
  * Configuration for {@link ResourcePathPublicationHandler}.
  */
 public interface ResourcePathPublicationHandlerConfig {
 
   /**
-   * Returns the regex to match paths of resources that should be ingested by StreamX.
+   * Returns the regex to match {@link SlingUri}s of {@link Resource}s that should be ingested by
+   * StreamX.
    *
-   * @return regex to match paths of resources that should be ingested by StreamX
+   * @return regex to match {@link SlingUri}s of {@link Resource}s that should be ingested by
+   * StreamX
    */
   String slingUriRegex();
 
   /**
-   * Returns name of the channel in StreamX to publish resources to.
+   * Returns name of the channel in StreamX to publish {@link Resource}s to.
    *
-   * @return name of the channel in StreamX to publish resources to
+   * @return name of the channel in StreamX to publish {@link Resource}s to
    */
   String channel();
 

@@ -14,10 +14,17 @@ public interface PublicationHandler<T> {
    */
   String getId();
 
+  /**
+   * Indicates whether this handler can handle the specified {@link IngestedData}.
+   *
+   * @param ingestedData {@link IngestedData} that is supposed to be handled
+   * @return {@code true} if this handler can handle the {@link IngestedData}; {@code false}
+   * otherwise
+   */
   boolean canHandle(IngestedData ingestedData);
 
   /**
-   * Prepares the data to publish for the specified resource path. 
+   * Prepares the data to publish for the specified resource path.
    * May return null if nothing to publish.
    *
    * @param resourcePath the path of the resource
@@ -27,7 +34,7 @@ public interface PublicationHandler<T> {
   PublishData<T> getPublishData(String resourcePath) throws StreamxPublicationException;
 
   /**
-   * Prepares the data to unpublish for the specified resource path. 
+   * Prepares the data to unpublish for the specified resource path.
    * May return null if nothing to unpublish.
    *
    * @param resourcePath the path of the resource

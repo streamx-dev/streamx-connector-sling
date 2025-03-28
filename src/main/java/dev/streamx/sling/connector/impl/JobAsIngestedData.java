@@ -28,6 +28,14 @@ class JobAsIngestedData implements IngestedData {
     this.ingestedData = () -> ingestedData;
   }
 
+  @Override
+  public String toString() {
+    return String.format(
+        "{%s: uri{%s}, action{%s}, props{%s}}",
+        this.getClass().getSimpleName(), uriToIngest(), ingestionAction(), properties()
+    );
+  }
+
   JobAsIngestedData(Job job, ResourceResolverFactory resourceResolverFactory) {
     this.ingestedData = () -> new IngestedData() {
       @Override
@@ -59,7 +67,8 @@ class JobAsIngestedData implements IngestedData {
                 )
             ).collect(Collectors.toMap(Entry::getKey, Entry::getValue));
         LOG.trace(
-            "Out of {} extracted {}. Exclusion regex: '{}'", job, extractedProps, exclusionRegex
+            "Out of {} extracted {} props. Exclusion regex: '{}'",
+            job, extractedProps, exclusionRegex
         );
         return extractedProps;
       }

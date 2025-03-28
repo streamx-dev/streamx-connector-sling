@@ -7,7 +7,7 @@ import org.apache.sling.api.uri.SlingUri;
 import org.apache.sling.api.uri.SlingUriBuilder;
 
 /**
- * Creates a {@link SlingUri} from a raw Sling URI string.
+ * Creates a {@link SlingUri} out of a {@link String}.
  */
 public class DefaultSlingUriBuilder {
 
@@ -17,9 +17,11 @@ public class DefaultSlingUriBuilder {
   /**
    * Constructs a new instance of this class.
    *
-   * @param rawSlingUri             the raw Sling URI string
-   * @param resourceResolverFactory {@link ResourceResolverFactory} instance that will be used to
-   *                                access Sling Resources
+   * @param rawSlingUri             {@link String} out of which the {@link SlingUri} should be
+   *                                built; must be a valid {@link String} representation of a
+   *                                {@link SlingUri}
+   * @param resourceResolverFactory {@link ResourceResolverFactory} that will be used to access
+   *                                Sling Resources
    */
   public DefaultSlingUriBuilder(
       String rawSlingUri, ResourceResolverFactory resourceResolverFactory
@@ -29,9 +31,9 @@ public class DefaultSlingUriBuilder {
   }
 
   /**
-   * Returns a {@link SlingUri} built out of the raw {@link String}.
+   * Returns a {@link SlingUri} built out of a {@link String}.
    *
-   * @return {@link SlingUri} built out of the raw {@link String}
+   * @return {@link SlingUri} built out of a {@link String}
    */
   @SuppressWarnings({"squid:1874", "deprecation"})
   public SlingUri build() {
@@ -41,7 +43,7 @@ public class DefaultSlingUriBuilder {
     ) {
       return SlingUriBuilder.parse(rawSlingUri, resourceResolver).build();
     } catch (LoginException exception) {
-      String message = String.format("Unable to build Sling URI from %s", rawSlingUri);
+      String message = String.format("Unable to build %s from %s", SlingUri.class, rawSlingUri);
       throw new IllegalArgumentException(message, exception);
     }
   }
