@@ -12,6 +12,9 @@ import org.osgi.service.metatype.annotations.Designate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Default {@link StreamxClientConfig}.
+ */
 @Component(
     service = StreamxClientConfig.class,
     immediate = true
@@ -31,6 +34,10 @@ public class StreamxClientConfigImpl implements StreamxClientConfig {
   private final AtomicReference<OSGiSecret> authToken;
   private final AtomicReference<List<String>> resourcePathPatterns;
 
+  /**
+   * Constructs an instance of this class.
+   * @param config configuration for this service
+   */
   @Activate
   public StreamxClientConfigImpl(StreamxClientConfigOcd config) {
     this.name = new AtomicReference<>(config.name());

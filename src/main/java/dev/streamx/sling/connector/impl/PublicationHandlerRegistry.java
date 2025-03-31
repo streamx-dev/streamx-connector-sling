@@ -1,9 +1,10 @@
 package dev.streamx.sling.connector.impl;
 
 import dev.streamx.sling.connector.PublicationHandler;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
@@ -11,12 +12,23 @@ import org.osgi.service.component.annotations.ReferencePolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Registry for {@link PublicationHandler}s.
+ */
 @Component(service = PublicationHandlerRegistry.class)
 public class PublicationHandlerRegistry {
 
   private static final Logger LOG = LoggerFactory.getLogger(PublicationHandlerRegistry.class);
 
-  private final List<PublicationHandler<?>> handlers = new CopyOnWriteArrayList<>();
+  private final List<PublicationHandler<?>> handlers;
+
+  /**
+   * Constructs an instance of this class.
+   */
+  @Activate
+  public PublicationHandlerRegistry() {
+    handlers = new CopyOnWriteArrayList<>();
+  }
 
   @Reference(
       service = PublicationHandler.class,
@@ -33,7 +45,7 @@ public class PublicationHandlerRegistry {
   }
 
   List<PublicationHandler<?>> getHandlers() {
-    return new ArrayList<>(handlers);
+    return Collections.unmodifiableList(handlers);
   }
 
 }

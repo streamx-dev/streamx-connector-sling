@@ -23,6 +23,7 @@ public class PublishData<T> extends PublicationData<T> {
   }
 
   /**
+   * Returns the model to be published.
    *
    * @return the model to be published
    */

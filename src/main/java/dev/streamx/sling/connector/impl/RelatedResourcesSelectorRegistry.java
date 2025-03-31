@@ -11,12 +11,21 @@ import org.osgi.service.component.annotations.ReferencePolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Registry for {@link RelatedResourcesSelector}s.
+ */
 @Component(service = RelatedResourcesSelectorRegistry.class)
 public class RelatedResourcesSelectorRegistry {
 
   private static final Logger LOG = LoggerFactory.getLogger(RelatedResourcesSelectorRegistry.class);
 
   private final List<RelatedResourcesSelector> selectors = new CopyOnWriteArrayList<>();
+
+  /**
+   * Constructs an instance of this class.
+   */
+  RelatedResourcesSelectorRegistry() {
+  }
 
   @Reference(
       service = RelatedResourcesSelector.class,

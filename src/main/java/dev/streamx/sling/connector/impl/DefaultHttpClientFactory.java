@@ -29,6 +29,9 @@ import org.osgi.service.metatype.annotations.Designate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Default HTTP client factory.
+ */
 @Component(
     service = DefaultHttpClientFactory.class,
     immediate = true
@@ -42,6 +45,11 @@ public class DefaultHttpClientFactory {
   private final HttpClientBuilderFactory httpClientBuilderFactory;
   private final AtomicReference<HttpClientProviderConfig> config;
 
+  /**
+   * Constructs an instance of this class.
+   * @param httpClientBuilderFactory underlying factory for creating HTTP clients
+   * @param config configuration for this service
+   */
   @Activate
   public DefaultHttpClientFactory(
       @Reference(cardinality = ReferenceCardinality.MANDATORY)

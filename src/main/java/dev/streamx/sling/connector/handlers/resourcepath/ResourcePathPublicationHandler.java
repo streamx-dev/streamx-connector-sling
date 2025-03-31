@@ -2,9 +2,9 @@ package dev.streamx.sling.connector.handlers.resourcepath;
 
 import dev.streamx.sling.connector.PublicationHandler;
 import dev.streamx.sling.connector.PublishData;
-import dev.streamx.sling.connector.util.SimpleInternalRequest;
 import dev.streamx.sling.connector.StreamxPublicationException;
 import dev.streamx.sling.connector.UnpublishData;
+import dev.streamx.sling.connector.util.SimpleInternalRequest;
 import java.io.IOException;
 import java.io.InputStream;
 import org.apache.sling.api.resource.LoginException;
@@ -29,6 +29,13 @@ public abstract class ResourcePathPublicationHandler<T> implements PublicationHa
   private final ResourceResolverFactory resourceResolverFactory;
   private final SlingRequestProcessor slingRequestProcessor;
 
+  /**
+   * Constructs an instance of this class.
+   *
+   * @param resourceResolverFactory {@link ResourceResolverFactory} to use when accessing resources
+   * @param slingRequestProcessor   {@link SlingRequestProcessor} to use when retrieving resource
+   *                                content
+   */
   protected ResourcePathPublicationHandler(
       ResourceResolverFactory resourceResolverFactory,
       SlingRequestProcessor slingRequestProcessor
@@ -112,6 +119,7 @@ public abstract class ResourcePathPublicationHandler<T> implements PublicationHa
   /**
    * Model to be ingested by StreamX.
    *
+   * @param inputStream {@link InputStream} to be wrapped in the model
    * @return model to be ingested by StreamX
    */
   public abstract T model(InputStream inputStream);

@@ -8,7 +8,14 @@ import java.util.stream.Stream;
  */
 public enum PublicationAction {
 
+  /**
+   * Ingestion action that should result in putting the data in StreamX.
+   */
   PUBLISH,
+
+  /**
+   * Ingestion action that should result in removing the data from StreamX.
+   */
   UNPUBLISH;
 
   /**

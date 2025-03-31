@@ -42,6 +42,9 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Default {@link StreamxPublicationService}.
+ */
 @Component(
     service = {StreamxPublicationService.class, JobExecutor.class},
     property = JobExecutor.PROPERTY_TOPICS + "=" + IngestionTrigger.JOB_TOPIC,
@@ -68,6 +71,12 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
   private ResourceResolverFactory resourceResolverFactory;
 
   private boolean enabled;
+
+  /**
+   * Constructs an instance of this class.
+   */
+  StreamxPublicationServiceImpl() {
+  }
 
   @Activate
   @Modified

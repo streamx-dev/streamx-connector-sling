@@ -26,24 +26,27 @@ public abstract class PublicationData<T> {
   }
 
   /**
+   * Returns the unique key identifying the publish data.
    *
-   * @return the unique key identifying the publish data.
+   * @return unique key identifying the publish data
    */
   public String getKey() {
     return key;
   }
 
   /**
+   * Returns the channel through which the data will be published.
    *
-   * @return the channel through which the data will be published.
+   * @return the channel through which the data will be published
    */
   public String getChannel() {
     return channel;
   }
 
   /**
+   * Returns the class type of the model to be published.
    *
-   * @return the class type of the model to be published.
+   * @return the class type of the model to be published
    */
   public Class<T> getModelClass() {
     return modelClass;
