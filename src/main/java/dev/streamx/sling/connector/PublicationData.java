@@ -28,7 +28,7 @@ public abstract class PublicationData<T> {
   /**
    * Returns the unique key identifying the publish data.
    *
-   * @return unique key identifying the publish data
+   * @return the unique key identifying the publish data
    */
   public String getKey() {
     return key;
