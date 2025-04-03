@@ -12,7 +12,7 @@ public class PublishData<T> extends PublicationData<T> {
   /**
    * Constructs a new {@code PublishData} instance.
    *
-   * @param key the unique key identifying the publish data
+   * @param key the key identifying the publish data
    * @param channel the channel through which the data will be published
    * @param modelClass the class type of the model to be published
    * @param model the instance of the model to be published
@@ -23,6 +23,7 @@ public class PublishData<T> extends PublicationData<T> {
   }
 
   /**
+   * Returns the model to be published.
    *
    * @return the model to be published
    */

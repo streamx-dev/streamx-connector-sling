@@ -30,6 +30,9 @@ import org.osgi.service.metatype.annotations.Designate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Extracts {@link RelatedResource}s from the content of a resource.
+ */
 @Component(
     service = {ResourceContentRelatedResourcesSelector.class, RelatedResourcesSelector.class},
     immediate = true,
@@ -48,6 +51,14 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
   private final SlingRequestProcessor slingRequestProcessor;
   private final ResourceResolverFactory resourceResolverFactory;
 
+  /**
+   * Constructs an instance of this class.
+   *
+   * @param config                  configuration for this service
+   * @param slingRequestProcessor   {@link SlingRequestProcessor} to use when retrieving resource
+   *                                content
+   * @param resourceResolverFactory {@link ResourceResolverFactory} to use when accessing resources
+   */
   @Activate
   public ResourceContentRelatedResourcesSelector(
       ResourceContentRelatedResourcesSelectorConfig config,

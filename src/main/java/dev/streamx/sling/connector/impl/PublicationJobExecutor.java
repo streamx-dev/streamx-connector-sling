@@ -1,8 +1,16 @@
 package dev.streamx.sling.connector.impl;
 
+import static dev.streamx.sling.connector.impl.PublicationJobExecutor.JOB_TOPIC;
+
 import dev.streamx.clients.ingestion.exceptions.StreamxClientException;
 import dev.streamx.clients.ingestion.publisher.Publisher;
-import dev.streamx.sling.connector.*;
+import dev.streamx.sling.connector.PublicationAction;
+import dev.streamx.sling.connector.PublicationHandler;
+import dev.streamx.sling.connector.PublicationRetryPolicy;
+import dev.streamx.sling.connector.PublishData;
+import dev.streamx.sling.connector.StreamxPublicationException;
+import dev.streamx.sling.connector.UnpublishData;
+import java.util.Optional;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.sling.event.jobs.Job;
 import org.apache.sling.event.jobs.consumer.JobExecutionContext;
@@ -13,10 +21,9 @@ import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Optional;
-
-import static dev.streamx.sling.connector.impl.PublicationJobExecutor.JOB_TOPIC;
-
+/**
+ * Executes the ingestion process into StreamX.
+ */
 @Component(
     service = JobExecutor.class,
     property = {JobExecutor.PROPERTY_TOPICS + "=" + JOB_TOPIC}
@@ -39,6 +46,12 @@ public class PublicationJobExecutor implements JobExecutor {
 
   @Reference
   private PublicationRetryPolicy publicationRetryPolicy;
+
+  /**
+   * Constructs an instance of this class.
+   */
+  PublicationJobExecutor() {
+  }
 
   @Override
   public JobExecutionResult process(Job job, JobExecutionContext context) {

@@ -4,15 +4,45 @@ import org.osgi.service.metatype.annotations.AttributeDefinition;
 import org.osgi.service.metatype.annotations.AttributeType;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 
+/**
+ * Configuration for {@link DefaultHttpClientFactory}.
+ */
 @ObjectClassDefinition(name = "HTTP client provider config")
 public @interface HttpClientProviderConfig {
 
+  /**
+   * Default value for {@link #max_total()}.
+   */
   int DEFAULT_NUMBER_OF_OPEN_CONNECTIONS = 50;
+
+  /**
+   * Default value for {@link #max_per_route()}.
+   */
   int DEFAULT_MAX_PER_ROUTE_CONNECTIONS = 20;
+
+  /**
+   * Default value for {@link #connection_timeout()}.
+   */
   int DEFAULT_CONNECTION_TIMEOUT_IN_MILLIS = 10000;
+
+  /**
+   * Default value for {@link #connection_request_timeout()}.
+   */
   int DEFAULT_CONNECTION_REQUEST_TIMEOUT_IN_MILLIS = 10000;
+
+  /**
+   * Default value for {@link #socket_timeout()}.
+   */
   int DEFAULT_SOCKET_TIMEOUT_IN_MILLIS = 5000;
+
+  /**
+   * Default value for {@link #idle_connection_keep_alive_time()}.
+   */
   int DEFAULT_IDLE_CONNECTION_KEEP_ALIVE_TIME_IN_MILLIS = 30000;
+
+  /**
+   * Default value for {@link #keep_alive_time()}.
+   */
   int DEFAULT_KEEP_ALIVE_TIME_IN_MILLIS = 60000;
 
   /**

@@ -11,6 +11,9 @@ import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Default {@link StreamxClientFactory}.
+ */
 @Component(service = StreamxClientFactory.class)
 public class StreamxClientFactoryImpl implements StreamxClientFactory {
 
@@ -22,6 +25,13 @@ public class StreamxClientFactoryImpl implements StreamxClientFactory {
   @Reference
   private DefaultHttpClientFactory defaultHttpClientFactory;
 
+  /**
+   * Constructs an instance of this class.
+   */
+  StreamxClientFactoryImpl() {
+  }
+
+  @Override
   public StreamxInstanceClient createStreamxClient(StreamxClientConfig config)
       throws StreamxClientException {
     CloseableHttpClient providedHttpClient = customHttpClientFactory != null

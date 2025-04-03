@@ -9,6 +9,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 public interface HttpClientFactory {
 
   /**
+   * Creates a new {@link CloseableHttpClient} instance.
    *
    * @return a new {@link CloseableHttpClient} instance
    */

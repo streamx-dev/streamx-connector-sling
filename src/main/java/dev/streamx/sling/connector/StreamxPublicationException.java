@@ -6,10 +6,21 @@ package dev.streamx.sling.connector;
  */
 public class StreamxPublicationException extends Exception {
 
+  /**
+   * Constructs an instance of this class.
+   *
+   * @param message argument for {@link Exception#Exception(String)}
+   */
   public StreamxPublicationException(String message) {
     super(message);
   }
 
+  /**
+   * Constructs an instance of this class.
+   *
+   * @param message argument for {@link Exception#Exception(String, Throwable)}
+   * @param cause   argument for {@link Exception#Exception(String, Throwable)}
+   */
   public StreamxPublicationException(String message, Throwable cause) {
     super(message, cause);
   }

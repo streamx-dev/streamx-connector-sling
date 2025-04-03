@@ -15,7 +15,7 @@ public abstract class PublicationData<T> {
   /**
    * Constructs a {@code PublicationData}
    *
-   * @param key the unique key identifying the publish data
+   * @param key the key identifying the publish data
    * @param channel the channel through which the data will be published
    * @param modelClass the class type of the model to be published
    */
@@ -26,24 +26,27 @@ public abstract class PublicationData<T> {
   }
 
   /**
+   * Returns the key identifying the publish data.
    *
-   * @return the unique key identifying the publish data.
+   * @return the key identifying the publish data
    */
   public String getKey() {
     return key;
   }
 
   /**
+   * Returns the channel through which the data will be published.
    *
-   * @return the channel through which the data will be published.
+   * @return the channel through which the data will be published
    */
   public String getChannel() {
     return channel;
   }
 
   /**
+   * Returns the class type of the model to be published.
    *
-   * @return the class type of the model to be published.
+   * @return the class type of the model to be published
    */
   public Class<T> getModelClass() {
     return modelClass;

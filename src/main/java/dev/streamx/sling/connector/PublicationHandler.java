@@ -9,6 +9,7 @@ package dev.streamx.sling.connector;
 public interface PublicationHandler<T> {
 
   /**
+   * Returns the unique identifier for this handler.
    *
    * @return the unique identifier for this handler
    */

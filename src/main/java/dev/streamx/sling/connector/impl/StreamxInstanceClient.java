@@ -7,6 +7,9 @@ import dev.streamx.sling.connector.PublicationData;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Client of single StreamX instance.
+ */
 public class StreamxInstanceClient {
 
   private final StreamxClient streamxClient;
