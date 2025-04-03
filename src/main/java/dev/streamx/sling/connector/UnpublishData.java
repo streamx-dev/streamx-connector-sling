@@ -10,7 +10,7 @@ public class UnpublishData<T> extends PublicationData<T> {
   /**
    * Constructs a new {@code UnpublishData} instance.
    *
-   * @param key the unique key identifying the publish data
+   * @param key the key identifying the publish data
    * @param channel the channel through which the data will be unpublished
    * @param dataClass the class type of the model to be unpublished
    */
