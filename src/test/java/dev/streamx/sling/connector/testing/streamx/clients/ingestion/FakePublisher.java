@@ -28,7 +28,8 @@ public class FakePublisher<T> implements Publisher<T> {
 
   @Override
   public SuccessResult send(Message<T> message) {
-    throw new UnsupportedOperationException();
+    fakeStreamxClient.recordPublish(message.getKey(), channel, message.getPayload());
+    return null;
   }
 
   @Override
