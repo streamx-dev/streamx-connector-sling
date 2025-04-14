@@ -26,10 +26,7 @@ public abstract class PublicationData<T> {
    * @param modelClass the class type of the model to be published
    */
   protected PublicationData(String key, String channel, Class<T> modelClass) {
-    this.key = key;
-    this.channel = channel;
-    this.modelClass = modelClass;
-    this.properties = Map.of();
+    this(key, channel, modelClass, Collections.emptyMap());
   }
 
   /**
