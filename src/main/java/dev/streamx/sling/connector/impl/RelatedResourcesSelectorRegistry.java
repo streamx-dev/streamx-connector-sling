@@ -24,7 +24,7 @@ public class RelatedResourcesSelectorRegistry {
   /**
    * Constructs an instance of this class.
    */
-  RelatedResourcesSelectorRegistry() {
+  public RelatedResourcesSelectorRegistry() {
   }
 
   @Reference(

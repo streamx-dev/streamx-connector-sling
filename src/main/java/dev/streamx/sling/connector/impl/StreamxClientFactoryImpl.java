@@ -28,7 +28,7 @@ public class StreamxClientFactoryImpl implements StreamxClientFactory {
   /**
    * Constructs an instance of this class.
    */
-  StreamxClientFactoryImpl() {
+  public StreamxClientFactoryImpl() {
   }
 
   @Override

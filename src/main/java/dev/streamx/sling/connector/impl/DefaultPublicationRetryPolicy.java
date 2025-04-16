@@ -23,7 +23,7 @@ public class DefaultPublicationRetryPolicy implements PublicationRetryPolicy {
   /**
    * Constructs an instance of this class.
    */
-  DefaultPublicationRetryPolicy() {
+  public DefaultPublicationRetryPolicy() {
   }
 
   /**
