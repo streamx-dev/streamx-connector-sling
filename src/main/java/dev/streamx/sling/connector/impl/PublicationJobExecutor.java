@@ -3,6 +3,7 @@ package dev.streamx.sling.connector.impl;
 import static dev.streamx.sling.connector.impl.PublicationJobExecutor.JOB_TOPIC;
 
 import dev.streamx.clients.ingestion.exceptions.StreamxClientException;
+import dev.streamx.clients.ingestion.publisher.Message;
 import dev.streamx.clients.ingestion.publisher.Publisher;
 import dev.streamx.sling.connector.PublicationAction;
 import dev.streamx.sling.connector.PublicationHandler;
@@ -133,7 +134,12 @@ public class PublicationJobExecutor implements JobExecutor {
       StreamxInstanceClient streamxInstanceClient)
       throws StreamxClientException {
     Publisher<T> publisher = streamxInstanceClient.getPublisher(publishData);
-    publisher.publish(publishData.getKey(), publishData.getModel());
+    Message<T> messageToSend = Message.<T>newMessage(publishData.getKey())
+            .withProperties(publishData.getProperties())
+            .withPublishAction()
+            .withPayload(publishData.getModel())
+            .build();
+    publisher.send(messageToSend);
     LOG.info("Published resource: [{}] to [{}: {}]", publishData.getKey(),
         streamxInstanceClient.getName(), publishData.getChannel());
   }
