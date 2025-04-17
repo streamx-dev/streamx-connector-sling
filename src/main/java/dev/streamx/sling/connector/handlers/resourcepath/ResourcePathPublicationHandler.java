@@ -1,5 +1,6 @@
 package dev.streamx.sling.connector.handlers.resourcepath;
 
+import dev.streamx.sling.connector.ResourceData;
 import dev.streamx.sling.connector.PublicationHandler;
 import dev.streamx.sling.connector.PublishData;
 import dev.streamx.sling.connector.StreamxPublicationException;
@@ -45,17 +46,17 @@ public abstract class ResourcePathPublicationHandler<T> implements PublicationHa
   }
 
   @Override
-  public boolean canHandle(String resourcePath) {
+  public boolean canHandle(ResourceData resourceData) {
+    SlingUri uriToIngest = resourceData.uriToIngest();
     if (configuration().isEnabled()) {
-      String resourcePathRegex = configuration().resourcePathRegex();
-      boolean matches = resourcePath.matches(resourcePathRegex);
+      String slingUriRegex = configuration().slingUriRegex();
+      boolean matches = uriToIngest.toString().matches(slingUriRegex);
       LOG.trace(
-          "Does resource path '{}' match this regex: '{}'? Answer: {}",
-          resourcePath, resourcePathRegex, matches
+          "Does '{}' match this regex: '{}'? Answer: {}", uriToIngest, slingUriRegex, matches
       );
       return matches;
     } else {
-      LOG.trace("Handler is disabled. Not handling '{}'", resourcePath);
+      LOG.trace("Handler is disabled. Not handling '{}'", uriToIngest);
       return false;
     }
   }

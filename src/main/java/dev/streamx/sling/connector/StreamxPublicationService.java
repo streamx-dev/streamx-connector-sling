@@ -1,7 +1,5 @@
 package dev.streamx.sling.connector;
 
-import java.util.List;
-
 /**
  * Service for triggering ingestion operations into StreamX REST Ingestion Service.
  */
@@ -21,7 +19,7 @@ public interface StreamxPublicationService {
    * @throws StreamxPublicationException if a temporary error occurs and the operation should be
    *                                     retried
    */
-  void publish(List<String> paths) throws StreamxPublicationException;
+  void publish(ResourceData resourceData);
 
   /**
    * Unpublishes the specified resources.
@@ -30,6 +28,6 @@ public interface StreamxPublicationService {
    * @throws StreamxPublicationException if a temporary error occurs and the operation should be
    *                                     retried
    */
-  void unpublish(List<String> paths) throws StreamxPublicationException;
+  void unpublish(ResourceData resourceData);
 
 }
