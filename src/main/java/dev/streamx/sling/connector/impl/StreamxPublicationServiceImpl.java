@@ -75,7 +75,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
   /**
    * Constructs an instance of this class.
    */
-  StreamxPublicationServiceImpl() {
+  public StreamxPublicationServiceImpl() {
   }
 
   @Activate

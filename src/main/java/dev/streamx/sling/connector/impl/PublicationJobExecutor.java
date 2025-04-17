@@ -51,7 +51,7 @@ public class PublicationJobExecutor implements JobExecutor {
   /**
    * Constructs an instance of this class.
    */
-  PublicationJobExecutor() {
+  public PublicationJobExecutor() {
   }
 
   @Override
