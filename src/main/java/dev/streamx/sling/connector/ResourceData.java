@@ -6,6 +6,7 @@ import org.apache.sling.api.resource.Resource;
 /**
  * Data that is supposed to be ingested by StreamX REST Ingestion Service.
  */
+@FunctionalInterface
 public interface ResourceData {
 
   /**
@@ -21,5 +22,7 @@ public interface ResourceData {
    *
    * @return additional properties that are associated with the {@link ResourceData}.
    */
-  Map<String, Object> properties();
+  default Map<String, Object> properties() {
+    return Map.of();
+  }
 }

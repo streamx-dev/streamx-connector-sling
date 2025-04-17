@@ -25,22 +25,22 @@ public interface PublicationHandler<T> {
   boolean canHandle(ResourceData resourceData);
 
   /**
-   * Prepares the data to publish for the specified resource path. May return null if nothing to
-   * publish.
+   * Prepares the data to publish for the specified {@link ResourceData}. May return {@code null} if
+   * nothing to publish.
    *
-   * @param resourceData the path of the resource
-   * @return the publish data for the resource, may be null
+   * @param resourceData {@link ResourceData} that is supposed to be published
+   * @return {@link PublishData} data for the specified {@link ResourceData}, may be {@code null}
    * @throws StreamxPublicationException if a temporary error occurs and the operation should be
    *                                     retried
    */
   PublishData<T> getPublishData(ResourceData resourceData) throws StreamxPublicationException;
 
   /**
-   * Prepares the data to unpublish for the specified resource path. May return null if nothing to
-   * unpublish.
+   * Prepares the data to unpublish for the specified {@link ResourceData}. May return {@code null}
+   * if nothing to unpublish.
    *
-   * @param resourceData the path of the resource
-   * @return the unpublish data for the resource, may be null
+   * @param resourceData {@link ResourceData} that is supposed to be unpublished
+   * @return {@link UnpublishData} data for the specified {@link ResourceData}, may be {@code null}
    * @throws StreamxPublicationException if a temporary error occurs and the operation should be
    *                                     retried
    */

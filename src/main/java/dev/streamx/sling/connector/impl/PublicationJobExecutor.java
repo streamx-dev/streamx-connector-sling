@@ -122,7 +122,7 @@ public class PublicationJobExecutor implements JobExecutor {
   private void handlePublish(PublicationHandler<?> publicationHandler,
       StreamxInstanceClient streamxInstanceClient, String resourcePath)
       throws StreamxPublicationException, StreamxClientException {
-    PublishData<?> publishData = publicationHandler.getPublishData(resourcePath);
+    PublishData<?> publishData = publicationHandler.getPublishData(() -> resourcePath);
     if (publishData == null) {
       LOG.debug("Publish data returned by [{}] is null", publicationHandler.getClass().getName());
       return;
@@ -147,7 +147,7 @@ public class PublicationJobExecutor implements JobExecutor {
   private void handleUnpublish(PublicationHandler<?> publicationHandler,
       StreamxInstanceClient streamxInstanceClient, String resourcePath)
       throws StreamxPublicationException, StreamxClientException {
-    UnpublishData<?> unpublishData = publicationHandler.getUnpublishData(resourcePath);
+    UnpublishData<?> unpublishData = publicationHandler.getUnpublishData(() -> resourcePath);
     if (unpublishData == null) {
       LOG.debug("Unpublish data returned by [{}] is null",
           publicationHandler.getClass().getName());

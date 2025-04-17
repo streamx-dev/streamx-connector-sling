@@ -5,7 +5,7 @@ import java.util.List;
 /**
  * Stores {@link StreamxInstanceClient} instances.
  */
-interface StreamxClientStore {
+public interface StreamxClientStore {
 
   /**
    * Returns all {@link StreamxInstanceClient} instances related to the specified path.

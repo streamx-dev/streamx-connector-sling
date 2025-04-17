@@ -1,16 +1,14 @@
 package dev.streamx.sling.connector.impl;
 
-import dev.streamx.sling.connector.ResourceData;
 import dev.streamx.sling.connector.PublicationAction;
-import dev.streamx.sling.connector.util.DefaultSlingUriBuilder;
+import dev.streamx.sling.connector.ResourceData;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import org.apache.sling.api.resource.ResourceResolverFactory;
-import org.apache.sling.api.uri.SlingUri;
 import org.apache.sling.event.jobs.Job;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,34 +21,31 @@ class JobAsResourceData implements ResourceData {
   private static final String PN_STREAMX_URI_TO_INGEST = "streamx.uriToIngest";
   private static final Logger LOG = LoggerFactory.getLogger(JobAsResourceData.class);
   private final Supplier<ResourceData> ingestedData;
+  private final PublicationAction publicationAction;
 
-  JobAsResourceData(ResourceData resourceData) {
+  JobAsResourceData(ResourceData resourceData, PublicationAction publicationAction) {
     this.ingestedData = () -> resourceData;
+    this.publicationAction = publicationAction;
   }
 
   @Override
   public String toString() {
     return String.format(
         "{%s: uri{%s}, action{%s}, props{%s}}",
-        this.getClass().getSimpleName(), uriToIngest(), ingestionAction(), properties()
+        this.getClass().getSimpleName(), resourcePath(), ingestionAction(), properties()
     );
   }
 
-  JobAsResourceData(Job job, ResourceResolverFactory resourceResolverFactory) {
+  JobAsResourceData(Job job) {
+    this.publicationAction = PublicationAction.of(
+        job.getProperty(PN_STREAMX_INGESTION_ACTION, String.class)
+    ).orElseThrow();
     this.ingestedData = () -> new ResourceData() {
-      @Override
-      public PublicationAction ingestionAction() {
-        return PublicationAction.of(
-            job.getProperty(PN_STREAMX_INGESTION_ACTION, String.class)
-        ).orElseThrow();
-      }
 
       @Override
-      public SlingUri uriToIngest() {
-        return new DefaultSlingUriBuilder(
-            job.getProperty(PN_STREAMX_URI_TO_INGEST, String.class),
-            resourceResolverFactory
-        ).build();
+      public String resourcePath() {
+        return Optional.ofNullable(job.getProperty(PN_STREAMX_URI_TO_INGEST, String.class))
+            .orElseThrow();
       }
 
       @Override
@@ -75,14 +70,13 @@ class JobAsResourceData implements ResourceData {
     };
   }
 
-  @Override
-  public PublicationAction ingestionAction() {
-    return ingestedData.get().ingestionAction();
+  PublicationAction ingestionAction() {
+    return publicationAction;
   }
 
   @Override
-  public SlingUri uriToIngest() {
-    return ingestedData.get().uriToIngest();
+  public String resourcePath() {
+    return ingestedData.get().resourcePath();
   }
 
   @Override
@@ -96,7 +90,7 @@ class JobAsResourceData implements ResourceData {
         PN_STREAMX_INGESTION_ACTION,
         ingestionAction().toString(),
         PN_STREAMX_URI_TO_INGEST,
-        uriToIngest().toString()
+        resourcePath()
     );
     return Collections.unmodifiableMap(
         new HashMap<>() {{

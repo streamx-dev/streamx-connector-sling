@@ -13,20 +13,16 @@ public interface StreamxPublicationService {
   boolean isEnabled();
 
   /**
-   * Publishes the specified resources.
+   * Publishes the specified {@link ResourceData}.
    *
-   * @param paths the paths of the resources to publish
-   * @throws StreamxPublicationException if a temporary error occurs and the operation should be
-   *                                     retried
+   * @param resourceData {@link ResourceData} to publish
    */
   void publish(ResourceData resourceData);
 
   /**
-   * Unpublishes the specified resources.
+   * Unpublishes the specified {@link ResourceData}.
    *
-   * @param paths the paths of the resources to unpublish
-   * @throws StreamxPublicationException if a temporary error occurs and the operation should be
-   *                                     retried
+   * @param resourceData {@link ResourceData} to unpublish
    */
   void unpublish(ResourceData resourceData);
 

@@ -1,8 +1,8 @@
 package dev.streamx.sling.connector.handlers.resourcepath;
 
-import dev.streamx.sling.connector.ResourceData;
 import dev.streamx.sling.connector.PublicationHandler;
 import dev.streamx.sling.connector.PublishData;
+import dev.streamx.sling.connector.ResourceData;
 import dev.streamx.sling.connector.StreamxPublicationException;
 import dev.streamx.sling.connector.UnpublishData;
 import dev.streamx.sling.connector.util.SimpleInternalRequest;
@@ -47,23 +47,25 @@ public abstract class ResourcePathPublicationHandler<T> implements PublicationHa
 
   @Override
   public boolean canHandle(ResourceData resourceData) {
-    SlingUri uriToIngest = resourceData.uriToIngest();
+    String resourcePath = resourceData.resourcePath();
     if (configuration().isEnabled()) {
       String slingUriRegex = configuration().slingUriRegex();
-      boolean matches = uriToIngest.toString().matches(slingUriRegex);
+      boolean matches = resourcePath.matches(slingUriRegex);
       LOG.trace(
-          "Does '{}' match this regex: '{}'? Answer: {}", uriToIngest, slingUriRegex, matches
+          "Does '{}' match this regex: '{}'? Answer: {}", resourcePath, slingUriRegex, matches
       );
       return matches;
     } else {
-      LOG.trace("Handler is disabled. Not handling '{}'", uriToIngest);
+      LOG.trace("Handler is disabled. Not handling '{}'", resourcePath);
       return false;
     }
   }
 
   @Override
   @SuppressWarnings({"squid:S1874", "deprecation"})
-  public PublishData<T> getPublishData(String resourcePath) throws StreamxPublicationException {
+  public PublishData<T> getPublishData(ResourceData resourceData)
+      throws StreamxPublicationException {
+    String resourcePath = resourceData.resourcePath();
     LOG.trace("Getting publish data for '{}'", resourcePath);
     try (
         ResourceResolver resourceResolver
@@ -97,10 +99,10 @@ public abstract class ResourcePathPublicationHandler<T> implements PublicationHa
   }
 
   @Override
-  public UnpublishData<T> getUnpublishData(String resourcePath) {
+  public UnpublishData<T> getUnpublishData(ResourceData resourceData) {
     String channel = configuration().channel();
     Class<T> modelClass = modelClass();
-    return new UnpublishData<>(resourcePath, channel, modelClass);
+    return new UnpublishData<>(resourceData.resourcePath(), channel, modelClass);
   }
 
   /**

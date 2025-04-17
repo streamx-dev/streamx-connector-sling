@@ -97,8 +97,18 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
   }
 
   @Override
-  public void ingest(ResourceData resourceData) {
-    Map<String, Object> jobProps = new JobAsResourceData(resourceData).asJobProps();
+  public void publish(ResourceData resourceData) {
+    Map<String, Object> jobProps = new JobAsResourceData(resourceData, PublicationAction.PUBLISH)
+        .asJobProps();
+    LOG.trace("Adding job with these properties: {}", jobProps);
+    Job addedJob = jobManager.addJob(JobAsResourceData.JOB_TOPIC, jobProps);
+    LOG.debug("Added job: {}", addedJob);
+  }
+
+  @Override
+  public void unpublish(ResourceData resourceData) {
+    Map<String, Object> jobProps = new JobAsResourceData(resourceData, PublicationAction.UNPUBLISH)
+        .asJobProps();
     LOG.trace("Adding job with these properties: {}", jobProps);
     Job addedJob = jobManager.addJob(JobAsResourceData.JOB_TOPIC, jobProps);
     LOG.debug("Added job: {}", addedJob);
@@ -108,7 +118,8 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
   public JobExecutionResult process(Job job, JobExecutionContext jobExecutionContext) {
     LOG.trace("Processing {}", job);
     try {
-      executeIngestion(new JobAsResourceData(job, resourceResolverFactory));
+      JobAsResourceData jobAsResourceData = new JobAsResourceData(job);
+      executeIngestion(jobAsResourceData, jobAsResourceData.ingestionAction());
       return jobExecutionContext.result().succeeded();
     } catch (StreamxPublicationException exception) {
       String message = String.format("Unable to process %s", job);
@@ -118,15 +129,16 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
   }
 
   @SuppressWarnings("squid:S1130")
-  private void executeIngestion(ResourceData resourceData) throws StreamxPublicationException {
+  private void executeIngestion(ResourceData resourceData, PublicationAction publicationAction)
+      throws StreamxPublicationException {
     LOG.trace("Executing ingestion of {}", resourceData);
     if (!config.get().enabled()) {
       LOG.trace("{} is disabled. Skipping ingestion of {}", this, resourceData);
       return;
     }
-    boolean isPublish = resourceData.ingestionAction() == PublicationAction.PUBLISH;
+    boolean isPublish = publicationAction == PublicationAction.PUBLISH;
     Collection<ResourceData> relatedResources =
-        isPublish ? findRelatedResources(resourceData) : Set.of();
+        isPublish ? findRelatedResources(resourceData, publicationAction) : Set.of();
     List<ResourceData> allResourceData = Stream.concat(
         Stream.of(resourceData), relatedResources.stream()
     ).collect(Collectors.toUnmodifiableList());
@@ -142,31 +154,28 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     );
   }
 
-  private Set<ResourceData> findRelatedResources(ResourceData resourceData) {
-    SlingUri slingUri = resourceData.uriToIngest();
-    PublicationAction ingestionAction = resourceData.ingestionAction();
+  private Set<ResourceData> findRelatedResources(
+      ResourceData resourceData, PublicationAction publicationAction
+  ) {
+    String resourcePath = resourceData.resourcePath();
     Set<ResourceData> relatedResources = relatedResourcesSelectorRegistry.getSelectors()
         .stream()
         .flatMap(
             selector -> {
               try {
-                return selector.getRelatedResources(slingUri.toString(), ingestionAction).stream();
+                return selector.getRelatedResources(resourcePath, publicationAction).stream();
               } catch (StreamxPublicationException exception) {
                 String message = String.format(
                     "Unable to get related resources for %s and %s with %s",
-                    slingUri, ingestionAction, selector
+                    resourcePath, publicationAction, selector
                 );
                 LOG.error(message, exception);
                 return Stream.empty();
               }
             }
         ).filter(shouldPublishResourcePredicate(resourceData))
-        .map(
-            relatedResource -> new RelatedResourceAsResourceData(
-                relatedResource, resourceResolverFactory
-            )
-        ).collect(Collectors.toUnmodifiableSet());
-    LOG.debug("For {} found these related resources: {}", slingUri, relatedResources);
+        .map(RelatedResourceAsResourceData::new).collect(Collectors.toUnmodifiableSet());
+    LOG.debug("For {} found these related resources: {}", resourcePath, relatedResources);
     return relatedResources;
   }
 
@@ -178,7 +187,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
       RelatedResource relatedResource, ResourceData resourceData
   ) {
     String relatedResourcePath = relatedResource.getResourcePath();
-    String ingestedResourcePath = Optional.ofNullable(resourceData.uriToIngest().getResourcePath())
+    String ingestedResourcePath = Optional.ofNullable(resourceData.resourcePath())
         .orElse(StringUtils.EMPTY);
     return relatedResource.getAction() == resourceData.ingestionAction()
         && ingestedResourcePath.equals(relatedResourcePath);
