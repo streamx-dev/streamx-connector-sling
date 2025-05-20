@@ -12,9 +12,9 @@ public class RelatedPagesSelector implements RelatedResourcesSelector {
   public Collection<RelatedResource> getRelatedResources(String resourcePath,
       PublicationAction action) {
     return Arrays.asList(
-        new RelatedResource("/content/my-site/related-page-to-publish",
+        new RelatedResource("/content/my-site/related-page-to-publish", "cq:Page",
             PublicationAction.PUBLISH),
-        new RelatedResource("/content/my-site/related-page-to-unpublish",
+        new RelatedResource("/content/my-site/related-page-to-unpublish", "cq:Page",
             PublicationAction.UNPUBLISH)
     );
   }

@@ -1,5 +1,6 @@
 package dev.streamx.sling.connector.handlers.resourcepath;
 
+import dev.streamx.sling.connector.ResourceToIngest;
 import dev.streamx.sling.connector.PublicationHandler;
 import dev.streamx.sling.connector.PublishData;
 import dev.streamx.sling.connector.StreamxPublicationException;
@@ -45,7 +46,8 @@ public abstract class ResourcePathPublicationHandler<T> implements PublicationHa
   }
 
   @Override
-  public boolean canHandle(String resourcePath) {
+  public boolean canHandle(ResourceToIngest resource) {
+    String resourcePath = resource.getPath();
     if (configuration().isEnabled()) {
       String resourcePathRegex = configuration().resourcePathRegex();
       boolean matches = resourcePath.matches(resourcePathRegex);

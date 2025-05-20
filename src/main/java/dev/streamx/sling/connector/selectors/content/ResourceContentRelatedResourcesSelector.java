@@ -5,8 +5,10 @@ import dev.streamx.sling.connector.RelatedResource;
 import dev.streamx.sling.connector.RelatedResourcesSelector;
 import dev.streamx.sling.connector.util.SimpleInternalRequest;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -81,91 +83,90 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
   public Collection<RelatedResource> getRelatedResources(
       String resourcePath, PublicationAction action
   ) {
-    ResourcePath resourcePathWrapped = new ResourcePath(resourcePath);
-    LOG.debug("Getting related resources for '{}'", resourcePathWrapped);
-    ResourceFilter resourceFilter = new ResourceFilter(config.get(), resourceResolverFactory);
-    boolean isAcceptableResource = resourceFilter.isAcceptable(resourcePathWrapped);
+    LOG.debug("Getting related resources for '{}'", resourcePath);
+    try (ResourceResolver resourceResolver = resourceResolverFactory.getAdministrativeResourceResolver(null)) {
+      return getRelatedResources(resourcePath, action, resourceResolver);
+    } catch (LoginException exception) {
+      LOG.error("Failed to create Resource Resolver to load related resources for {}", resourcePath, exception);
+      return Collections.emptyList();
+    }
+  }
+
+  private List<RelatedResource> getRelatedResources(
+      String resourcePath, PublicationAction action, ResourceResolver resourceResolver
+  ) {
+    ResourceFilter resourceFilter = new ResourceFilter(config.get(), resourceResolver);
+    boolean isAcceptableResource = resourceFilter.isAcceptable(resourcePath);
     LOG.trace(
         "Is resource at path '{}' acceptable? Answer: {}", resourcePath, isAcceptableResource
     );
     if (!isAcceptableResource) {
-      return List.of();
-    } else {
-      Collection<ResourcePath> extractedPaths = extract(
-          new PathToTextResource(resourcePathWrapped)
-      );
-      if (LOG.isInfoEnabled()) {
-        LOG.info(
-            "Recognized paths for '{}': {}", resourcePathWrapped,
-            extractedPaths.stream()
-                .map(ResourcePath::get)
-                .sorted()
-                .collect(Collectors.toList())
-        );
-      }
-      return extractedPaths.stream()
-          .map(ResourcePath::get)
-          .map(recognizedPath -> new RelatedResource(recognizedPath, action))
-          .collect(Collectors.toUnmodifiableList());
+      return Collections.emptyList();
     }
+
+    Collection<String> extractedPaths = extract(resourcePath, resourceResolver);
+    if (LOG.isInfoEnabled()) {
+      LOG.info(
+          "Recognized paths for '{}': {}", resourcePath,
+          extractedPaths.stream()
+              .sorted()
+              .collect(Collectors.toList())
+      );
+    }
+
+    return extractedPaths.stream()
+        .map(recognizedPath -> new RelatedResource(
+            recognizedPath,
+            resourceFilter.extractPrimaryNodeType(recognizedPath, resourceResolver),
+            action
+        ))
+        .collect(Collectors.toUnmodifiableList());
   }
 
   /**
-   * Applies a set of configured regular expressions to the given {@link PathToTextResource} and
+   * Applies a set of configured regular expressions to the given resourcePath and
    * extracts all matching paths. For each regular expression, the first capturing group (group(1))
    * is used to identify a candidate path.
    * <p>
-   * All extracted path strings are then converted into {@link ResourcePath} objects, de-duplicated,
+   * All extracted path strings are then de-duplicated
    * and sorted. If no matches are found, an empty {@link Collection} is returned.
    * </p>
    *
-   * @param pathToTextResource {@link PathToTextResource} from which to extract paths
-   * @return {@link Collection} of unique {@link ResourcePath} objects; may be empty if no matches
+   * @param resourcePath path to text resource from which to extract paths
+   * @return {@link Collection} of unique resource paths; may be empty if no matches
    * are found
    */
-  private Collection<ResourcePath> extract(PathToTextResource pathToTextResource) {
+  private Collection<String> extract(String resourcePath, ResourceResolver resourceResolver) {
     List<Pattern> patterns = Stream.of(config.get().references_search$_$regexes())
         .map(Pattern::compile)
         .collect(Collectors.toUnmodifiableList());
-    LOG.trace("Recognizing paths for '{}' with these patterns: {}", pathToTextResource, patterns);
+    LOG.trace("Recognizing paths for '{}' with these patterns: {}", resourcePath, patterns);
 
-    String resourceAsString = asString(pathToTextResource);
+    String resourceAsString = downloadResourceAsString(resourcePath, resourceResolver);
 
-    Collection<ResourcePath> extractedPaths = patterns.stream()
+    Collection<String> extractedPaths = patterns.stream()
         .flatMap(
             pattern -> {
               Matcher matcher = pattern.matcher(resourceAsString);
               return Stream.iterate(matcher, Matcher::find, nextMatcher -> nextMatcher)
                   .map(mappingMatcher -> mappingMatcher.group(NumberUtils.INTEGER_ONE));
             }
-        ).sorted()
-        .distinct()
+        )
         .filter(path -> !path.matches(config.get().references_exclude$_$from$_$result_regex()))
-        .map(ResourcePath::new)
-        .collect(Collectors.toUnmodifiableList());
-    LOG.debug("From '{}' these paths were extracted: {}", pathToTextResource, extractedPaths);
+        .collect(Collectors.toCollection(TreeSet::new));
+    LOG.debug("From '{}' these paths were extracted: {}", resourcePath, extractedPaths);
     return extractedPaths;
   }
 
-  @SuppressWarnings({"squid:S1874", "deprecation"})
-  private String asString(PathToTextResource pathToTextResource) {
-    try (
-        ResourceResolver resourceResolver
-            = resourceResolverFactory.getAdministrativeResourceResolver(null)
-    ) {
-      String rawUri = String.format(
-          "%s%s", pathToTextResource.get(),
-          Optional.ofNullable(config.get().resource$_$path_postfix$_$to$_$append())
-              .orElse(StringUtils.EMPTY)
-      );
-      SlingUri slingUri = SlingUriBuilder.parse(rawUri, resourceResolver).build();
-      return new SimpleInternalRequest(
-          slingUri, slingRequestProcessor, resourceResolver
-      ).getResponseAsString();
-    } catch (LoginException exception) {
-      String message = String.format("Unable to convert %s to string", pathToTextResource);
-      LOG.error(message, exception);
-      return StringUtils.EMPTY;
-    }
+  private String downloadResourceAsString(String resourcePath, ResourceResolver resourceResolver) {
+    String rawUri = String.format(
+        "%s%s", resourcePath,
+        Optional.ofNullable(config.get().resource$_$path_postfix$_$to$_$append())
+            .orElse(StringUtils.EMPTY)
+    );
+    SlingUri slingUri = SlingUriBuilder.parse(rawUri, resourceResolver).build();
+    return new SimpleInternalRequest(
+        slingUri, slingRequestProcessor, resourceResolver
+    ).getResponseAsString();
   }
 }

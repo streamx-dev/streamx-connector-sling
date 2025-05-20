@@ -17,19 +17,19 @@ public interface StreamxPublicationService {
   /**
    * Publishes the specified resources.
    *
-   * @param paths the paths of the resources to publish
+   * @param resources the resources to publish
    * @throws StreamxPublicationException if a temporary error occurs and the operation should be
    *                                     retried
    */
-  void publish(List<String> paths) throws StreamxPublicationException;
+  void publish(List<ResourceToIngest> resources) throws StreamxPublicationException;
 
   /**
    * Unpublishes the specified resources.
    *
-   * @param paths the paths of the resources to unpublish
+   * @param resources the resources to unpublish
    * @throws StreamxPublicationException if a temporary error occurs and the operation should be
    *                                     retried
    */
-  void unpublish(List<String> paths) throws StreamxPublicationException;
+  void unpublish(List<ResourceToIngest> resources) throws StreamxPublicationException;
 
 }

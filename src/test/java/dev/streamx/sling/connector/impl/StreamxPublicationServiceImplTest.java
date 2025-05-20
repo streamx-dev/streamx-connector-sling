@@ -6,11 +6,12 @@ import dev.streamx.sling.connector.testing.handlers.ImpostorPublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.OtherPagePublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.PagePublicationHandler;
 import dev.streamx.sling.connector.testing.selectors.RelatedPagesSelector;
+import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJob;
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJobExecutionContext;
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJobManager;
 import dev.streamx.sling.connector.testing.streamx.clients.ingestion.FakeStreamxClient;
 import java.util.stream.Collectors;
-import org.apache.commons.lang3.math.NumberUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.sling.api.resource.PersistenceException;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
@@ -32,9 +33,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssumptions.given;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
@@ -49,7 +50,7 @@ class StreamxPublicationServiceImplTest {
   private final List<RelatedResourcesSelector> relatedResourcesSelectors = new ArrayList<>();
   private final List<FakeStreamxClientConfig> fakeStreamxClientConfigs = new ArrayList<>();
 
-  private StreamxPublicationService publicationService;
+  private StreamxPublicationServiceImpl publicationService;
   private FakeJobManager fakeJobManager;
   private FakeStreamxClient fakeStreamxClient;
   private FakeStreamxClientFactory fakeStreamxClientFactory;
@@ -67,34 +68,20 @@ class StreamxPublicationServiceImplTest {
       return;
     }
 
-    StreamxPublicationServiceImpl publicationServiceImpl = spy(new StreamxPublicationServiceImpl());
+    publicationService = spy(new StreamxPublicationServiceImpl());
     doAnswer(
         invocation -> {
-          @SuppressWarnings("unchecked")
-          String[] paths = ((List<String>) invocation
-              .getArgument(NumberUtils.INTEGER_ZERO, List.class))
-              .toArray(new String[0]);
-          Job job = mock(Job.class);
-          when(job.getProperty("streamx.urisToIngest", String[].class)).thenReturn(paths);
-          when(job.getProperty("streamx.ingestionAction", String.class)).thenReturn("PUBLISH");
-          publicationServiceImpl.process(job, new FakeJobExecutionContext());
+          processResourcesAsJob(invocation.getArgument(0), "PUBLISH");
           return null;
         }
-    ).when(publicationServiceImpl).publish(anyList());
+    ).when(publicationService).publish(anyList());
 
     doAnswer(
         invocation -> {
-          @SuppressWarnings("unchecked")
-          String[] paths = ((List<String>) invocation
-              .getArgument(NumberUtils.INTEGER_ZERO, List.class))
-              .toArray(new String[0]);
-          Job job = mock(Job.class);
-          when(job.getProperty("streamx.urisToIngest", String[].class)).thenReturn(paths);
-          when(job.getProperty("streamx.ingestionAction", String.class)).thenReturn("UNPUBLISH");
-          publicationServiceImpl.process(job, new FakeJobExecutionContext());
+          processResourcesAsJob(invocation.getArgument(0), "UNPUBLISH");
           return null;
         }
-    ).when(publicationServiceImpl).unpublish(anyList());
+    ).when(publicationService).unpublish(anyList());
 
     JobExecutor publicationJobExecutor = new PublicationJobExecutor();
 
@@ -118,11 +105,22 @@ class StreamxPublicationServiceImplTest {
 
     slingContext.registerInjectActivateService(new RelatedResourcesSelectorRegistry());
 
-    slingContext.registerInjectActivateService(publicationServiceImpl, publicationServiceConfig);
+    slingContext.registerInjectActivateService(publicationService, publicationServiceConfig);
     slingContext.registerInjectActivateService(publicationJobExecutor);
 
-    publicationService = publicationServiceImpl;
     fakeStreamxClient = fakeStreamxClientFactory.getFakeClient("/fake/streamx/instance");
+  }
+
+  private void processResourcesAsJob(List<ResourceToIngest> resources, String action) {
+    String[] serializedResources = resources
+        .stream()
+        .map(ResourceToIngest::serialize)
+        .toArray(String[]::new);
+
+    Job job = mock(Job.class);
+    when(job.getProperty(IngestionTrigger.PN_STREAMX_RESOURCES_TO_INGEST, String[].class)).thenReturn(serializedResources);
+    when(job.getProperty(IngestionTrigger.PN_STREAMX_INGESTION_ACTION, String.class)).thenReturn(action);
+    publicationService.process(job, new FakeJobExecutionContext());
   }
 
   @Test
@@ -489,6 +487,34 @@ class StreamxPublicationServiceImplTest {
     );
   }
 
+  @Test
+  void shouldSubmitIngestionTriggerJobs() throws Exception {
+    // given
+    initializeComponentsIfNotInitialized();
+    doCallRealMethod().when(publicationService).publish(anyList());
+    doCallRealMethod().when(publicationService).unpublish(anyList());
+
+    // when
+    publicationService.publish(Collections.singletonList(new ResourceToIngest("path-1", "type-1")));
+    publicationService.unpublish(Collections.singletonList(new ResourceToIngest("path-2", "type-2")));
+
+    // then
+    List<FakeJob> queuedJobs = fakeJobManager.getJobQueue();
+    assertThat(queuedJobs).hasSize(2);
+
+    FakeJob publishJob = queuedJobs.get(0);
+    assertThat(publishJob.getProperty(IngestionTrigger.PN_STREAMX_INGESTION_ACTION, String.class))
+        .isEqualTo("PUBLISH");
+    assertThat(publishJob.getProperty(IngestionTrigger.PN_STREAMX_RESOURCES_TO_INGEST, String[].class))
+        .containsExactly("{\"path\":\"path-1\",\"primaryNodeType\":\"type-1\"}");
+
+    FakeJob unpublishJob = queuedJobs.get(1);
+    assertThat(unpublishJob.getProperty(IngestionTrigger.PN_STREAMX_INGESTION_ACTION, String.class))
+        .isEqualTo("UNPUBLISH");
+    assertThat(unpublishJob.getProperty(IngestionTrigger.PN_STREAMX_RESOURCES_TO_INGEST, String[].class))
+        .containsExactly("{\"path\":\"path-2\",\"primaryNodeType\":\"type-2\"}");
+  }
+
   private void givenPageHierarchy(String path) throws PersistenceException {
     slingContext.create().resource(path);
     resourceResolver.commit();
@@ -520,22 +546,29 @@ class StreamxPublicationServiceImplTest {
 
   private void whenPathIsPublished(String path) throws StreamxPublicationException {
     initializeComponentsIfNotInitialized();
-    publicationService.publish(Collections.singletonList(path));
+    publicationService.publish(toResourceToIngestList(path));
   }
 
-  private void whenPathsArePublished(String... path) throws StreamxPublicationException {
+  private void whenPathsArePublished(String... paths) throws StreamxPublicationException {
     initializeComponentsIfNotInitialized();
-    publicationService.publish(Arrays.asList(path));
+    publicationService.publish(toResourceToIngestList(paths));
   }
 
   private void whenPathIsUnpublished(String path) throws StreamxPublicationException {
     initializeComponentsIfNotInitialized();
-    publicationService.unpublish(Collections.singletonList(path));
+    publicationService.unpublish(toResourceToIngestList(path));
   }
 
-  private void whenPathsAreUnpublished(String... path) throws StreamxPublicationException {
+  private void whenPathsAreUnpublished(String... paths) throws StreamxPublicationException {
     initializeComponentsIfNotInitialized();
-    publicationService.unpublish(Arrays.asList(path));
+    publicationService.unpublish(toResourceToIngestList(paths));
+  }
+
+  private static List<ResourceToIngest> toResourceToIngestList(String... paths) {
+    return Arrays.stream(paths).map(path -> new ResourceToIngest(
+        path,
+        StringUtils.contains(path, "/dam/") ? "dam:Asset" : "cq:Page"
+    )).collect(Collectors.toList());
   }
 
   private void whenAllJobsAreProcessed() {
