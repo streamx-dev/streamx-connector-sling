@@ -160,7 +160,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
       );
       SlingUri slingUri = SlingUriBuilder.parse(rawUri, resourceResolver).build();
       return new SimpleInternalRequest(
-          slingUri, slingRequestProcessor, resourceResolverFactory
+          slingUri, slingRequestProcessor, resourceResolver
       ).getResponseAsString();
     } catch (LoginException exception) {
       String message = String.format("Unable to convert %s to string", pathToTextResource);
