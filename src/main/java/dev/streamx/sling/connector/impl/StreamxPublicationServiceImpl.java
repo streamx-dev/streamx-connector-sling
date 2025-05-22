@@ -8,7 +8,6 @@ import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX
 import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.PublicationAction;
 import dev.streamx.sling.connector.PublicationHandler;
-import dev.streamx.sling.connector.RelatedResource;
 import dev.streamx.sling.connector.RelatedResourcesSelector;
 import dev.streamx.sling.connector.StreamxPublicationException;
 import dev.streamx.sling.connector.StreamxPublicationService;
@@ -102,7 +101,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     try {
       handleResourcesPublication(resources, action);
       if (action == PublicationAction.PUBLISH) {
-        Set<RelatedResource> relatedResources = findRelatedResources(resources);
+        Set<ResourceInfo> relatedResources = findRelatedResources(resources);
         publishRelatedResources(relatedResources);
       }
     } catch (JobCreationException e) {
@@ -110,10 +109,10 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     }
   }
 
-  private Set<RelatedResource> findRelatedResources(List<ResourceInfo> resources)
+  private Set<ResourceInfo> findRelatedResources(List<ResourceInfo> resources)
       throws StreamxPublicationException {
     LOG.trace("Searching for related resources for paths: {}", resources);
-    Set<RelatedResource> relatedResources = new LinkedHashSet<>();
+    Set<ResourceInfo> relatedResources = new LinkedHashSet<>();
     for (ResourceInfo resource : resources) {
       relatedResources.addAll(findRelatedResources(resource));
     }
@@ -143,21 +142,21 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     }
   }
 
-  private void publishRelatedResources(Set<RelatedResource> relatedResources) throws JobCreationException {
-    for (RelatedResource relatedResource : relatedResources) {
+  private void publishRelatedResources(Set<ResourceInfo> relatedResources) throws JobCreationException {
+    for (ResourceInfo relatedResource : relatedResources) {
       LOG.trace("Handling related resource publication: {}", relatedResource);
       handlePublication(relatedResource, PublicationAction.PUBLISH);
     }
   }
 
-  private boolean isPublished(RelatedResource relatedResource, List<ResourceInfo> publishedResources) {
+  private boolean isPublished(ResourceInfo relatedResource, List<ResourceInfo> publishedResources) {
     return publishedResources.stream()
         .map(ResourceInfo::getPath)
         .anyMatch(relatedResource.getPath()::equals);
   }
 
-  private Set<RelatedResource> findRelatedResources(ResourceInfo resource) throws StreamxPublicationException {
-    Set<RelatedResource> relatedResources = new LinkedHashSet<>();
+  private Set<ResourceInfo> findRelatedResources(ResourceInfo resource) throws StreamxPublicationException {
+    Set<ResourceInfo> relatedResources = new LinkedHashSet<>();
     for (RelatedResourcesSelector relatedResourcesSelector : relatedResourcesSelectorRegistry.getSelectors()) {
       relatedResources.addAll(relatedResourcesSelector.getRelatedResources(resource.getPath()));
     }

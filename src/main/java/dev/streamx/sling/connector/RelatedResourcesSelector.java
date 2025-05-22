@@ -17,7 +17,7 @@ public interface RelatedResourcesSelector {
    * @return a collection of {@code RelatedResource} objects that are related to the specified resource
    * @throws StreamxPublicationException if a temporary error occurs and the operation should be retried
    */
-  Collection<RelatedResource> getRelatedResources(String resourcePath)
+  Collection<ResourceInfo> getRelatedResources(String resourcePath)
       throws StreamxPublicationException;
 
 }
