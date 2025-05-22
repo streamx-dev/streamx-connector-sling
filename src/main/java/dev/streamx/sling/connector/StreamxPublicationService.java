@@ -21,7 +21,7 @@ public interface StreamxPublicationService {
    * @throws StreamxPublicationException if a temporary error occurs and the operation should be
    *                                     retried
    */
-  void publish(List<ResourceToIngest> resources) throws StreamxPublicationException;
+  void publish(List<ResourceInfo> resources) throws StreamxPublicationException;
 
   /**
    * Unpublishes the specified resources.
@@ -30,6 +30,6 @@ public interface StreamxPublicationService {
    * @throws StreamxPublicationException if a temporary error occurs and the operation should be
    *                                     retried
    */
-  void unpublish(List<ResourceToIngest> resources) throws StreamxPublicationException;
+  void unpublish(List<ResourceInfo> resources) throws StreamxPublicationException;
 
 }

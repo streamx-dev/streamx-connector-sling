@@ -1,6 +1,6 @@
 package dev.streamx.sling.connector.testing.handlers;
 
-import dev.streamx.sling.connector.ResourceToIngest;
+import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.PublicationHandler;
 import dev.streamx.sling.connector.PublishData;
 import dev.streamx.sling.connector.UnpublishData;
@@ -24,7 +24,7 @@ abstract class AbstractPagePublicationHandler implements PublicationHandler<Page
   protected abstract String handledPagePathPrefix();
 
   @Override
-  public boolean canHandle(ResourceToIngest resource) {
+  public boolean canHandle(ResourceInfo resource) {
     return resource.getPrimaryNodeType().equals("cq:Page")
            && resource.getPath().startsWith(handledPagePathPrefix());
   }

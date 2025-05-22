@@ -142,7 +142,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
         .collect(Collectors.toUnmodifiableList());
     LOG.trace("Recognizing paths for '{}' with these patterns: {}", resourcePath, patterns);
 
-    String resourceAsString = downloadResourceAsString(resourcePath, resourceResolver);
+    String resourceAsString = readResourceAsString(resourcePath, resourceResolver);
 
     Collection<String> extractedPaths = patterns.stream()
         .flatMap(
@@ -158,7 +158,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
     return extractedPaths;
   }
 
-  private String downloadResourceAsString(String resourcePath, ResourceResolver resourceResolver) {
+  private String readResourceAsString(String resourcePath, ResourceResolver resourceResolver) {
     String rawUri = String.format(
         "%s%s", resourcePath,
         Optional.ofNullable(config.get().resource$_$path_postfix$_$to$_$append())

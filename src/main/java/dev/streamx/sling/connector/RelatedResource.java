@@ -4,7 +4,7 @@ package dev.streamx.sling.connector;
  * The {@code RelatedResource} class encapsulates information about related resources
  * along with their publication actions, indicating whether they should be published or unpublished.
  */
-public class RelatedResource extends ResourceToIngest {
+public class RelatedResource extends ResourceInfo {
 
   /**
    * Publication action for the related resource

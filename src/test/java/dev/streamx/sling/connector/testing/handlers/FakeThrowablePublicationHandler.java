@@ -1,6 +1,6 @@
 package dev.streamx.sling.connector.testing.handlers;
 
-import dev.streamx.sling.connector.ResourceToIngest;
+import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.PublicationHandler;
 import dev.streamx.sling.connector.PublishData;
 import dev.streamx.sling.connector.StreamxPublicationException;
@@ -17,7 +17,7 @@ public class FakeThrowablePublicationHandler implements PublicationHandler<Strin
   }
 
   @Override
-  public boolean canHandle(ResourceToIngest resource) {
+  public boolean canHandle(ResourceInfo resource) {
     return true;
   }
 

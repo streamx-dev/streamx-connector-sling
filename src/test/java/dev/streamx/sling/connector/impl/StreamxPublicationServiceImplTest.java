@@ -111,14 +111,14 @@ class StreamxPublicationServiceImplTest {
     fakeStreamxClient = fakeStreamxClientFactory.getFakeClient("/fake/streamx/instance");
   }
 
-  private void processResourcesAsJob(List<ResourceToIngest> resources, String action) {
+  private void processResourcesAsJob(List<ResourceInfo> resources, String action) {
     String[] serializedResources = resources
         .stream()
-        .map(ResourceToIngest::serialize)
+        .map(ResourceInfo::serialize)
         .toArray(String[]::new);
 
     Job job = mock(Job.class);
-    when(job.getProperty(IngestionTrigger.PN_STREAMX_RESOURCES_TO_INGEST, String[].class)).thenReturn(serializedResources);
+    when(job.getProperty(IngestionTrigger.PN_STREAMX_RESOURCES_INFO, String[].class)).thenReturn(serializedResources);
     when(job.getProperty(IngestionTrigger.PN_STREAMX_INGESTION_ACTION, String.class)).thenReturn(action);
     publicationService.process(job, new FakeJobExecutionContext());
   }
@@ -495,8 +495,8 @@ class StreamxPublicationServiceImplTest {
     doCallRealMethod().when(publicationService).unpublish(anyList());
 
     // when
-    publicationService.publish(Collections.singletonList(new ResourceToIngest("path-1", "type-1")));
-    publicationService.unpublish(Collections.singletonList(new ResourceToIngest("path-2", "type-2")));
+    publicationService.publish(Collections.singletonList(new ResourceInfo("path-1", "type-1")));
+    publicationService.unpublish(Collections.singletonList(new ResourceInfo("path-2", "type-2")));
 
     // then
     List<FakeJob> queuedJobs = fakeJobManager.getJobQueue();
@@ -505,13 +505,13 @@ class StreamxPublicationServiceImplTest {
     FakeJob publishJob = queuedJobs.get(0);
     assertThat(publishJob.getProperty(IngestionTrigger.PN_STREAMX_INGESTION_ACTION, String.class))
         .isEqualTo("PUBLISH");
-    assertThat(publishJob.getProperty(IngestionTrigger.PN_STREAMX_RESOURCES_TO_INGEST, String[].class))
+    assertThat(publishJob.getProperty(IngestionTrigger.PN_STREAMX_RESOURCES_INFO, String[].class))
         .containsExactly("{\"path\":\"path-1\",\"primaryNodeType\":\"type-1\"}");
 
     FakeJob unpublishJob = queuedJobs.get(1);
     assertThat(unpublishJob.getProperty(IngestionTrigger.PN_STREAMX_INGESTION_ACTION, String.class))
         .isEqualTo("UNPUBLISH");
-    assertThat(unpublishJob.getProperty(IngestionTrigger.PN_STREAMX_RESOURCES_TO_INGEST, String[].class))
+    assertThat(unpublishJob.getProperty(IngestionTrigger.PN_STREAMX_RESOURCES_INFO, String[].class))
         .containsExactly("{\"path\":\"path-2\",\"primaryNodeType\":\"type-2\"}");
   }
 
@@ -546,26 +546,26 @@ class StreamxPublicationServiceImplTest {
 
   private void whenPathIsPublished(String path) throws StreamxPublicationException {
     initializeComponentsIfNotInitialized();
-    publicationService.publish(toResourceToIngestList(path));
+    publicationService.publish(toResourceInfoList(path));
   }
 
   private void whenPathsArePublished(String... paths) throws StreamxPublicationException {
     initializeComponentsIfNotInitialized();
-    publicationService.publish(toResourceToIngestList(paths));
+    publicationService.publish(toResourceInfoList(paths));
   }
 
   private void whenPathIsUnpublished(String path) throws StreamxPublicationException {
     initializeComponentsIfNotInitialized();
-    publicationService.unpublish(toResourceToIngestList(path));
+    publicationService.unpublish(toResourceInfoList(path));
   }
 
   private void whenPathsAreUnpublished(String... paths) throws StreamxPublicationException {
     initializeComponentsIfNotInitialized();
-    publicationService.unpublish(toResourceToIngestList(paths));
+    publicationService.unpublish(toResourceInfoList(paths));
   }
 
-  private static List<ResourceToIngest> toResourceToIngestList(String... paths) {
-    return Arrays.stream(paths).map(path -> new ResourceToIngest(
+  private static List<ResourceInfo> toResourceInfoList(String... paths) {
+    return Arrays.stream(paths).map(path -> new ResourceInfo(
         path,
         StringUtils.contains(path, "/dam/") ? "dam:Asset" : "cq:Page"
     )).collect(Collectors.toList());

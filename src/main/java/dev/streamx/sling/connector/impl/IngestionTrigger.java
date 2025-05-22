@@ -1,6 +1,6 @@
 package dev.streamx.sling.connector.impl;
 
-import dev.streamx.sling.connector.ResourceToIngest;
+import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.PublicationAction;
 import java.util.Collections;
 import java.util.List;
@@ -18,11 +18,11 @@ class IngestionTrigger {
 
   static final String JOB_TOPIC = "dev/streamx/ingestion-trigger";
   static final String PN_STREAMX_INGESTION_ACTION = "streamx.ingestionAction";
-  static final String PN_STREAMX_RESOURCES_TO_INGEST = "streamx.resourcesToIngest";
+  static final String PN_STREAMX_RESOURCES_INFO = "streamx.resourcesInfo";
 
   private static final Logger LOG = LoggerFactory.getLogger(IngestionTrigger.class);
   private final PublicationAction ingestionAction;
-  private final List<ResourceToIngest> resourcesToIngest;
+  private final List<ResourceInfo> resourcesInfo;
 
   /**
    * Constructs an instance of this class.
@@ -36,26 +36,26 @@ class IngestionTrigger {
     String ingestionActionRaw = job.getProperty(PN_STREAMX_INGESTION_ACTION, String.class);
     this.ingestionAction = PublicationAction.of(ingestionActionRaw).orElseThrow();
 
-    String[] resourcesToIngestRaw = job.getProperty(PN_STREAMX_RESOURCES_TO_INGEST, String[].class);
-    this.resourcesToIngest = Stream.of(resourcesToIngestRaw)
-        .map(ResourceToIngest::deserialize)
+    String[] resourcesInfoRaw = job.getProperty(PN_STREAMX_RESOURCES_INFO, String[].class);
+    this.resourcesInfo = Stream.of(resourcesInfoRaw)
+        .map(ResourceInfo::deserialize)
         .filter(resource -> resource.getPath() != null)
         .collect(Collectors.toUnmodifiableList());
 
-    LOG.trace("Decomposed {} into [{} {}]", job, ingestionAction, resourcesToIngest);
+    LOG.trace("Decomposed {} into [{} {}]", job, ingestionAction, resourcesInfo);
   }
 
   /**
    * Constructs an instance of this class.
    *
-   * @param ingestionAction   {@link PublicationAction} to be performed as the result of this
-   *                          {@link IngestionTrigger} activation
-   * @param resourcesToIngest {@link List} of {@link ResourceToIngest} objects to be ingested as the result of this
-   *                          {@link IngestionTrigger} activation
+   * @param ingestionAction {@link PublicationAction} to be performed as the result of this
+   *                        {@link IngestionTrigger} activation
+   * @param resourcesInfo   {@link List} of {@link ResourceInfo} objects to be ingested as the result of this
+   *                        {@link IngestionTrigger} activation
    */
-  IngestionTrigger(PublicationAction ingestionAction, List<ResourceToIngest> resourcesToIngest) {
+  IngestionTrigger(PublicationAction ingestionAction, List<ResourceInfo> resourcesInfo) {
     this.ingestionAction = ingestionAction;
-    this.resourcesToIngest = Collections.unmodifiableList(resourcesToIngest);
+    this.resourcesInfo = Collections.unmodifiableList(resourcesInfo);
   }
 
   /**
@@ -70,14 +70,14 @@ class IngestionTrigger {
   }
 
   /**
-   * {@link List} of {@link ResourceToIngest}s to be ingested as the result of this {@link IngestionTrigger}
+   * {@link List} of {@link ResourceInfo}s to be ingested as the result of this {@link IngestionTrigger}
    * activation
    *
-   * @return {@link List} of {@link ResourceToIngest}s to be ingested as the result of this
+   * @return {@link List} of {@link ResourceInfo}s to be ingested as the result of this
    * {@link IngestionTrigger} activation
    */
-  List<ResourceToIngest> resourcesToIngest() {
-    return resourcesToIngest;
+  List<ResourceInfo> resourcesInfo() {
+    return resourcesInfo;
   }
 
   /**
@@ -91,7 +91,7 @@ class IngestionTrigger {
   Map<String, Object> asJobProps() {
     return Map.of(
         PN_STREAMX_INGESTION_ACTION, ingestionAction.toString(),
-        PN_STREAMX_RESOURCES_TO_INGEST, resourcesToIngest.stream().map(ResourceToIngest::serialize).toArray(String[]::new)
+        PN_STREAMX_RESOURCES_INFO, resourcesInfo.stream().map(ResourceInfo::serialize).toArray(String[]::new)
     );
   }
 }

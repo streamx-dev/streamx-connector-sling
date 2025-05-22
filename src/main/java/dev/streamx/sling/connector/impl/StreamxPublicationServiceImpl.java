@@ -5,7 +5,7 @@ import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX
 import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_HANDLER_ID;
 import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PATH;
 
-import dev.streamx.sling.connector.ResourceToIngest;
+import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.PublicationAction;
 import dev.streamx.sling.connector.PublicationHandler;
 import dev.streamx.sling.connector.RelatedResource;
@@ -75,17 +75,17 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
   }
 
   @Override
-  public void publish(List<ResourceToIngest> resourcesToPublish) throws StreamxPublicationException {
+  public void publish(List<ResourceInfo> resourcesToPublish) throws StreamxPublicationException {
     submitIngestionTriggerJob(PublicationAction.PUBLISH, resourcesToPublish);
   }
 
   @Override
-  public void unpublish(List<ResourceToIngest> resourcesToUnpublish) throws StreamxPublicationException {
+  public void unpublish(List<ResourceInfo> resourcesToUnpublish) throws StreamxPublicationException {
     submitIngestionTriggerJob(PublicationAction.UNPUBLISH, resourcesToUnpublish);
   }
 
   private void submitIngestionTriggerJob(
-      PublicationAction ingestionAction, List<ResourceToIngest> resources
+      PublicationAction ingestionAction, List<ResourceInfo> resources
   ) {
     IngestionTrigger ingestionTrigger = new IngestionTrigger(ingestionAction, resources);
     Map<String, Object> jobProps = ingestionTrigger.asJobProps();
@@ -93,7 +93,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     LOG.debug("Added job: {}", addedJob);
   }
 
-  private void handlePublication(PublicationAction action, List<ResourceToIngest> resources)
+  private void handlePublication(PublicationAction action, List<ResourceInfo> resources)
       throws StreamxPublicationException {
     LOG.trace("Handling publication for paths: {}", resources);
     if (!enabled || resources.isEmpty()) {
@@ -112,12 +112,12 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     }
   }
 
-  private Set<RelatedResource> findRelatedResources(List<ResourceToIngest> resources,
+  private Set<RelatedResource> findRelatedResources(List<ResourceInfo> resources,
       PublicationAction action)
       throws StreamxPublicationException {
     LOG.trace("Searching for related resources for {} and these paths: {}", action, resources);
     Set<RelatedResource> relatedResources = new LinkedHashSet<>();
-    for (ResourceToIngest resource : resources) {
+    for (ResourceInfo resource : resources) {
       relatedResources.addAll(findRelatedResources(resource, action));
     }
 
@@ -127,9 +127,9 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
         .collect(Collectors.toCollection(LinkedHashSet::new));
   }
 
-  private void handleResourcesPublication(List<ResourceToIngest> resources, PublicationAction action)
+  private void handleResourcesPublication(List<ResourceInfo> resources, PublicationAction action)
       throws JobCreationException {
-    for (ResourceToIngest resource : resources) {
+    for (ResourceInfo resource : resources) {
       if (StringUtils.isBlank(resource.getPath())) {
         continue;
       }
@@ -137,7 +137,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     }
   }
 
-  private void handlePublication(ResourceToIngest resource, PublicationAction action)
+  private void handlePublication(ResourceInfo resource, PublicationAction action)
       throws JobCreationException {
     LOG.trace("Handling publication for resource: {}", resource);
     for (PublicationHandler<?> handler : publicationHandlerRegistry.getHandlers()) {
@@ -155,19 +155,19 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     }
   }
 
-  private Predicate<RelatedResource> shouldPublishResourcePredicate(List<ResourceToIngest> publishedResources,
+  private Predicate<RelatedResource> shouldPublishResourcePredicate(List<ResourceInfo> publishedResources,
       PublicationAction action) {
     return relatedResource -> !isPublished(relatedResource, publishedResources, action);
   }
 
-  private boolean isPublished(RelatedResource relatedResource, List<ResourceToIngest> publishedResources,
+  private boolean isPublished(RelatedResource relatedResource, List<ResourceInfo> publishedResources,
       PublicationAction action) {
     return relatedResource.getAction().equals(action) && publishedResources.stream()
-        .map(ResourceToIngest::getPath)
+        .map(ResourceInfo::getPath)
         .anyMatch(relatedResource.getPath()::equals);
   }
 
-  private Set<RelatedResource> findRelatedResources(ResourceToIngest resource, PublicationAction action)
+  private Set<RelatedResource> findRelatedResources(ResourceInfo resource, PublicationAction action)
       throws StreamxPublicationException {
     Set<RelatedResource> relatedResources = new LinkedHashSet<>();
     for (RelatedResourcesSelector relatedResourcesSelector : relatedResourcesSelectorRegistry.getSelectors()) {
@@ -206,7 +206,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     LOG.trace("Processing {}", job);
     IngestionTrigger ingestionTrigger = new IngestionTrigger(job);
     PublicationAction ingestionAction = ingestionTrigger.ingestionAction();
-    List<ResourceToIngest> resources = ingestionTrigger.resourcesToIngest();
+    List<ResourceInfo> resources = ingestionTrigger.resourcesInfo();
     try {
       handlePublication(ingestionAction, resources);
       return jobExecutionContext.result().succeeded();

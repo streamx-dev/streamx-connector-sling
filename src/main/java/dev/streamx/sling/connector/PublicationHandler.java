@@ -21,7 +21,7 @@ public interface PublicationHandler<T> {
    * @param resource the path and type of the resource
    * @return {@code true} if this handler can handle the resource path, {@code false} otherwise
    */
-  boolean canHandle(ResourceToIngest resource);
+  boolean canHandle(ResourceInfo resource);
 
   /**
    * Prepares the data to publish for the specified resource path. 

@@ -8,7 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 /**
  * Specifies path and JCR primary node type of a resource to be published or unpublished
  */
-public class ResourceToIngest {
+public class ResourceInfo {
 
   private static ObjectMapper objectMapper;
 
@@ -18,17 +18,17 @@ public class ResourceToIngest {
   private final String path;
 
   /**
-   * Type of the resource
+   * Primary node type of the resource
    */
   private final String primaryNodeType;
 
   /**
-   * Creates an instance of ResourceToIngest
+   * Creates an instance of {@link ResourceInfo}
    * @param path path of the resource
-   * @param primaryNodeType type of the resource
+   * @param primaryNodeType primary node type of the resource
    */
   @JsonCreator
-  public ResourceToIngest(
+  public ResourceInfo(
       @JsonProperty("path") String path,
       @JsonProperty("primaryNodeType") String primaryNodeType) {
     this.path = path;
@@ -43,7 +43,7 @@ public class ResourceToIngest {
   }
 
   /**
-   * @return type of the resource
+   * @return primary node type of the resource
    */
   public String getPrimaryNodeType() {
     return primaryNodeType;
@@ -56,19 +56,19 @@ public class ResourceToIngest {
     try {
       return getOrCreateObjectMapper().writeValueAsString(this);
     } catch (JsonProcessingException ex) {
-      throw new IllegalArgumentException("Error serializing ResourceToIngest", ex);
+      throw new IllegalArgumentException("Error serializing from " + ResourceInfo.class, ex);
     }
   }
 
   /**
-   * @param serialized an ResourceToIngest instance serialized to JSON
-   * @return the JSON string deserialized to a ResourceToIngest instance
+   * @param serialized a {@link ResourceInfo} instance serialized to JSON
+   * @return the JSON string deserialized to a {@link ResourceInfo} instance
    */
-  public static ResourceToIngest deserialize(String serialized) {
+  public static ResourceInfo deserialize(String serialized) {
     try {
-      return getOrCreateObjectMapper().readValue(serialized, ResourceToIngest.class);
+      return getOrCreateObjectMapper().readValue(serialized, ResourceInfo.class);
     } catch (JsonProcessingException ex) {
-      throw new IllegalArgumentException("Error deserializing ResourceToIngest", ex);
+      throw new IllegalArgumentException("Error deserializing to " + ResourceInfo.class, ex);
     }
   }
 
