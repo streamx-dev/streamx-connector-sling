@@ -81,7 +81,7 @@ public abstract class ResourcePathPublicationHandler<T> implements PublicationHa
   ) throws IOException {
     SlingUri slingUri = SlingUriBuilder.parse(resourcePath, resourceResolver).build();
     SimpleInternalRequest simpleInternalRequest = new SimpleInternalRequest(
-        slingUri, slingRequestProcessor, resourceResolverFactory
+        slingUri, slingRequestProcessor, resourceResolver
     );
     try (InputStream inputStream = simpleInternalRequest.getResponseAsInputStream().orElseThrow()) {
       String channel = configuration().channel();

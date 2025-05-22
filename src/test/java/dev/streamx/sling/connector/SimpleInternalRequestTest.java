@@ -6,12 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import dev.streamx.sling.connector.util.SimpleInternalRequest;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.Optional;
 import java.util.Random;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.apache.sling.api.resource.ResourceResolver;
-import org.apache.sling.api.resource.ResourceResolverFactory;
 import org.apache.sling.api.uri.SlingUri;
 import org.apache.sling.api.uri.SlingUriBuilder;
 import org.apache.sling.engine.SlingRequestProcessor;
@@ -73,9 +71,6 @@ class SimpleInternalRequestTest {
   @Test
   void mustProduceString() {
     ResourceResolver resourceResolver = context.resourceResolver();
-    ResourceResolverFactory resourceResolverFactory = Optional.ofNullable(
-        context.getService(ResourceResolverFactory.class)
-    ).orElseThrow();
     SlingUri plainMarsUri = SlingUriBuilder.parse(
         "/content/mars-page.plain.html", resourceResolver
     ).build();
@@ -89,16 +84,16 @@ class SimpleInternalRequestTest {
         "/content/firsthops/us/en/_jcr_content/root/container/container/image.coreimg.85.800.jpeg/1741014797808/lava-rock-formation.jpeg", resourceResolver
     ).build();
     SimpleInternalRequest plainMarsRequest = new SimpleInternalRequest(
-        plainMarsUri, slingRequestProcessor, resourceResolverFactory
+        plainMarsUri, slingRequestProcessor, resourceResolver
     );
     SimpleInternalRequest usualMarsRequest = new SimpleInternalRequest(
-        usualMarsUri, slingRequestProcessor, resourceResolverFactory
+        usualMarsUri, slingRequestProcessor, resourceResolver
     );
     SimpleInternalRequest unknownRequest = new SimpleInternalRequest(
-        unknownPageUri, slingRequestProcessor, resourceResolverFactory
+        unknownPageUri, slingRequestProcessor, resourceResolver
     );
     SimpleInternalRequest binaryRequest = new SimpleInternalRequest(
-        binaryUri, slingRequestProcessor, resourceResolverFactory
+        binaryUri, slingRequestProcessor, resourceResolver
     );
 
     assertAll(

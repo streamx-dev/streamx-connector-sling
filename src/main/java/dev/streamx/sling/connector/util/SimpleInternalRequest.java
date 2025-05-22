@@ -30,10 +30,28 @@ public class SimpleInternalRequest {
 
   private static final Logger LOG = LoggerFactory.getLogger(SimpleInternalRequest.class);
 
-  private final ResourceResolverFactory resourceResolverFactory;
+  private final ResourceResolver resourceResolver;
   private final SlingRequestProcessor slingRequestProcessor;
   private final SlingUri slingUri;
 
+  /**
+   * Constructs a new instance of this class.
+   *
+   * @param slingUri                {@link SlingUri} to request
+   * @param slingRequestProcessor   {@link SlingRequestProcessor} to use for request processing
+   * @param resourceResolver        {@link ResourceResolver} to use for resource resolution
+   */
+  public SimpleInternalRequest(
+      SlingUri slingUri,
+      SlingRequestProcessor slingRequestProcessor,
+      ResourceResolver resourceResolver
+  ) {
+    this.slingUri = slingUri;
+    this.slingRequestProcessor = slingRequestProcessor;
+    this.resourceResolver = resourceResolver;
+  }
+
+  // TODO remove when package version changed to 2.0.0
   /**
    * Constructs a new instance of this class.
    *
@@ -46,9 +64,7 @@ public class SimpleInternalRequest {
       SlingRequestProcessor slingRequestProcessor,
       ResourceResolverFactory resourceResolverFactory
   ) {
-    this.slingUri = slingUri;
-    this.slingRequestProcessor = slingRequestProcessor;
-    this.resourceResolverFactory = resourceResolverFactory;
+    throw new UnsupportedOperationException("Use the constructor with ResourceResolver instead");
   }
 
   private Optional<SlingHttpServletResponse> extractResponse(InternalRequest internalRequest) {
@@ -84,7 +100,6 @@ public class SimpleInternalRequest {
         );
   }
 
-  @SuppressWarnings({"squid:S1874", "deprecation"})
   private Optional<InternalRequest> executedInternalRequest(SlingUri slingUri) {
     AbstractMap.SimpleEntry<String, String> wcmmode = new AbstractMap.SimpleEntry<>(
         "wcmmode", "disabled"
@@ -93,15 +108,12 @@ public class SimpleInternalRequest {
         slingUri.getPathParameters().entrySet().stream(), Stream.of(wcmmode)
     ).collect(Collectors.toMap(Entry::getKey, Entry::getValue));
     LOG.trace("Creating internal request for '{}'", slingUri);
-    try (
-        ResourceResolver resourceResolver
-            = resourceResolverFactory.getAdministrativeResourceResolver(null)
-    ) {
+    try {
       InternalRequest executedInternalRequest = new SlingInternalRequest(
           resourceResolver, slingRequestProcessor, slingUri.toString()
       ).withParameters(pathParameters).execute();
       return Optional.of(executedInternalRequest);
-    } catch (IOException | LoginException exception) {
+    } catch (IOException exception) {
       String message = String.format("Failed to execute internal request for '%s'", slingUri);
       LOG.error(message, exception);
       return Optional.empty();
