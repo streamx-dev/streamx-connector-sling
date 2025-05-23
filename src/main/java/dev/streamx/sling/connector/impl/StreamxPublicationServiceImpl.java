@@ -103,7 +103,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
       handleResourcesPublication(resources, action);
       if (action == PublicationAction.PUBLISH) {
         Set<RelatedResource> relatedResources = findRelatedResources(resources);
-        handleRelatedResourcesPublication(relatedResources);
+        publishRelatedResources(relatedResources);
       }
     } catch (JobCreationException e) {
       throw new StreamxPublicationException("Can't handle publication. " + e.getMessage(), e);
@@ -143,8 +143,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     }
   }
 
-  private void handleRelatedResourcesPublication(Set<RelatedResource> relatedResources)
-      throws JobCreationException {
+  private void publishRelatedResources(Set<RelatedResource> relatedResources) throws JobCreationException {
     for (RelatedResource relatedResource : relatedResources) {
       LOG.trace("Handling related resource publication: {}", relatedResource);
       handlePublication(relatedResource, PublicationAction.PUBLISH);
