@@ -7,7 +7,6 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 
-import dev.streamx.sling.connector.PublicationAction;
 import dev.streamx.sling.connector.RelatedResource;
 import java.io.File;
 import java.lang.annotation.Annotation;
@@ -154,12 +153,12 @@ class ResourceContentRelatedResourcesSelectorTest {
             "/etc.clientlibs/firsthops/clientlibs/clientlib-dependencies.lc-d41d8cd98f00b204e9800998ecf8427e-lc.min.js",
             "/etc.clientlibs/firsthops/clientlibs/clientlib-site.lc-99a5ff922700a9bff656c1db08c6bc22-lc.min.css",
             "/etc.clientlibs/firsthops/clientlibs/clientlib-site.lc-d91e521f6b4cc63fe57186d1b172e7e9-lc.min.js"
-        ).map(expectedPath -> new RelatedResource(expectedPath, "dam:Asset", PublicationAction.PUBLISH))
+        ).map(expectedPath -> new RelatedResource(expectedPath, "dam:Asset"))
         .collect(Collectors.toUnmodifiableList());
 
     // when
     Collection<RelatedResource> actualRelatedResources = resourceContentRelatedResourcesSelector.getRelatedResources(
-        MAIN_FOLDER_RESOURCE, PublicationAction.PUBLISH
+        MAIN_FOLDER_RESOURCE
     );
 
     // then

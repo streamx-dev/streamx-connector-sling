@@ -1,6 +1,5 @@
 package dev.streamx.sling.connector.selectors.content;
 
-import dev.streamx.sling.connector.PublicationAction;
 import dev.streamx.sling.connector.RelatedResource;
 import dev.streamx.sling.connector.RelatedResourcesSelector;
 import dev.streamx.sling.connector.util.SimpleInternalRequest;
@@ -80,12 +79,10 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
   }
 
   @Override
-  public Collection<RelatedResource> getRelatedResources(
-      String resourcePath, PublicationAction action
-  ) {
+  public Collection<RelatedResource> getRelatedResources(String resourcePath) {
     LOG.debug("Getting related resources for '{}'", resourcePath);
     try (ResourceResolver resourceResolver = resourceResolverFactory.getAdministrativeResourceResolver(null)) {
-      return getRelatedResources(resourcePath, action, resourceResolver);
+      return getRelatedResources(resourcePath, resourceResolver);
     } catch (LoginException exception) {
       LOG.error("Failed to create Resource Resolver to load related resources for {}", resourcePath, exception);
       return Collections.emptyList();
@@ -93,7 +90,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
   }
 
   private List<RelatedResource> getRelatedResources(
-      String resourcePath, PublicationAction action, ResourceResolver resourceResolver
+      String resourcePath, ResourceResolver resourceResolver
   ) {
     ResourceFilter resourceFilter = new ResourceFilter(config.get(), resourceResolver);
     boolean isAcceptableResource = resourceFilter.isAcceptable(resourcePath);
@@ -117,8 +114,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
     return extractedPaths.stream()
         .map(recognizedPath -> new RelatedResource(
             recognizedPath,
-            resourceFilter.extractPrimaryNodeType(recognizedPath, resourceResolver),
-            action
+            resourceFilter.extractPrimaryNodeType(recognizedPath, resourceResolver)
         ))
         .collect(Collectors.toUnmodifiableList());
   }

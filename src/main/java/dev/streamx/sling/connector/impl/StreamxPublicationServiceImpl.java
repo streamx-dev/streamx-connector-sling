@@ -18,7 +18,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.sling.event.jobs.Job;
@@ -100,30 +99,27 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
       return;
     }
 
-    boolean isPublish = action == PublicationAction.PUBLISH;
-    Set<RelatedResource> relatedResources =
-        isPublish ? findRelatedResources(resources, action) : Set.of();
-
     try {
       handleResourcesPublication(resources, action);
-      handleRelatedResourcesPublication(relatedResources);
+      if (action == PublicationAction.PUBLISH) {
+        Set<RelatedResource> relatedResources = findRelatedResources(resources);
+        publishRelatedResources(relatedResources);
+      }
     } catch (JobCreationException e) {
       throw new StreamxPublicationException("Can't handle publication. " + e.getMessage(), e);
     }
   }
 
-  private Set<RelatedResource> findRelatedResources(List<ResourceInfo> resources,
-      PublicationAction action)
+  private Set<RelatedResource> findRelatedResources(List<ResourceInfo> resources)
       throws StreamxPublicationException {
-    LOG.trace("Searching for related resources for {} and these paths: {}", action, resources);
+    LOG.trace("Searching for related resources for paths: {}", resources);
     Set<RelatedResource> relatedResources = new LinkedHashSet<>();
     for (ResourceInfo resource : resources) {
-      relatedResources.addAll(findRelatedResources(resource, action));
+      relatedResources.addAll(findRelatedResources(resource));
     }
 
-    Predicate<RelatedResource> shouldBePublished = shouldPublishResourcePredicate(resources,
-        action);
-    return relatedResources.stream().filter(shouldBePublished)
+    return relatedResources.stream()
+        .filter(relatedResource -> !isPublished(relatedResource, resources))
         .collect(Collectors.toCollection(LinkedHashSet::new));
   }
 
@@ -147,31 +143,23 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     }
   }
 
-  private void handleRelatedResourcesPublication(Set<RelatedResource> relatedResources)
-      throws JobCreationException {
+  private void publishRelatedResources(Set<RelatedResource> relatedResources) throws JobCreationException {
     for (RelatedResource relatedResource : relatedResources) {
       LOG.trace("Handling related resource publication: {}", relatedResource);
-      handlePublication(relatedResource, relatedResource.getAction());
+      handlePublication(relatedResource, PublicationAction.PUBLISH);
     }
   }
 
-  private Predicate<RelatedResource> shouldPublishResourcePredicate(List<ResourceInfo> publishedResources,
-      PublicationAction action) {
-    return relatedResource -> !isPublished(relatedResource, publishedResources, action);
-  }
-
-  private boolean isPublished(RelatedResource relatedResource, List<ResourceInfo> publishedResources,
-      PublicationAction action) {
-    return relatedResource.getAction().equals(action) && publishedResources.stream()
+  private boolean isPublished(RelatedResource relatedResource, List<ResourceInfo> publishedResources) {
+    return publishedResources.stream()
         .map(ResourceInfo::getPath)
         .anyMatch(relatedResource.getPath()::equals);
   }
 
-  private Set<RelatedResource> findRelatedResources(ResourceInfo resource, PublicationAction action)
-      throws StreamxPublicationException {
+  private Set<RelatedResource> findRelatedResources(ResourceInfo resource) throws StreamxPublicationException {
     Set<RelatedResource> relatedResources = new LinkedHashSet<>();
     for (RelatedResourcesSelector relatedResourcesSelector : relatedResourcesSelectorRegistry.getSelectors()) {
-      relatedResources.addAll(relatedResourcesSelector.getRelatedResources(resource.getPath(), action));
+      relatedResources.addAll(relatedResourcesSelector.getRelatedResources(resource.getPath()));
     }
     return relatedResources;
   }
@@ -211,6 +199,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
       handlePublication(ingestionAction, resources);
       return jobExecutionContext.result().succeeded();
     } catch (StreamxPublicationException exception) {
+      LOG.error("Error while processing job", exception);
       return jobExecutionContext.result().message("Error while processing job: " + exception.getMessage()).failed();
     }
   }

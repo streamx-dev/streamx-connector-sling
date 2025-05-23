@@ -1,35 +1,18 @@
 package dev.streamx.sling.connector;
 
 /**
- * The {@code RelatedResource} class encapsulates information about related resources
- * along with their publication actions, indicating whether they should be published or unpublished.
+ * The {@code RelatedResource} class encapsulates information about related resources.
  */
 public class RelatedResource extends ResourceInfo {
 
   /**
-   * Publication action for the related resource
-   */
-  private final PublicationAction action;
-
-  /**
-   * Constructs a {@code RelatedResource} object with the specified resource path and publication action.
+   * Constructs a {@code RelatedResource} object with the specified resource path and primary node type.
    *
    * @param resourcePath the path of the related resource
    * @param primaryNodeType the type of the related resource
-   * @param action the publication action for the related resource
    */
-  public RelatedResource(String resourcePath, String primaryNodeType, PublicationAction action) {
+  public RelatedResource(String resourcePath, String primaryNodeType) {
     super(resourcePath, primaryNodeType);
-    this.action = action;
-  }
-
-  /**
-   * Returns the publication action for the related resource.
-   *
-   * @return the publication action
-   */
-  public PublicationAction getAction() {
-    return action;
   }
 
   @Override
@@ -44,14 +27,12 @@ public class RelatedResource extends ResourceInfo {
     }
 
     if (getPath() == null && ((RelatedResource) o).getPath() == null
-        && getPrimaryNodeType() == null && ((RelatedResource) o).getPrimaryNodeType() == null
-        && action == null && ((RelatedResource) o).action == null) {
+        && getPrimaryNodeType() == null && ((RelatedResource) o).getPrimaryNodeType() == null) {
       return true;
     }
 
     return getPath() != null && getPath().equals(((RelatedResource) o).getPath())
-           && getPrimaryNodeType() != null && getPrimaryNodeType().equals(((RelatedResource) o).getPrimaryNodeType())
-           && action != null && action.equals(((RelatedResource) o).action);
+           && getPrimaryNodeType() != null && getPrimaryNodeType().equals(((RelatedResource) o).getPrimaryNodeType());
   }
 
 }

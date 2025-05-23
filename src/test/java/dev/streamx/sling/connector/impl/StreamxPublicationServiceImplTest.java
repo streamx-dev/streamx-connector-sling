@@ -387,7 +387,7 @@ class StreamxPublicationServiceImplTest {
       throws PersistenceException, StreamxPublicationException {
     givenPageHierarchy("/content/my-site/page-1");
     givenPageHierarchy("/content/my-site/related-page-to-publish");
-    givenPageHierarchy("/content/my-site/related-page-to-unpublish");
+    givenPageHierarchy("/content/my-site/other-related-page-to-publish");
 
     givenRelatedResourcesSelectors(new RelatedPagesSelector());
 
@@ -403,7 +403,8 @@ class StreamxPublicationServiceImplTest {
         publish("/content/my-site/page-1.html", "pages", "Page: page-1"),
         publish("/content/my-site/related-page-to-publish.html", "pages",
             "Page: related-page-to-publish"),
-        unpublish("/content/my-site/related-page-to-unpublish.html", "pages")
+        publish("/content/my-site/other-related-page-to-publish.html", "pages",
+            "Page: other-related-page-to-publish")
     );
   }
 
@@ -412,7 +413,7 @@ class StreamxPublicationServiceImplTest {
       throws PersistenceException, StreamxPublicationException {
     givenPageHierarchy("/content/my-site/page-1");
     givenPageHierarchy("/content/my-site/related-page-to-publish");
-    givenPageHierarchy("/content/my-site/related-page-to-unpublish");
+    givenPageHierarchy("/content/my-site/other-related-page-to-publish");
 
     givenRelatedResourcesSelectors(new RelatedPagesSelector(), new RelatedPagesSelector(),
         new RelatedPagesSelector());
@@ -429,7 +430,8 @@ class StreamxPublicationServiceImplTest {
         publish("/content/my-site/page-1.html", "pages", "Page: page-1"),
         publish("/content/my-site/related-page-to-publish.html", "pages",
             "Page: related-page-to-publish"),
-        unpublish("/content/my-site/related-page-to-unpublish.html", "pages")
+        publish("/content/my-site/other-related-page-to-publish.html", "pages",
+            "Page: other-related-page-to-publish")
     );
   }
 
@@ -439,7 +441,7 @@ class StreamxPublicationServiceImplTest {
     givenPageHierarchy("/content/my-site/page-1");
     givenPageHierarchy("/content/my-site/page-2");
     givenPageHierarchy("/content/my-site/related-page-to-publish");
-    givenPageHierarchy("/content/my-site/related-page-to-unpublish");
+    givenPageHierarchy("/content/my-site/other-related-page-to-publish");
 
     givenRelatedResourcesSelectors(new RelatedPagesSelector());
 
@@ -457,7 +459,8 @@ class StreamxPublicationServiceImplTest {
         publish("/content/my-site/page-2.html", "pages", "Page: page-2"),
         publish("/content/my-site/related-page-to-publish.html", "pages",
             "Page: related-page-to-publish"),
-        unpublish("/content/my-site/related-page-to-unpublish.html", "pages")
+        publish("/content/my-site/other-related-page-to-publish.html", "pages",
+            "Page: other-related-page-to-publish")
     );
   }
 
@@ -466,7 +469,7 @@ class StreamxPublicationServiceImplTest {
       throws PersistenceException, StreamxPublicationException {
     givenPageHierarchy("/content/my-site/page-1");
     givenPageHierarchy("/content/my-site/related-page-to-publish");
-    givenPageHierarchy("/content/my-site/related-page-to-unpublish");
+    givenPageHierarchy("/content/my-site/other-related-page-to-publish");
 
     givenRelatedResourcesSelectors(new RelatedPagesSelector());
 
@@ -483,7 +486,8 @@ class StreamxPublicationServiceImplTest {
         publish("/content/my-site/page-1.html", "pages", "Page: page-1"),
         publish("/content/my-site/related-page-to-publish.html", "pages",
             "Page: related-page-to-publish"),
-        unpublish("/content/my-site/related-page-to-unpublish.html", "pages")
+        publish("/content/my-site/other-related-page-to-publish.html", "pages",
+            "Page: other-related-page-to-publish")
     );
   }
 
