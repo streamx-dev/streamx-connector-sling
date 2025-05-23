@@ -1,7 +1,7 @@
 package dev.streamx.sling.connector.selectors.content;
 
-import dev.streamx.sling.connector.RelatedResource;
 import dev.streamx.sling.connector.RelatedResourcesSelector;
+import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.util.SimpleInternalRequest;
 import java.util.Collection;
 import java.util.Collections;
@@ -32,7 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Extracts {@link RelatedResource}s from the content of a resource.
+ * Extracts {@link ResourceInfo}s from the content of a resource.
  */
 @Component(
     service = {ResourceContentRelatedResourcesSelector.class, RelatedResourcesSelector.class},
@@ -79,7 +79,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
   }
 
   @Override
-  public Collection<RelatedResource> getRelatedResources(String resourcePath) {
+  public Collection<ResourceInfo> getRelatedResources(String resourcePath) {
     LOG.debug("Getting related resources for '{}'", resourcePath);
     try (ResourceResolver resourceResolver = resourceResolverFactory.getAdministrativeResourceResolver(null)) {
       return getRelatedResources(resourcePath, resourceResolver);
@@ -89,7 +89,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
     }
   }
 
-  private List<RelatedResource> getRelatedResources(
+  private List<ResourceInfo> getRelatedResources(
       String resourcePath, ResourceResolver resourceResolver
   ) {
     ResourceFilter resourceFilter = new ResourceFilter(config.get(), resourceResolver);
@@ -112,7 +112,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
     }
 
     return extractedPaths.stream()
-        .map(recognizedPath -> new RelatedResource(
+        .map(recognizedPath -> new ResourceInfo(
             recognizedPath,
             resourceFilter.extractPrimaryNodeType(recognizedPath, resourceResolver)
         ))

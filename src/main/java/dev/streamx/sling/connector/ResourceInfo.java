@@ -82,6 +82,26 @@ public class ResourceInfo {
   }
 
   @Override
+  public int hashCode() {
+    return getPath().hashCode();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (!(o instanceof ResourceInfo)) {
+      return false;
+    }
+
+    if (getPath() == null && ((ResourceInfo) o).getPath() == null
+        && getPrimaryNodeType() == null && ((ResourceInfo) o).getPrimaryNodeType() == null) {
+      return true;
+    }
+
+    return getPath() != null && getPath().equals(((ResourceInfo) o).getPath())
+           && getPrimaryNodeType() != null && getPrimaryNodeType().equals(((ResourceInfo) o).getPrimaryNodeType());
+  }
+
+  @Override
   public String toString() {
     return "Path: " + path + ", Primary Node Type: " + primaryNodeType;
   }
