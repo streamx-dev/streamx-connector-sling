@@ -57,7 +57,7 @@ class PublicationJobExecutorTest {
 
   @Test
   void shouldCancelTheJobOnRuntimeException() {
-    publicationHandler.throwRuntimeException();
+    publicationHandler.setThrowRuntimeException();
     JobExecutionResult result = publicationJobExecutor.process(getFakeJob(),
         new FakeJobExecutionContext());
 
@@ -67,7 +67,7 @@ class PublicationJobExecutorTest {
   @ParameterizedTest
   @MethodSource("retryDelay")
   void shouldIncreaseRetryDelayUntilReachingThreshold(int retries, int expectedRetryDelay) {
-    publicationHandler.throwException();
+    publicationHandler.setThrowException();
     JobExecutionResult result = publicationJobExecutor.process(getFakeJob(retries),
         new FakeJobExecutionContext());
 

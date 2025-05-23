@@ -1,7 +1,7 @@
 /**
  * Utilities.
  */
-@Version("1.1.0")
+@Version("2.0.0")
 package dev.streamx.sling.connector.util;
 
 import org.osgi.annotation.versioning.Version;

@@ -1,8 +1,7 @@
 package dev.streamx.sling.connector.impl;
 
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,6 +18,7 @@ import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import javax.net.ssl.SSLException;
+import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpUriRequest;
@@ -195,16 +195,10 @@ class DefaultHttpClientFactoryTest {
     try (CloseableHttpClient client = factory.createNewClient()) {
       HttpUriRequest requestToHTTP = new HttpGet("http://localhost:" + HTTP_PORT);
       try (CloseableHttpResponse response = client.execute(requestToHTTP)) {
-        assertAll(
-            () -> assertEquals(HttpServletResponse.SC_OK, response.getStatusLine().getStatusCode()),
-            () -> assertEquals(
-                "Hello from Jetty",
-                new String(response.getEntity().getContent().readAllBytes()).trim()
-            )
-        );
+        verifyResponse(response, HttpServletResponse.SC_OK, "Hello from Jetty");
       }
       HttpUriRequest requestToHTTPS = new HttpGet("https://localhost:" + HTTPS_PORT);
-      assertThrows(SSLException.class, () -> client.execute(requestToHTTPS));
+      assertThatThrownBy(() -> client.execute(requestToHTTPS)).isInstanceOf(SSLException.class);
     }
   }
 
@@ -220,24 +214,18 @@ class DefaultHttpClientFactoryTest {
     try (CloseableHttpClient client = factory.createNewClient()) {
       HttpUriRequest requestToHTTP = new HttpGet("http://localhost:" + HTTP_PORT);
       try (CloseableHttpResponse response = client.execute(requestToHTTP)) {
-        assertAll(
-            () -> assertEquals(HttpServletResponse.SC_OK, response.getStatusLine().getStatusCode()),
-            () -> assertEquals(
-                "Hello from Jetty",
-                new String(response.getEntity().getContent().readAllBytes()).trim()
-            )
-        );
+        verifyResponse(response, HttpServletResponse.SC_OK, "Hello from Jetty");
       }
       HttpUriRequest requestToHTTPS = new HttpGet("https://localhost:" + HTTPS_PORT);
       try (CloseableHttpResponse response = client.execute(requestToHTTPS)) {
-        assertAll(
-            () -> assertEquals(HttpServletResponse.SC_OK, response.getStatusLine().getStatusCode()),
-            () -> assertEquals(
-                "Hello from Jetty",
-                new String(response.getEntity().getContent().readAllBytes()).trim()
-            )
-        );
+        verifyResponse(response, HttpServletResponse.SC_OK, "Hello from Jetty");
       }
     }
+  }
+
+  private static void verifyResponse(HttpResponse response, int expectedStatus, String expectedContent)
+      throws IOException {
+    assertThat(response.getStatusLine().getStatusCode()).isEqualTo(expectedStatus);
+    assertThat(response.getEntity().getContent()).hasContent(expectedContent);
   }
 }

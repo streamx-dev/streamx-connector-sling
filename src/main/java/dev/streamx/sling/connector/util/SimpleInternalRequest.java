@@ -11,9 +11,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.sling.api.SlingHttpServletResponse;
-import org.apache.sling.api.resource.LoginException;
 import org.apache.sling.api.resource.ResourceResolver;
-import org.apache.sling.api.resource.ResourceResolverFactory;
 import org.apache.sling.api.uri.SlingUri;
 import org.apache.sling.engine.SlingRequestProcessor;
 import org.apache.sling.servlethelpers.MockSlingHttpServletResponse;
@@ -49,22 +47,6 @@ public class SimpleInternalRequest {
     this.slingUri = slingUri;
     this.slingRequestProcessor = slingRequestProcessor;
     this.resourceResolver = resourceResolver;
-  }
-
-  // TODO remove when package version changed to 2.0.0
-  /**
-   * Constructs a new instance of this class.
-   *
-   * @param slingUri                {@link SlingUri} to request
-   * @param slingRequestProcessor   {@link SlingRequestProcessor} to use for request processing
-   * @param resourceResolverFactory {@link ResourceResolverFactory} to use for resource resolution
-   */
-  public SimpleInternalRequest(
-      SlingUri slingUri,
-      SlingRequestProcessor slingRequestProcessor,
-      ResourceResolverFactory resourceResolverFactory
-  ) {
-    throw new UnsupportedOperationException("Use the constructor with ResourceResolver instead");
   }
 
   private Optional<SlingHttpServletResponse> extractResponse(InternalRequest internalRequest) {

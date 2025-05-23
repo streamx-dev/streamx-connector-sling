@@ -1,13 +1,11 @@
 package dev.streamx.sling.connector.selectors.content;
 
-import java.util.Optional;
+import java.util.Objects;
 import javax.jcr.Node;
 import javax.jcr.RepositoryException;
-import javax.jcr.nodetype.NodeType;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.sling.api.resource.LoginException;
+import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
-import org.apache.sling.api.resource.ResourceResolverFactory;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,60 +13,47 @@ class ResourceFilter {
 
   private static final Logger LOG = LoggerFactory.getLogger(ResourceFilter.class);
   private final ResourceContentRelatedResourcesSelectorConfig config;
-  private final ResourceResolverFactory resourceResolverFactory;
+  private final ResourceResolver resourceResolver;
 
   ResourceFilter(
       ResourceContentRelatedResourcesSelectorConfig config,
-      ResourceResolverFactory resourceResolverFactory
+      ResourceResolver resourceResolver
   ) {
     this.config = config;
-    this.resourceResolverFactory = resourceResolverFactory;
+    this.resourceResolver = resourceResolver;
   }
 
-  boolean isAcceptable(ResourcePath resourcePath) {
+  boolean isAcceptable(String resourcePath) {
     return matchesPath(resourcePath)
         && matchesPrimaryNT(resourcePath);
   }
 
-  @SuppressWarnings({"squid:S1874", "deprecation"})
-  private boolean matchesPrimaryNT(ResourcePath resourcePath) {
-    try (
-        ResourceResolver resourceResolver
-            = resourceResolverFactory.getAdministrativeResourceResolver(null)
-    ) {
-      String requiredPrimaryNTRegex
-          = config.resource_required$_$primary$_$node$_$type_regex();
-      String resourcePathUnwrapped = resourcePath.get();
-      boolean doesMatchPrimaryNT = Optional.ofNullable(
-              resourceResolver.getResource(resourcePathUnwrapped)
-          ).map(resource -> resource.adaptTo(Node.class))
-          .map(this::extractPrimaryNT)
-          .orElse(StringUtils.EMPTY)
-          .matches(requiredPrimaryNTRegex);
-      LOG.trace(
-          "Does resource at path '{}' match this primary node type regex: '{}'? Answer: {}",
-          resourcePath, requiredPrimaryNTRegex, doesMatchPrimaryNT
-      );
-      return doesMatchPrimaryNT;
-    } catch (LoginException exception) {
-      String message = String.format("Failed to verify primary node type for '%s'", resourcePath);
-      LOG.error(message, exception);
-      return false;
-    }
+  private boolean matchesPrimaryNT(String resourcePath) {
+    String requiredPrimaryNTRegex = config.resource_required$_$primary$_$node$_$type_regex();
+    String actualResourcePrimaryNT = extractPrimaryNodeType(resourcePath, resourceResolver);
+    boolean doesMatchPrimaryNT = Objects.equals(actualResourcePrimaryNT, requiredPrimaryNTRegex);
+    LOG.trace(
+        "Does resource at path '{}' match this primary node type regex: '{}'? Answer: {}",
+        resourcePath, requiredPrimaryNTRegex, doesMatchPrimaryNT
+    );
+    return doesMatchPrimaryNT;
   }
 
-  private String extractPrimaryNT(Node node) {
+  @Nullable
+  public String extractPrimaryNodeType(String resourcePath, ResourceResolver resourceResolver) {
     try {
-      NodeType primaryNT = node.getPrimaryNodeType();
-      return primaryNT.getName();
+      Resource resource = resourceResolver.resolve(resourcePath);
+      Node node = resource.adaptTo(Node.class);
+      if (node != null) {
+        return node.getPrimaryNodeType().getName();
+      }
     } catch (RepositoryException exception) {
-      String message = String.format("Failed to extract primary node type for '%s'", node);
-      LOG.error(message, exception);
-      return StringUtils.EMPTY;
+      LOG.error("Failed to extract primary node type from {}", resourcePath, exception);
     }
+    return null;
   }
 
-  private boolean matchesPath(ResourcePath resourcePath) {
+  private boolean matchesPath(String resourcePath) {
     String requiredPathRegex = config.resource_required$_$path_regex();
     boolean doesMatchPath = resourcePath.matches(requiredPathRegex);
     LOG.trace(

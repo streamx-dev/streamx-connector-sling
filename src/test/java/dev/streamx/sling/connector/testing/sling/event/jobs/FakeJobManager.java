@@ -104,6 +104,10 @@ public class FakeJobManager implements JobManager {
    *  CUSTOM METHODS
    */
 
+  public List<FakeJob> getJobQueue() {
+    return jobQueue;
+  }
+
   public void processAllJobs() {
     while (!jobQueue.isEmpty()) {
       FakeJob fakeJob = jobQueue.remove(0);

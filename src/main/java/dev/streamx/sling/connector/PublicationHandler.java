@@ -18,10 +18,10 @@ public interface PublicationHandler<T> {
   /**
    * Determines if this handler can handle the specified resource path.
    *
-   * @param resourcePath the path of the resource
+   * @param resource the path and type of the resource
    * @return {@code true} if this handler can handle the resource path, {@code false} otherwise
    */
-  boolean canHandle(String resourcePath);
+  boolean canHandle(ResourceInfo resource);
 
   /**
    * Prepares the data to publish for the specified resource path. 
