@@ -5,7 +5,7 @@ import org.osgi.service.metatype.annotations.AttributeType;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 
 @ObjectClassDefinition
-public @interface ClientlibsHandlerConfig {
+public @interface ClientlibsPublicationHandlerConfig {
 
   @AttributeDefinition(
       name = "Is Enabled?",

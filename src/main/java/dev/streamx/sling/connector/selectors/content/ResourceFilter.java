@@ -1,6 +1,5 @@
 package dev.streamx.sling.connector.selectors.content;
 
-import java.util.Objects;
 import javax.jcr.Node;
 import javax.jcr.RepositoryException;
 import org.apache.sling.api.resource.Resource;
@@ -12,35 +11,23 @@ import org.slf4j.LoggerFactory;
 class ResourceFilter {
 
   private static final Logger LOG = LoggerFactory.getLogger(ResourceFilter.class);
-  private final ResourceContentRelatedResourcesSelectorConfig config;
-  private final ResourceResolver resourceResolver;
 
-  ResourceFilter(
-      ResourceContentRelatedResourcesSelectorConfig config,
-      ResourceResolver resourceResolver
-  ) {
-    this.config = config;
-    this.resourceResolver = resourceResolver;
+  public static boolean isAcceptableResourcePath(String resourcePath,
+                                    ResourceContentRelatedResourcesSelectorConfig config) {
+    return resourcePath.matches(config.resource_required$_$path_regex());
   }
 
-  boolean isAcceptable(String resourcePath) {
-    return matchesPath(resourcePath)
-        && matchesPrimaryNT(resourcePath);
-  }
-
-  private boolean matchesPrimaryNT(String resourcePath) {
-    String requiredPrimaryNTRegex = config.resource_required$_$primary$_$node$_$type_regex();
-    String actualResourcePrimaryNT = extractPrimaryNodeType(resourcePath, resourceResolver);
-    boolean doesMatchPrimaryNT = Objects.equals(actualResourcePrimaryNT, requiredPrimaryNTRegex);
-    LOG.trace(
-        "Does resource at path '{}' match this primary node type regex: '{}'? Answer: {}",
-        resourcePath, requiredPrimaryNTRegex, doesMatchPrimaryNT
-    );
-    return doesMatchPrimaryNT;
+  public static boolean isAcceptablePrimaryNodeType(String resourcePath, ResourceResolver resourceResolver,
+                                     ResourceContentRelatedResourcesSelectorConfig config) {
+    String actualPrimaryNodeType = extractPrimaryNodeType(resourcePath, resourceResolver);
+    if (actualPrimaryNodeType == null) {
+      return false;
+    }
+    return actualPrimaryNodeType.matches(config.resource_required$_$primary$_$node$_$type_regex());
   }
 
   @Nullable
-  public String extractPrimaryNodeType(String resourcePath, ResourceResolver resourceResolver) {
+  public static String extractPrimaryNodeType(String resourcePath, ResourceResolver resourceResolver) {
     try {
       Resource resource = resourceResolver.resolve(resourcePath);
       Node node = resource.adaptTo(Node.class);
@@ -53,13 +40,4 @@ class ResourceFilter {
     return null;
   }
 
-  private boolean matchesPath(String resourcePath) {
-    String requiredPathRegex = config.resource_required$_$path_regex();
-    boolean doesMatchPath = resourcePath.matches(requiredPathRegex);
-    LOG.trace(
-        "Does resource at path '{}' match this path regex: '{}'? Answer: {}",
-        resourcePath, requiredPathRegex, doesMatchPath
-    );
-    return doesMatchPath;
-  }
 }

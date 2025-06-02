@@ -48,12 +48,6 @@ public class PublicationJobExecutor implements JobExecutor {
   @Reference
   private PublicationRetryPolicy publicationRetryPolicy;
 
-  /**
-   * Constructs an instance of this class.
-   */
-  public PublicationJobExecutor() {
-  }
-
   @Override
   public JobExecutionResult process(Job job, JobExecutionContext context) {
     LOG.trace("Processing {}", job);

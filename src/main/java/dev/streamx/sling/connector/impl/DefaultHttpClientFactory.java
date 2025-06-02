@@ -23,7 +23,6 @@ import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
-import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.propertytypes.ServiceDescription;
 import org.osgi.service.metatype.annotations.Designate;
 import org.slf4j.Logger;
@@ -52,8 +51,7 @@ public class DefaultHttpClientFactory {
    */
   @Activate
   public DefaultHttpClientFactory(
-      @Reference(cardinality = ReferenceCardinality.MANDATORY)
-      HttpClientBuilderFactory httpClientBuilderFactory,
+      @Reference HttpClientBuilderFactory httpClientBuilderFactory,
       HttpClientProviderConfig config
   ) {
     this.httpClientBuilderFactory = httpClientBuilderFactory;
@@ -74,10 +72,7 @@ public class DefaultHttpClientFactory {
           .build();
       return Optional.of(new SSLConnectionSocketFactory(sslContext, NoopHostnameVerifier.INSTANCE));
     } catch (NoSuchAlgorithmException | KeyStoreException | KeyManagementException exception) {
-      String message = String.format(
-          "Could not create %s", LayeredConnectionSocketFactory.class.getName()
-      );
-      LOG.error(message, exception);
+      LOG.error("Could not create {}", LayeredConnectionSocketFactory.class.getName(), exception);
       return Optional.empty();
     }
   }

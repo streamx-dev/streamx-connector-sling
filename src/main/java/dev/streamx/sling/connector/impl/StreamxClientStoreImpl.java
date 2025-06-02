@@ -48,10 +48,7 @@ public class StreamxClientStoreImpl implements StreamxClientStore {
    *                             {@link StreamxClient} instances
    */
   @Activate
-  public StreamxClientStoreImpl(
-      @Reference(cardinality = ReferenceCardinality.MANDATORY)
-      StreamxClientFactory streamxClientFactory
-  ) {
+  public StreamxClientStoreImpl(@Reference StreamxClientFactory streamxClientFactory) {
     this.clientsByName = new ConcurrentHashMap<>();
     this.streamxClientFactory = streamxClientFactory;
   }
