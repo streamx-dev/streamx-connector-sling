@@ -74,10 +74,7 @@ public class DefaultHttpClientFactory {
           .build();
       return Optional.of(new SSLConnectionSocketFactory(sslContext, NoopHostnameVerifier.INSTANCE));
     } catch (NoSuchAlgorithmException | KeyStoreException | KeyManagementException exception) {
-      String message = String.format(
-          "Could not create %s", LayeredConnectionSocketFactory.class.getName()
-      );
-      LOG.error(message, exception);
+      LOG.error("Could not create {}", LayeredConnectionSocketFactory.class.getName(), exception);
       return Optional.empty();
     }
   }

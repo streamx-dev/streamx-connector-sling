@@ -124,21 +124,15 @@ public class SimpleInternalRequest {
    * returned if the response body cannot be retrieved
    */
   public String getResponseAsString() {
-    String responseAsString = executedInternalRequest(slingUri)
-        .flatMap(
-            internalRequest -> {
-              try {
-                return Optional.of(internalRequest.getResponseAsString());
-              } catch (IOException exception) {
-                LOG.error("Failed to get response as string for '{}'", slingUri, exception);
-                return Optional.empty();
-              }
-            }
-        ).orElse(StringUtils.EMPTY);
-    LOG.debug(
-        "Generated response as string for '{}'. Response length: {}",
-        slingUri, responseAsString.length()
-    );
-    return responseAsString;
+    Optional<InternalRequest> executedRequest = executedInternalRequest(slingUri);
+    if (executedRequest.isPresent()) {
+      try {
+        return executedRequest.get().getResponseAsString();
+      } catch (IOException exception) {
+        LOG.error("Failed to get response as string for '{}'", slingUri, exception);
+      }
+    }
+
+    return StringUtils.EMPTY;
   }
 }
