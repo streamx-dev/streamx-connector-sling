@@ -13,11 +13,13 @@ class ResourceFilter {
 
   private static final Logger LOG = LoggerFactory.getLogger(ResourceFilter.class);
 
-  public static boolean isAcceptable(String resourcePath, ResourceResolver resourceResolver,
+  public static boolean isAcceptableResourcePath(String resourcePath,
+                                    ResourceContentRelatedResourcesSelectorConfig config) {
+    return resourcePath.matches(config.resource_required$_$path_regex());
+  }
+
+  public static boolean isAcceptablePrimaryNodeType(String resourcePath, ResourceResolver resourceResolver,
                                      ResourceContentRelatedResourcesSelectorConfig config) {
-    if (!resourcePath.matches(config.resource_required$_$path_regex())) {
-      return false;
-    }
     String actualResourcePrimaryNT = extractPrimaryNodeType(resourcePath, resourceResolver);
     return Objects.equals(actualResourcePrimaryNT, config.resource_required$_$primary$_$node$_$type_regex());
   }
