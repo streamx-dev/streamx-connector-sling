@@ -7,13 +7,11 @@ import dev.streamx.sling.connector.PublishData;
 import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.StreamxPublicationException;
 import dev.streamx.sling.connector.UnpublishData;
+import dev.streamx.sling.connector.test.util.RandomBytesWriter;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.lang.annotation.Annotation;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Random;
-import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.apache.sling.api.resource.ResourceResolver;
@@ -62,21 +60,10 @@ class ClientlibsHandlerTest {
       String requestURI = request.getRequestURI();
       if (webResourcePathsAndSizes.containsKey(requestURI)) {
         Integer size = webResourcePathsAndSizes.get(requestURI);
-        writeInto(response, size);
+        RandomBytesWriter.writeRandomBytes(response, size);
       } else {
         response.setContentType("text/html");
         response.getWriter().write("<html><body><h1>Not Found</h1></body></html>");
-      }
-    }
-
-    private void writeInto(ServletResponse response, int dataSize) throws IOException {
-      response.setContentType("application/octet-stream");
-      response.setContentLength(dataSize);
-      byte[] randomData = new byte[dataSize];
-      new Random().nextBytes(randomData);
-      try (OutputStream out = response.getOutputStream()) {
-        out.write(randomData);
-        out.flush();
       }
     }
   }
