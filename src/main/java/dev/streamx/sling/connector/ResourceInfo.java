@@ -92,17 +92,12 @@ public class ResourceInfo {
       return false;
     }
 
-    if (getPath() == null && ((ResourceInfo) o).getPath() == null
-        && getPrimaryNodeType() == null && ((ResourceInfo) o).getPrimaryNodeType() == null) {
+    if (path == null && ((ResourceInfo) o).path == null
+        && primaryNodeType == null && ((ResourceInfo) o).primaryNodeType == null) {
       return true;
     }
 
-    return getPath() != null && getPath().equals(((ResourceInfo) o).getPath())
-           && getPrimaryNodeType() != null && getPrimaryNodeType().equals(((ResourceInfo) o).getPrimaryNodeType());
-  }
-
-  @Override
-  public String toString() {
-    return "Path: " + path + ", Primary Node Type: " + primaryNodeType;
+    return path != null && path.equals(((ResourceInfo) o).path)
+           && primaryNodeType != null && primaryNodeType.equals(((ResourceInfo) o).primaryNodeType);
   }
 }

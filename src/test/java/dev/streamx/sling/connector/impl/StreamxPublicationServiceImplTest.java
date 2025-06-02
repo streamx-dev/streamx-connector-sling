@@ -34,8 +34,11 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssumptions.given;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
@@ -91,7 +94,7 @@ class StreamxPublicationServiceImplTest {
 
     fakeStreamxClientFactory = new FakeStreamxClientFactory();
     slingContext.registerService(StreamxClientFactory.class, fakeStreamxClientFactory);
-    fakeJobManager = new FakeJobManager(Collections.singletonList(publicationJobExecutor));
+    fakeJobManager = spy(new FakeJobManager(Collections.singletonList(publicationJobExecutor)));
     slingContext.registerService(JobManager.class, fakeJobManager);
     slingContext.registerService(PublicationRetryPolicy.class, new DefaultPublicationRetryPolicy());
     for (PublicationHandler<?> handler : handlers) {
@@ -489,6 +492,20 @@ class StreamxPublicationServiceImplTest {
         publish("/content/my-site/other-related-page-to-publish.html", "pages",
             "Page: other-related-page-to-publish")
     );
+  }
+
+  @Test
+  void shouldInternallyHandleExceptionWhileAddingNewSlingJob() throws Exception {
+    initializeComponentsIfNotInitialized();
+    doReturn(null).when(fakeJobManager).addJob(anyString(), anyMap());
+
+    givenPageHierarchy("/content/my-site/page-1");
+
+    whenPathIsPublished("/content/my-site/page-1");
+    whenAllJobsAreProcessed();
+
+    thenProcessedJobsCountIs(0);
+    thenNoPublicationsWereMade();
   }
 
   @Test

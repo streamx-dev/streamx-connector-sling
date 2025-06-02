@@ -45,9 +45,7 @@ import org.slf4j.LoggerFactory;
 )
 public class ResourceContentRelatedResourcesSelector implements RelatedResourcesSelector {
 
-  private static final Logger LOG = LoggerFactory.getLogger(
-      ResourceContentRelatedResourcesSelector.class
-  );
+  private static final Logger LOG = LoggerFactory.getLogger(ResourceContentRelatedResourcesSelector.class);
   private final AtomicReference<ResourceContentRelatedResourcesSelectorConfig> config;
   private final SlingRequestProcessor slingRequestProcessor;
   private final ResourceResolverFactory resourceResolverFactory;
@@ -89,14 +87,10 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
     }
   }
 
-  private List<ResourceInfo> getRelatedResources(
-      String resourcePath, ResourceResolver resourceResolver
-  ) {
-    ResourceFilter resourceFilter = new ResourceFilter(config.get(), resourceResolver);
-    boolean isAcceptableResource = resourceFilter.isAcceptable(resourcePath);
-    LOG.trace(
-        "Is resource at path '{}' acceptable? Answer: {}", resourcePath, isAcceptableResource
-    );
+  private List<ResourceInfo> getRelatedResources(String resourcePath, ResourceResolver resourceResolver) {
+    boolean isAcceptableResource = ResourceFilter
+        .isAcceptable(resourcePath, resourceResolver, config.get());
+    LOG.trace("Is resource at path '{}' acceptable? Answer: {}", resourcePath, isAcceptableResource);
     if (!isAcceptableResource) {
       return Collections.emptyList();
     }
@@ -114,7 +108,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
     return extractedPaths.stream()
         .map(recognizedPath -> new ResourceInfo(
             recognizedPath,
-            resourceFilter.extractPrimaryNodeType(recognizedPath, resourceResolver)
+            ResourceFilter.extractPrimaryNodeType(recognizedPath, resourceResolver)
         ))
         .collect(Collectors.toUnmodifiableList());
   }
