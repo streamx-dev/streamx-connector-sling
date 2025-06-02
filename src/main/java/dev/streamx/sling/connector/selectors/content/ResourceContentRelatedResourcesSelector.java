@@ -79,6 +79,10 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
   @Override
   public Collection<ResourceInfo> getRelatedResources(String resourcePath) {
     LOG.debug("Getting related resources for '{}'", resourcePath);
+    if (!ResourceFilter.isAcceptableResourcePath(resourcePath, config.get())) {
+      return Collections.emptyList();
+    }
+
     try (ResourceResolver resourceResolver = resourceResolverFactory.getAdministrativeResourceResolver(null)) {
       return getRelatedResources(resourcePath, resourceResolver);
     } catch (LoginException exception) {
@@ -88,10 +92,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
   }
 
   private List<ResourceInfo> getRelatedResources(String resourcePath, ResourceResolver resourceResolver) {
-    boolean isAcceptableResource = ResourceFilter
-        .isAcceptable(resourcePath, resourceResolver, config.get());
-    LOG.trace("Is resource at path '{}' acceptable? Answer: {}", resourcePath, isAcceptableResource);
-    if (!isAcceptableResource) {
+    if (!ResourceFilter.isAcceptablePrimaryNodeType(resourcePath, resourceResolver, config.get())) {
       return Collections.emptyList();
     }
 
