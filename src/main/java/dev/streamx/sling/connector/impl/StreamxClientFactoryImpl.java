@@ -36,12 +36,8 @@ public class StreamxClientFactoryImpl implements StreamxClientFactory {
       return createStreamxClient(providedHttpClient, config);
     } else {
       LOG.info("No HttpClient provided, using a default from StreamX connector");
-      return createStreamxClient(createNewClient(), config);
+      return createStreamxClient(defaultHttpClientFactory.createNewClient(), config);
     }
-  }
-
-  protected CloseableHttpClient createNewClient() {
-    return defaultHttpClientFactory.createNewClient();
   }
 
   private StreamxInstanceClient createStreamxClient(CloseableHttpClient httpClient,
