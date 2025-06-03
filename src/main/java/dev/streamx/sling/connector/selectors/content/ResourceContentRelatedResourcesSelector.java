@@ -7,6 +7,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
@@ -96,15 +97,8 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
       return Collections.emptyList();
     }
 
-    Collection<String> extractedPaths = extract(resourcePath, resourceResolver);
-    if (LOG.isInfoEnabled()) {
-      LOG.info(
-          "Recognized paths for '{}': {}", resourcePath,
-          extractedPaths.stream()
-              .sorted()
-              .collect(Collectors.toList())
-      );
-    }
+    Set<String> extractedPaths = extract(resourcePath, resourceResolver);
+    LOG.info("Recognized paths for '{}': {}", resourcePath, extractedPaths);
 
     return extractedPaths.stream()
         .map(recognizedPath -> new ResourceInfo(
@@ -127,7 +121,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
    * @return {@link Collection} of unique resource paths; may be empty if no matches
    * are found
    */
-  private Collection<String> extract(String resourcePath, ResourceResolver resourceResolver) {
+  private Set<String> extract(String resourcePath, ResourceResolver resourceResolver) {
     List<Pattern> patterns = Stream.of(config.get().references_search$_$regexes())
         .map(Pattern::compile)
         .collect(Collectors.toUnmodifiableList());
@@ -135,7 +129,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
 
     String resourceAsString = readResourceAsString(resourcePath, resourceResolver);
 
-    Collection<String> extractedPaths = patterns.stream()
+    return patterns.stream()
         .flatMap(
             pattern -> {
               Matcher matcher = pattern.matcher(resourceAsString);
@@ -145,8 +139,6 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
         )
         .filter(path -> !path.matches(config.get().references_exclude$_$from$_$result_regex()))
         .collect(Collectors.toCollection(TreeSet::new));
-    LOG.debug("From '{}' these paths were extracted: {}", resourcePath, extractedPaths);
-    return extractedPaths;
   }
 
   private String readResourceAsString(String resourcePath, ResourceResolver resourceResolver) {
