@@ -42,8 +42,7 @@ class ResourceContentRelatedResourcesSelectorTest {
   private final SlingContext context = new SlingContext(ResourceResolverType.JCR_OAK);
   private final ResourceResolverFactory resourceResolverFactoryMock = mock(ResourceResolverFactory.class);
 
-  private final SlingRequestProcessor basicRequestProcessor = (HttpServletRequest request, HttpServletResponse response, ResourceResolver resourceResolver) ->
-  {
+  private final SlingRequestProcessor basicRequestProcessor = (HttpServletRequest request, HttpServletResponse response, ResourceResolver resourceResolver) -> {
     String requestURI = request.getRequestURI();
     response.setContentType("text/html");
     response.getWriter().write(

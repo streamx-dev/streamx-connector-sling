@@ -1,6 +1,5 @@
 package dev.streamx.sling.connector.selectors.content;
 
-import java.util.Objects;
 import javax.jcr.Node;
 import javax.jcr.RepositoryException;
 import org.apache.sling.api.resource.Resource;
@@ -20,8 +19,11 @@ class ResourceFilter {
 
   public static boolean isAcceptablePrimaryNodeType(String resourcePath, ResourceResolver resourceResolver,
                                      ResourceContentRelatedResourcesSelectorConfig config) {
-    String actualResourcePrimaryNT = extractPrimaryNodeType(resourcePath, resourceResolver);
-    return Objects.equals(actualResourcePrimaryNT, config.resource_required$_$primary$_$node$_$type_regex());
+    String actualPrimaryNodeType = extractPrimaryNodeType(resourcePath, resourceResolver);
+    if (actualPrimaryNodeType == null) {
+      return false;
+    }
+    return actualPrimaryNodeType.matches(config.resource_required$_$primary$_$node$_$type_regex());
   }
 
   @Nullable
