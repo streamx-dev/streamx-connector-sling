@@ -3,12 +3,10 @@ package dev.streamx.sling.connector.util;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.AbstractMap;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.sling.api.SlingHttpServletResponse;
 import org.apache.sling.api.resource.ResourceResolver;
@@ -31,6 +29,7 @@ public class SimpleInternalRequest {
   private final ResourceResolver resourceResolver;
   private final SlingRequestProcessor slingRequestProcessor;
   private final SlingUri slingUri;
+  private final Map<String, String> additionalProperties;
 
   /**
    * Constructs a new instance of this class.
@@ -44,9 +43,27 @@ public class SimpleInternalRequest {
       SlingRequestProcessor slingRequestProcessor,
       ResourceResolver resourceResolver
   ) {
+    this(slingUri, slingRequestProcessor, resourceResolver, Collections.emptyMap());
+  }
+
+  /**
+   * Constructs a new instance of this class.
+   *
+   * @param slingUri                {@link SlingUri} to request
+   * @param slingRequestProcessor   {@link SlingRequestProcessor} to use for request processing
+   * @param resourceResolver        {@link ResourceResolver} to use for resource resolution
+   * @param additionalProperties    Map of additional properties that will be added as parameters of the issued {@link SlingInternalRequest}
+   */
+  public SimpleInternalRequest(
+      SlingUri slingUri,
+      SlingRequestProcessor slingRequestProcessor,
+      ResourceResolver resourceResolver,
+      Map<String, String> additionalProperties
+  ) {
     this.slingUri = slingUri;
     this.slingRequestProcessor = slingRequestProcessor;
     this.resourceResolver = resourceResolver;
+    this.additionalProperties = Collections.unmodifiableMap(additionalProperties);
   }
 
   private Optional<SlingHttpServletResponse> extractResponse(InternalRequest internalRequest) {
@@ -54,10 +71,7 @@ public class SimpleInternalRequest {
       SlingHttpServletResponse response = internalRequest.getResponse();
       return Optional.of(response);
     } catch (IOException exception) {
-      String message = String.format(
-          "Failed to extract response for '%s' from '%s'", slingUri, internalRequest
-      );
-      LOG.error(message, exception);
+      LOG.error("Failed to extract response for '{}' from '{}'", slingUri, internalRequest, exception);
       return Optional.empty();
     }
   }
@@ -83,23 +97,24 @@ public class SimpleInternalRequest {
   }
 
   private Optional<InternalRequest> executedInternalRequest(SlingUri slingUri) {
-    AbstractMap.SimpleEntry<String, String> wcmmode = new AbstractMap.SimpleEntry<>(
-        "wcmmode", "disabled"
-    );
-    Map<String, Object> pathParameters = Stream.concat(
-        slingUri.getPathParameters().entrySet().stream(), Stream.of(wcmmode)
-    ).collect(Collectors.toMap(Entry::getKey, Entry::getValue));
-    LOG.trace("Creating internal request for '{}'", slingUri);
+    Map<String, Object> pathParameters = createPathParametersMap(slingUri);
+    LOG.trace("Creating internal request for '{}' with path parameters {}", slingUri, pathParameters);
     try {
       InternalRequest executedInternalRequest = new SlingInternalRequest(
           resourceResolver, slingRequestProcessor, slingUri.toString()
       ).withParameters(pathParameters).execute();
       return Optional.of(executedInternalRequest);
     } catch (IOException exception) {
-      String message = String.format("Failed to execute internal request for '%s'", slingUri);
-      LOG.error(message, exception);
+      LOG.error("Failed to execute internal request for '{}'", slingUri, exception);
       return Optional.empty();
     }
+  }
+
+  private Map<String, Object> createPathParametersMap(SlingUri slingUri) {
+    Map<String, Object> pathParameters = new LinkedHashMap<>(slingUri.getPathParameters());
+    pathParameters.put("wcmmode", "disabled");
+    pathParameters.putAll(additionalProperties);
+    return pathParameters;
   }
 
   /**
@@ -115,13 +130,9 @@ public class SimpleInternalRequest {
               try {
                 return Optional.of(internalRequest.getResponseAsString());
               } catch (IOException exception) {
-                String message = String.format(
-                    "Failed to get response as string for '%s'", slingUri
-                );
-                LOG.error(message, exception);
+                LOG.error("Failed to get response as string for '{}'", slingUri, exception);
                 return Optional.empty();
               }
-
             }
         ).orElse(StringUtils.EMPTY);
     LOG.debug(
