@@ -109,15 +109,15 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     }
   }
 
-  private Set<ResourceInfo> findRelatedResources(List<ResourceInfo> resources) {
-    LOG.trace("Searching for related resources for paths: {}", resources);
-    Set<ResourceInfo> relatedResources = new LinkedHashSet<>();
-    for (ResourceInfo resource : resources) {
-      relatedResources.addAll(findRelatedResources(resource));
-    }
+  private Set<ResourceInfo> findRelatedResources(List<ResourceInfo> parentResources) {
+    Set<String> parentResourcesPaths = parentResources.stream()
+        .map(ResourceInfo::getPath)
+        .collect(Collectors.toCollection(LinkedHashSet::new));
+    LOG.trace("Searching for related resources for paths: {}", parentResourcesPaths);
 
-    return relatedResources.stream()
-        .filter(relatedResource -> !isPublished(relatedResource, resources))
+    return parentResourcesPaths.stream()
+        .flatMap(resourcePath -> findRelatedResources(resourcePath).stream())
+        .filter(relatedResource -> !parentResourcesPaths.contains(relatedResource.getPath()))
         .collect(Collectors.toCollection(LinkedHashSet::new));
   }
 
@@ -148,16 +148,10 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     }
   }
 
-  private boolean isPublished(ResourceInfo relatedResource, List<ResourceInfo> publishedResources) {
-    return publishedResources.stream()
-        .map(ResourceInfo::getPath)
-        .anyMatch(relatedResource.getPath()::equals);
-  }
-
-  private Set<ResourceInfo> findRelatedResources(ResourceInfo resource) {
+  private Set<ResourceInfo> findRelatedResources(String parentResourcePath) {
     Set<ResourceInfo> relatedResources = new LinkedHashSet<>();
     for (RelatedResourcesSelector relatedResourcesSelector : relatedResourcesSelectorRegistry.getSelectors()) {
-      relatedResources.addAll(relatedResourcesSelector.getRelatedResources(resource.getPath()));
+      relatedResources.addAll(relatedResourcesSelector.getRelatedResources(parentResourcePath));
     }
     return relatedResources;
   }
