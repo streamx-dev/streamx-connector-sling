@@ -14,7 +14,6 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
 import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
-import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.metatype.annotations.Designate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,10 +33,8 @@ public class ClientlibsHandler extends ResourcePathPublicationHandler<WebResourc
 
   @Activate
   public ClientlibsHandler(
-      @Reference(cardinality = ReferenceCardinality.MANDATORY)
-      ResourceResolverFactory resourceResolverFactory,
-      @Reference(cardinality = ReferenceCardinality.MANDATORY)
-      SlingRequestProcessor slingRequestProcessor,
+      @Reference ResourceResolverFactory resourceResolverFactory,
+      @Reference SlingRequestProcessor slingRequestProcessor,
       ClientlibsHandlerConfig config
   ) {
     super(resourceResolverFactory, slingRequestProcessor);
