@@ -25,7 +25,6 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
 import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
-import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.metatype.annotations.Designate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,10 +59,8 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
   @Activate
   public ResourceContentRelatedResourcesSelector(
       ResourceContentRelatedResourcesSelectorConfig config,
-      @Reference(cardinality = ReferenceCardinality.MANDATORY)
-      SlingRequestProcessor slingRequestProcessor,
-      @Reference(cardinality = ReferenceCardinality.MANDATORY)
-      ResourceResolverFactory resourceResolverFactory
+      @Reference SlingRequestProcessor slingRequestProcessor,
+      @Reference ResourceResolverFactory resourceResolverFactory
   ) {
     this.config = new AtomicReference<>(config);
     this.slingRequestProcessor = slingRequestProcessor;
