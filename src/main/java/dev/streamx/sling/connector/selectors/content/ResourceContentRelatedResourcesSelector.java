@@ -13,9 +13,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.sling.api.resource.LoginException;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.resource.ResourceResolverFactory;
@@ -122,23 +120,23 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
    * are found
    */
   private Set<String> extract(String resourcePath, ResourceResolver resourceResolver) {
-    List<Pattern> patterns = Stream.of(config.get().references_search$_$regexes())
-        .map(Pattern::compile)
-        .collect(Collectors.toUnmodifiableList());
-    LOG.trace("Recognizing paths for '{}' with these patterns: {}", resourcePath, patterns);
+    String[] includeRegexes = config.get().references_search$_$regexes();
+    String excludeRegex = config.get().references_exclude$_$from$_$result_regex();
 
     String resourceAsString = readResourceAsString(resourcePath, resourceResolver);
+    Set<String> resultPaths = new TreeSet<>();
 
-    return patterns.stream()
-        .flatMap(
-            pattern -> {
-              Matcher matcher = pattern.matcher(resourceAsString);
-              return Stream.iterate(matcher, Matcher::find, nextMatcher -> nextMatcher)
-                  .map(mappingMatcher -> mappingMatcher.group(NumberUtils.INTEGER_ONE));
-            }
-        )
-        .filter(path -> !path.matches(config.get().references_exclude$_$from$_$result_regex()))
-        .collect(Collectors.toCollection(TreeSet::new));
+    for (String regex : includeRegexes) {
+      Matcher matcher = Pattern.compile(regex).matcher(resourceAsString);
+      while (matcher.find()) {
+        String path = matcher.group(1);
+        if (!path.matches(excludeRegex)) {
+          resultPaths.add(path);
+        }
+      }
+    }
+
+    return resultPaths;
   }
 
   private String readResourceAsString(String resourcePath, ResourceResolver resourceResolver) {
