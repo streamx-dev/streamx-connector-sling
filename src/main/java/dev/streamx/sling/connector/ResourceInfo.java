@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.lang3.builder.EqualsBuilder;
 
 /**
  * Specifies path and JCR primary node type of a resource to be published or unpublished
@@ -88,16 +89,13 @@ public class ResourceInfo {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof ResourceInfo)) {
-      return false;
+    if (o instanceof ResourceInfo) {
+      ResourceInfo that = (ResourceInfo) o;
+      return new EqualsBuilder()
+          .append(path, that.path)
+          .append(primaryNodeType, that.primaryNodeType)
+          .isEquals();
     }
-
-    if (path == null && ((ResourceInfo) o).path == null
-        && primaryNodeType == null && ((ResourceInfo) o).primaryNodeType == null) {
-      return true;
-    }
-
-    return path != null && path.equals(((ResourceInfo) o).path)
-           && primaryNodeType != null && primaryNodeType.equals(((ResourceInfo) o).primaryNodeType);
+    return false;
   }
 }
