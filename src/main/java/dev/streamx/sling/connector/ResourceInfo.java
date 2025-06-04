@@ -98,4 +98,9 @@ public class ResourceInfo {
     }
     return false;
   }
+
+  @Override
+  public String toString() {
+    return "Path: " + path + ", Primary Node Type: " + primaryNodeType;
+  }
 }
