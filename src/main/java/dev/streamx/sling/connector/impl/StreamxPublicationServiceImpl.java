@@ -109,8 +109,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     }
   }
 
-  private Set<ResourceInfo> findRelatedResources(List<ResourceInfo> resources)
-      throws StreamxPublicationException {
+  private Set<ResourceInfo> findRelatedResources(List<ResourceInfo> resources) {
     LOG.trace("Searching for related resources for paths: {}", resources);
     Set<ResourceInfo> relatedResources = new LinkedHashSet<>();
     for (ResourceInfo resource : resources) {
@@ -155,7 +154,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
         .anyMatch(relatedResource.getPath()::equals);
   }
 
-  private Set<ResourceInfo> findRelatedResources(ResourceInfo resource) throws StreamxPublicationException {
+  private Set<ResourceInfo> findRelatedResources(ResourceInfo resource) {
     Set<ResourceInfo> relatedResources = new LinkedHashSet<>();
     for (RelatedResourcesSelector relatedResourcesSelector : relatedResourcesSelectorRegistry.getSelectors()) {
       relatedResources.addAll(relatedResourcesSelector.getRelatedResources(resource.getPath()));
