@@ -26,19 +26,16 @@ public class StreamxInstanceClient {
   }
 
   <T> Publisher<T> getPublisher(PublicationData<T> publication) throws StreamxClientException {
-    try {
-      return (Publisher<T>) publishersByChannel.computeIfAbsent(
-          publication.getChannel(),
-          channel -> {
-            try {
-              return streamxClient.newPublisher(channel, publication.getModelClass());
-            } catch (StreamxClientException e) {
-              throw new RuntimeException(e);
-            }
-          });
-    } catch (RuntimeException e) {
-      throw new StreamxClientException("Cannot create publisher", e);
+    String channel = publication.getChannel();
+
+    if (!publishersByChannel.containsKey(channel)) {
+      publishersByChannel.put(
+          channel,
+          streamxClient.newPublisher(channel, publication.getModelClass())
+      );
     }
+
+    return (Publisher<T>) publishersByChannel.get(channel);
   }
 
   String getName() {
