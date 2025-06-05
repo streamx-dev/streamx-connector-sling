@@ -5,7 +5,6 @@ import dev.streamx.sling.connector.testing.handlers.AssetPublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.ImpostorPublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.OtherPagePublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.PagePublicationHandler;
-import dev.streamx.sling.connector.testing.selectors.RelatedPagesSelector;
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJob;
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJobExecutionContext;
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJobManager;
@@ -21,7 +20,6 @@ import org.apache.sling.event.jobs.consumer.JobExecutor;
 import org.apache.sling.testing.mock.sling.junit5.SlingContext;
 import org.apache.sling.testing.mock.sling.junit5.SlingContextExtension;
 import org.assertj.core.groups.Tuple;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,6 +28,7 @@ import java.util.*;
 import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssumptions.given;
@@ -46,6 +45,11 @@ import static org.mockito.Mockito.when;
 @ExtendWith(SlingContextExtension.class)
 class StreamxPublicationServiceImplTest {
 
+  private static final String PAGES_CHANNEL = "pages";
+  private static final String ASSETS_CHANNEL = "assets";
+  private static final String RELATED_PAGE_TO_PUBLISH = "/content/my-site/related-page-to-publish";
+  private static final String OTHER_RELATED_PAGE_TO_PUBLISH = "/content/my-site/other-related-page-to-publish";
+
   private final SlingContext slingContext = new SlingContext();
   private final ResourceResolver resourceResolver = slingContext.resourceResolver();
   private final Map<String, Object> publicationServiceConfig = new HashMap<>();
@@ -57,6 +61,17 @@ class StreamxPublicationServiceImplTest {
   private FakeJobManager fakeJobManager;
   private FakeStreamxClient fakeStreamxClient;
   private FakeStreamxClientFactory fakeStreamxClientFactory;
+
+  private static class RelatedPagesSelector implements RelatedResourcesSelector {
+
+    @Override
+    public Collection<ResourceInfo> getRelatedResources(String resourcePath) {
+      return Arrays.asList(
+          new ResourceInfo(RELATED_PAGE_TO_PUBLISH, "cq:Page"),
+          new ResourceInfo(OTHER_RELATED_PAGE_TO_PUBLISH, "cq:Page")
+      );
+    }
+  }
 
   @BeforeEach
   void setUp() {
@@ -127,7 +142,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldPublishSinglePage() throws PersistenceException, StreamxPublicationException {
+  void shouldPublishSinglePage() throws Exception {
     givenPageHierarchy("/content/my-site/page-1/page-2/page-3");
 
     whenPathIsPublished("/content/my-site/page-1");
@@ -135,12 +150,12 @@ class StreamxPublicationServiceImplTest {
 
     thenProcessedJobsCountIs(1);
     thenPublicationsContainsExactly(
-        publish("/content/my-site/page-1.html", "pages", "Page: page-1")
+        publishPage("/content/my-site/page-1.html")
     );
   }
 
   @Test
-  void shouldPublishMultiplePages() throws PersistenceException, StreamxPublicationException {
+  void shouldPublishMultiplePages() throws Exception {
     givenPageHierarchy("/content/my-site/page-1/page-2/page-3");
 
     whenPathsArePublished("/content/my-site/page-1", "/content/my-site/page-1/page-2");
@@ -148,13 +163,13 @@ class StreamxPublicationServiceImplTest {
 
     thenProcessedJobsCountIs(2);
     thenPublicationsContainsExactly(
-        publish("/content/my-site/page-1.html", "pages", "Page: page-1"),
-        publish("/content/my-site/page-1/page-2.html", "pages", "Page: page-2")
+        publishPage("/content/my-site/page-1.html"),
+        publishPage("/content/my-site/page-1/page-2.html")
     );
   }
 
   @Test
-  void shouldUnpublishSinglePage() throws PersistenceException, StreamxPublicationException {
+  void shouldUnpublishSinglePage() throws Exception {
     givenPageHierarchy("/content/my-site/page-1/page-2/page-3");
 
     whenPathIsUnpublished("/content/my-site/page-1");
@@ -162,12 +177,12 @@ class StreamxPublicationServiceImplTest {
 
     thenProcessedJobsCountIs(1);
     thenPublicationsContainsExactly(
-        unpublish("/content/my-site/page-1.html", "pages")
+        unpublishPage("/content/my-site/page-1.html")
     );
   }
 
   @Test
-  void shouldUnpublishMultiplePages() throws PersistenceException, StreamxPublicationException {
+  void shouldUnpublishMultiplePages() throws Exception {
     givenPageHierarchy("/content/my-site/page-1/page-2/page-3");
 
     whenPathsAreUnpublished("/content/my-site/page-1", "/content/my-site/page-1/page-2");
@@ -175,8 +190,8 @@ class StreamxPublicationServiceImplTest {
 
     thenProcessedJobsCountIs(2);
     thenPublicationsContainsExactly(
-        unpublish("/content/my-site/page-1.html", "pages"),
-        unpublish("/content/my-site/page-1/page-2.html", "pages")
+        unpublishPage("/content/my-site/page-1.html"),
+        unpublishPage("/content/my-site/page-1/page-2.html")
     );
   }
 
@@ -190,13 +205,13 @@ class StreamxPublicationServiceImplTest {
 
     thenProcessedJobsCountIs(2);
     thenPublicationsContainsExactly(
-        unpublish("/content/my-site/page-1.html", "pages"),
-        unpublish("/content/dam/asset-1.jpeg", "assets")
+        unpublishPage("/content/my-site/page-1.html"),
+        unpublishAsset("/content/dam/asset-1.jpeg")
     );
   }
 
   @Test
-  void shouldNotPublishIfIsDisabled() throws PersistenceException, StreamxPublicationException {
+  void shouldNotPublishIfIsDisabled() throws Exception {
     givenPageHierarchy("/content/my-site/page-1/page-2/page-3");
     givenPublicationService(config ->
         config.put("enabled", false)
@@ -212,8 +227,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldNotPublishIfResourceDoesNotExist()
-      throws PersistenceException, StreamxPublicationException {
+  void shouldNotPublishIfResourceDoesNotExist() throws Exception {
     givenPageHierarchy("/content/my-site/page-1");
 
     whenPathIsPublished("/content/my-site/page-1/non-existing-page");
@@ -224,10 +238,11 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldNotPublishIfNoPublishDataWasReturnedByHandler()
-      throws PersistenceException, StreamxPublicationException {
-    givenPageHierarchy("/content/my-site/page-1");
-    givenPageHierarchy("/content/impostor-site/page-2");
+  void shouldNotPublishIfNoPublishDataWasReturnedByHandler() throws Exception {
+    givenPageHierarchy(
+        "/content/my-site/page-1",
+        "/content/impostor-site/page-2"
+    );
     givenHandlers(
         new PagePublicationHandler(resourceResolver),
         new ImpostorPublicationHandler()
@@ -239,13 +254,13 @@ class StreamxPublicationServiceImplTest {
 
     thenProcessedJobsCountIs(4);
     thenPublicationsContainsExactly(
-        publish("/content/my-site/page-1.html", "pages", "Page: page-1"),
-        unpublish("/content/my-site/page-1.html", "pages")
+        publishPage("/content/my-site/page-1.html"),
+        unpublishPage("/content/my-site/page-1.html")
     );
   }
 
   @Test
-  void shouldNotPublishIfPathsAreEmpty() throws PersistenceException, StreamxPublicationException {
+  void shouldNotPublishIfPathsAreEmpty() throws Exception {
     givenPageHierarchy("/content/my-site/page-1");
 
     whenPathsArePublished("", "/content/my-site/page-1", null);
@@ -254,14 +269,13 @@ class StreamxPublicationServiceImplTest {
 
     thenProcessedJobsCountIs(2);
     thenPublicationsContainsExactly(
-        publish("/content/my-site/page-1.html", "pages", "Page: page-1"),
-        unpublish("/content/my-site/page-1.html", "pages")
+        publishPage("/content/my-site/page-1.html"),
+        unpublishPage("/content/my-site/page-1.html")
     );
   }
 
   @Test
-  void shouldNotPublishIfNoPathsWereGiven()
-      throws PersistenceException, StreamxPublicationException {
+  void shouldNotPublishIfNoPathsWereGiven() throws Exception {
     givenPageHierarchy("/content/my-site/page-1");
 
     whenPathsArePublished();
@@ -273,8 +287,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldNotPublishIfNoHandlerCanHandle()
-      throws PersistenceException, StreamxPublicationException {
+  void shouldNotPublishIfNoHandlerCanHandle() throws Exception {
     givenPageHierarchy("/var/my-site-copy/page-1");
 
     whenPathIsPublished("/var/my-site-copy/page-1");
@@ -285,8 +298,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldPublishDifferentTypesOfContent()
-      throws PersistenceException, StreamxPublicationException {
+  void shouldPublishDifferentTypesOfContent() throws Exception {
     givenPageHierarchy("/content/my-site/page-1/page-2");
     givenAsset("/content/dam/asset-1.jpeg");
 
@@ -299,15 +311,14 @@ class StreamxPublicationServiceImplTest {
 
     thenProcessedJobsCountIs(3);
     thenPublicationsContainsExactly(
-        publish("/content/my-site/page-1.html", "pages", "Page: page-1"),
-        publish("/content/dam/asset-1.jpeg", "assets", "Asset: asset-1.jpeg"),
-        publish("/content/my-site/page-1/page-2.html", "pages", "Page: page-2")
+        publishPage("/content/my-site/page-1.html"),
+        publishAsset("/content/dam/asset-1.jpeg"),
+        publishPage("/content/my-site/page-1/page-2.html")
     );
   }
 
   @Test
-  void shouldNotPublishIfResourceWasRemovedAfterPublication()
-      throws PersistenceException, StreamxPublicationException {
+  void shouldNotPublishIfResourceWasRemovedAfterPublication() throws Exception {
     givenPageHierarchy("/content/my-site/page-1");
 
     whenPathIsPublished("/content/my-site/page-1");
@@ -319,8 +330,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldCreatePublishJobForEachInstance()
-      throws PersistenceException, StreamxPublicationException {
+  void shouldCreatePublishJobForEachInstance() throws Exception {
     givenPageHierarchy("/content/my-site/page-1");
 
     givenStreamxClientInstances(
@@ -338,10 +348,11 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldPublishToStreamxInstanceIfPathMatchesPattern()
-      throws PersistenceException, StreamxPublicationException {
-    givenPageHierarchy("/content/my-site/page-1");
-    givenPageHierarchy("/content/other-site/page-1");
+  void shouldPublishToStreamxInstanceIfPathMatchesPattern() throws Exception {
+    givenPageHierarchy(
+        "/content/my-site/page-1",
+        "/content/other-site/page-1"
+    );
     givenAsset("/content/dam/asset-1.jpeg");
 
     givenHandlers(
@@ -367,30 +378,31 @@ class StreamxPublicationServiceImplTest {
     thenProcessedJobsCountIs(7);
 
     thenPublicationsContainsExactly(
-        publish("/content/my-site/page-1.html", "pages", "Page: page-1"),
-        publish("/content/other-site/page-1.html", "pages", "Page: page-1"),
-        publish("/content/dam/asset-1.jpeg", "assets", "Asset: asset-1.jpeg")
+        publishPage("/content/my-site/page-1.html"),
+        publishPage("/content/other-site/page-1.html"),
+        publishAsset("/content/dam/asset-1.jpeg")
     );
 
     thenInstancePublicationsContainsExactly(
         "/fake/my-site/instance",
-        publish("/content/my-site/page-1.html", "pages", "Page: page-1"),
-        publish("/content/dam/asset-1.jpeg", "assets", "Asset: asset-1.jpeg")
+        publishPage("/content/my-site/page-1.html"),
+        publishAsset("/content/dam/asset-1.jpeg")
     );
 
     thenInstancePublicationsContainsExactly(
         "/fake/other-site/instance",
-        publish("/content/other-site/page-1.html", "pages", "Page: page-1"),
-        publish("/content/dam/asset-1.jpeg", "assets", "Asset: asset-1.jpeg")
+        publishPage("/content/other-site/page-1.html"),
+        publishAsset("/content/dam/asset-1.jpeg")
     );
   }
 
   @Test
-  void shouldUpdateContentOnStreamxForRelatedResources()
-      throws PersistenceException, StreamxPublicationException {
-    givenPageHierarchy("/content/my-site/page-1");
-    givenPageHierarchy("/content/my-site/related-page-to-publish");
-    givenPageHierarchy("/content/my-site/other-related-page-to-publish");
+  void shouldUpdateContentOnStreamxForRelatedResources() throws Exception {
+    givenPageHierarchy(
+        "/content/my-site/page-1",
+        RELATED_PAGE_TO_PUBLISH,
+        OTHER_RELATED_PAGE_TO_PUBLISH
+    );
 
     givenRelatedResourcesSelectors(new RelatedPagesSelector());
 
@@ -403,20 +415,19 @@ class StreamxPublicationServiceImplTest {
     thenProcessedJobsCountIs(3);
 
     thenPublicationsContainsExactly(
-        publish("/content/my-site/page-1.html", "pages", "Page: page-1"),
-        publish("/content/my-site/related-page-to-publish.html", "pages",
-            "Page: related-page-to-publish"),
-        publish("/content/my-site/other-related-page-to-publish.html", "pages",
-            "Page: other-related-page-to-publish")
+        publishPage("/content/my-site/page-1.html"),
+        publishPage(RELATED_PAGE_TO_PUBLISH + ".html"),
+        publishPage(OTHER_RELATED_PAGE_TO_PUBLISH + ".html")
     );
   }
 
   @Test
-  void shouldUpdateRelatedResourcesJustOnceEvenIfWillBeReturnedByMultipleSelectors()
-      throws PersistenceException, StreamxPublicationException {
-    givenPageHierarchy("/content/my-site/page-1");
-    givenPageHierarchy("/content/my-site/related-page-to-publish");
-    givenPageHierarchy("/content/my-site/other-related-page-to-publish");
+  void shouldUpdateRelatedResourcesJustOnceEvenIfWillBeReturnedByMultipleSelectors() throws Exception {
+    givenPageHierarchy(
+        "/content/my-site/page-1",
+        RELATED_PAGE_TO_PUBLISH,
+        OTHER_RELATED_PAGE_TO_PUBLISH
+    );
 
     givenRelatedResourcesSelectors(new RelatedPagesSelector(), new RelatedPagesSelector(),
         new RelatedPagesSelector());
@@ -430,21 +441,20 @@ class StreamxPublicationServiceImplTest {
     thenProcessedJobsCountIs(3);
 
     thenPublicationsContainsExactly(
-        publish("/content/my-site/page-1.html", "pages", "Page: page-1"),
-        publish("/content/my-site/related-page-to-publish.html", "pages",
-            "Page: related-page-to-publish"),
-        publish("/content/my-site/other-related-page-to-publish.html", "pages",
-            "Page: other-related-page-to-publish")
+        publishPage("/content/my-site/page-1.html"),
+        publishPage(RELATED_PAGE_TO_PUBLISH + ".html"),
+        publishPage(OTHER_RELATED_PAGE_TO_PUBLISH + ".html")
     );
   }
 
   @Test
-  void shouldUpdateRelatedResourcesJustOnceEvenIfRelatesToMultiplePublishedResources()
-      throws PersistenceException, StreamxPublicationException {
-    givenPageHierarchy("/content/my-site/page-1");
-    givenPageHierarchy("/content/my-site/page-2");
-    givenPageHierarchy("/content/my-site/related-page-to-publish");
-    givenPageHierarchy("/content/my-site/other-related-page-to-publish");
+  void shouldUpdateRelatedResourcesJustOnceEvenIfRelatesToMultiplePublishedResources() throws Exception {
+    givenPageHierarchy(
+        "/content/my-site/page-1",
+        "/content/my-site/page-2",
+        RELATED_PAGE_TO_PUBLISH,
+        OTHER_RELATED_PAGE_TO_PUBLISH
+    );
 
     givenRelatedResourcesSelectors(new RelatedPagesSelector());
 
@@ -458,27 +468,26 @@ class StreamxPublicationServiceImplTest {
     thenProcessedJobsCountIs(4);
 
     thenPublicationsContainsExactly(
-        publish("/content/my-site/page-1.html", "pages", "Page: page-1"),
-        publish("/content/my-site/page-2.html", "pages", "Page: page-2"),
-        publish("/content/my-site/related-page-to-publish.html", "pages",
-            "Page: related-page-to-publish"),
-        publish("/content/my-site/other-related-page-to-publish.html", "pages",
-            "Page: other-related-page-to-publish")
+        publishPage("/content/my-site/page-1.html"),
+        publishPage("/content/my-site/page-2.html"),
+        publishPage(RELATED_PAGE_TO_PUBLISH + ".html"),
+        publishPage(OTHER_RELATED_PAGE_TO_PUBLISH + ".html")
     );
   }
 
   @Test
-  void shouldNotSendExtraUpdateToRelatedResourcesIfItIsPublishedExplicitly()
-      throws PersistenceException, StreamxPublicationException {
-    givenPageHierarchy("/content/my-site/page-1");
-    givenPageHierarchy("/content/my-site/related-page-to-publish");
-    givenPageHierarchy("/content/my-site/other-related-page-to-publish");
+  void shouldNotSendExtraUpdateToRelatedResourcesIfItIsPublishedExplicitly() throws Exception {
+    givenPageHierarchy(
+        "/content/my-site/page-1",
+        RELATED_PAGE_TO_PUBLISH,
+        OTHER_RELATED_PAGE_TO_PUBLISH
+    );
 
     givenRelatedResourcesSelectors(new RelatedPagesSelector());
 
     whenPathsArePublished(
         "/content/my-site/page-1",
-        "/content/my-site/related-page-to-publish"
+        RELATED_PAGE_TO_PUBLISH
     );
 
     whenAllJobsAreProcessed();
@@ -486,11 +495,9 @@ class StreamxPublicationServiceImplTest {
     thenProcessedJobsCountIs(3);
 
     thenPublicationsContainsExactly(
-        publish("/content/my-site/page-1.html", "pages", "Page: page-1"),
-        publish("/content/my-site/related-page-to-publish.html", "pages",
-            "Page: related-page-to-publish"),
-        publish("/content/my-site/other-related-page-to-publish.html", "pages",
-            "Page: other-related-page-to-publish")
+        publishPage("/content/my-site/page-1.html"),
+        publishPage(RELATED_PAGE_TO_PUBLISH + ".html"),
+        publishPage(OTHER_RELATED_PAGE_TO_PUBLISH + ".html")
     );
   }
 
@@ -536,8 +543,10 @@ class StreamxPublicationServiceImplTest {
         .containsExactly("{\"path\":\"path-2\",\"primaryNodeType\":\"type-2\"}");
   }
 
-  private void givenPageHierarchy(String path) throws PersistenceException {
-    slingContext.create().resource(path);
+  private void givenPageHierarchy(String... paths) throws PersistenceException {
+    for (String path : paths) {
+      slingContext.create().resource(path);
+    }
     resourceResolver.commit();
   }
 
@@ -624,27 +633,42 @@ class StreamxPublicationServiceImplTest {
     assertThat(fakeStreamxClient.getPublications()).isEmpty();
   }
 
-  private Tuple publish(String key, String channel, String data) {
+  private Tuple publishPage(String key) {
+    return publish(key, PAGES_CHANNEL, "Page: ");
+  }
+
+  private Tuple publishAsset(String key) {
+    return publish(key, ASSETS_CHANNEL, "Asset: ");
+  }
+
+  private Tuple publish(String key, String channel, String dataPrefix) {
+    String pageName = StringUtils.substringAfterLast(key, "/");
+    String data = dataPrefix + pageName.replace(".html", "");
     return tuple("Publish", key, channel, data);
+  }
+
+  private Tuple unpublishPage(String key) {
+    return unpublish(key, PAGES_CHANNEL);
+  }
+
+  private Tuple unpublishAsset(String key) {
+    return unpublish(key, ASSETS_CHANNEL);
   }
 
   private Tuple unpublish(String key, String channel) {
     return tuple("Unpublish", key, channel, null);
   }
 
-  @NotNull
   private static FakeStreamxClientConfig getOtherSiteFakeStreamxClientConfig() {
     return new FakeStreamxClientConfig("/fake/other-site/instance",
         Arrays.asList("/.*/other-site/.*", "/.*/dam/.*"));
   }
 
-  @NotNull
   private static FakeStreamxClientConfig getMySiteFakeStreamxClientConfig() {
     return new FakeStreamxClientConfig("/fake/my-site/instance",
         Arrays.asList("/.*/my-site/.*", "/.*/dam/.*"));
   }
 
-  @NotNull
   private static FakeStreamxClientConfig getDefaultFakeStreamxClientConfig() {
     return new FakeStreamxClientConfig("/fake/streamx/instance", Collections.singletonList(".*"));
   }
