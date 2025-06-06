@@ -9,6 +9,8 @@ import org.apache.sling.event.jobs.Job;
 
 public class FakeJob implements Job {
 
+  private static final UnsupportedOperationException NOT_IMPLEMENTED_YET = new UnsupportedOperationException("Not implemented yet");
+
   private final String topic;
   private final ValueMap properties;
 
@@ -24,7 +26,7 @@ public class FakeJob implements Job {
 
   @Override
   public String getId() {
-    throw new UnsupportedOperationException("Not implemented yet");
+    throw NOT_IMPLEMENTED_YET;
   }
 
   @Override
@@ -34,7 +36,7 @@ public class FakeJob implements Job {
 
   @Override
   public Set<String> getPropertyNames() {
-    throw new UnsupportedOperationException("Not implemented yet");
+    return properties.keySet();
   }
 
   @Override
@@ -49,71 +51,76 @@ public class FakeJob implements Job {
 
   @Override
   public int getRetryCount() {
-    throw new UnsupportedOperationException("Not implemented yet");
+    throw NOT_IMPLEMENTED_YET;
   }
 
   @Override
   public int getNumberOfRetries() {
-    throw new UnsupportedOperationException("Not implemented yet");
+    throw NOT_IMPLEMENTED_YET;
   }
 
   @Override
   public String getQueueName() {
-    throw new UnsupportedOperationException("Not implemented yet");
+    throw NOT_IMPLEMENTED_YET;
   }
 
   @Override
   public String getTargetInstance() {
-    throw new UnsupportedOperationException("Not implemented yet");
+    throw NOT_IMPLEMENTED_YET;
   }
 
   @Override
   public Calendar getProcessingStarted() {
-    throw new UnsupportedOperationException("Not implemented yet");
+    throw NOT_IMPLEMENTED_YET;
   }
 
   @Override
   public Calendar getCreated() {
-    throw new UnsupportedOperationException("Not implemented yet");
+    throw NOT_IMPLEMENTED_YET;
   }
 
   @Override
   public String getCreatedInstance() {
-    throw new UnsupportedOperationException("Not implemented yet");
+    throw NOT_IMPLEMENTED_YET;
   }
 
   @Override
   public JobState getJobState() {
-    throw new UnsupportedOperationException("Not implemented yet");
+    throw NOT_IMPLEMENTED_YET;
   }
 
   @Override
   public Calendar getFinishedDate() {
-    throw new UnsupportedOperationException("Not implemented yet");
+    throw NOT_IMPLEMENTED_YET;
   }
 
   @Override
   public String getResultMessage() {
-    throw new UnsupportedOperationException("Not implemented yet");
+    throw NOT_IMPLEMENTED_YET;
   }
 
   @Override
   public String[] getProgressLog() {
-    throw new UnsupportedOperationException("Not implemented yet");
+    throw NOT_IMPLEMENTED_YET;
   }
 
   @Override
   public int getProgressStepCount() {
-    throw new UnsupportedOperationException("Not implemented yet");
+    throw NOT_IMPLEMENTED_YET;
   }
 
   @Override
   public int getFinishedProgressStep() {
-    throw new UnsupportedOperationException("Not implemented yet");
+    throw NOT_IMPLEMENTED_YET;
   }
 
   @Override
   public Calendar getProgressETA() {
-    throw new UnsupportedOperationException("Not implemented yet");
+    throw NOT_IMPLEMENTED_YET;
+  }
+
+  // custom methods
+  public boolean hasProperty(String name, Object value) {
+    return getPropertyNames().contains(name) && getProperty(name).equals(value);
   }
 }

@@ -119,6 +119,9 @@ interface to automate this process.
 Its implementation is intended to provide a list of resource paths along with the corresponding
 action to be taken when a particular resource is published.
 
+The connector also unpublishes related resources along with the main resource
+when it determines that no remaining references to those resources exist.
+
 # Usage:
 
 Build
