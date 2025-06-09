@@ -30,7 +30,7 @@ public final class ResourceHashManager {
   }
 
   /**
-   * Loads current hash for the Resource from JCR, and overwrites the hash if it has changed for given {@code resourceContent}
+   * Loads current hash for the Resource from JCR, and overwrites the hash if it has changed for given {@code resourcePath}
    * @return true if the hash has changed, false otherwise
    */
   static boolean hasResourceContentChanged(String resourcePath, SlingRequestProcessor slingRequestProcessor, ResourceResolver resourceResolver) {
