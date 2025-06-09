@@ -16,7 +16,7 @@ class IngestionTriggerTest {
   private final Job fakeJob = mock(Job.class);
 
   @Test
-  void mustCreateOutOfJob() {
+  void mustExtractDataOutOfJob() {
     // given
     when(fakeJob.getProperty(IngestionTrigger.PN_STREAMX_INGESTION_ACTION, String.class))
         .thenReturn("PUBLISH");
@@ -27,17 +27,18 @@ class IngestionTriggerTest {
         });
 
     // when
-    IngestionTrigger ingestionTrigger = new IngestionTrigger(fakeJob);
+    PublicationAction publicationAction = IngestionTrigger.extractPublicationAction(fakeJob);
+    List<ResourceInfo> resourcesInfo = IngestionTrigger.extractResourcesInfo(fakeJob);
 
     // then
-    assertThat(ingestionTrigger.ingestionAction()).isSameAs(PublicationAction.PUBLISH);
-    assertThat(ingestionTrigger.resourcesInfo()).hasSize(2);
-    assertResource(ingestionTrigger.resourcesInfo().get(0), "http://localhost:4502/content/we-retail/us/en", "cq:Page");
-    assertResource(ingestionTrigger.resourcesInfo().get(1), "/content/wknd/us/en", "cq:Page");
+    assertThat(publicationAction).isSameAs(PublicationAction.PUBLISH);
+    assertThat(resourcesInfo).hasSize(2);
+    assertResource(resourcesInfo.get(0), "http://localhost:4502/content/we-retail/us/en", "cq:Page");
+    assertResource(resourcesInfo.get(1), "/content/wknd/us/en", "cq:Page");
   }
 
   @Test
-  void mustCreateOutOfObjects() {
+  void mustExtractJobPropertiesOutOfData() {
     // given
     List<ResourceInfo> resources = List.of(
         new ResourceInfo("http://localhost:4502/content/we-retail/us/en", "cq:Page"),
@@ -45,10 +46,9 @@ class IngestionTriggerTest {
     );
 
     // when
-    IngestionTrigger ingestionTrigger = new IngestionTrigger(PublicationAction.PUBLISH, resources);
+    Map<String, Object> jobProps = IngestionTrigger.asJobProps(PublicationAction.PUBLISH, resources);
 
     // then
-    Map<String, Object> jobProps = ingestionTrigger.asJobProps();
     String rawPublicationAction = (String) jobProps.get(IngestionTrigger.PN_STREAMX_INGESTION_ACTION);
     String[] resourcesInfo = (String[]) jobProps.get(IngestionTrigger.PN_STREAMX_RESOURCES_INFO);
 

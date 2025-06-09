@@ -86,8 +86,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
   }
 
   private void submitIngestionTriggerJob(PublicationAction ingestionAction, List<ResourceInfo> resources) {
-    IngestionTrigger ingestionTrigger = new IngestionTrigger(ingestionAction, resources);
-    Map<String, Object> jobProps = ingestionTrigger.asJobProps();
+    Map<String, Object> jobProps = IngestionTrigger.asJobProps(ingestionAction, resources);
     Job addedJob = jobManager.addJob(IngestionTrigger.JOB_TOPIC, jobProps);
     LOG.debug("Added job: {}", addedJob);
   }
@@ -175,9 +174,8 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
   @Override
   public JobExecutionResult process(Job job, JobExecutionContext jobExecutionContext) {
     LOG.trace("Processing {}", job);
-    IngestionTrigger ingestionTrigger = new IngestionTrigger(job);
-    PublicationAction ingestionAction = ingestionTrigger.ingestionAction();
-    List<ResourceInfo> resources = ingestionTrigger.resourcesInfo();
+    PublicationAction ingestionAction = IngestionTrigger.extractPublicationAction(job);
+    List<ResourceInfo> resources = IngestionTrigger.extractResourcesInfo(job);
     try {
       handleResourceAndRelatedResourcesPublication(ingestionAction, resources);
       return jobExecutionContext.result().succeeded();
