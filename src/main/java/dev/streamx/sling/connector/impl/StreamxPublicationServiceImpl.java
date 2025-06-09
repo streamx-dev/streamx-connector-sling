@@ -91,6 +91,20 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     LOG.debug("Added job: {}", addedJob);
   }
 
+  @Override
+  public JobExecutionResult process(Job job, JobExecutionContext jobExecutionContext) {
+    LOG.trace("Processing {}", job);
+    PublicationAction ingestionAction = IngestionTrigger.extractPublicationAction(job);
+    List<ResourceInfo> resources = IngestionTrigger.extractResourcesInfo(job);
+    try {
+      handleResourceAndRelatedResourcesPublication(ingestionAction, resources);
+      return jobExecutionContext.result().succeeded();
+    } catch (StreamxPublicationException exception) {
+      LOG.error("Error while processing job", exception);
+      return jobExecutionContext.result().message("Error while processing job: " + exception.getMessage()).failed();
+    }
+  }
+
   private void handleResourceAndRelatedResourcesPublication(PublicationAction action, List<ResourceInfo> resources)
       throws StreamxPublicationException {
     LOG.trace("Handling publication for paths: {}", resources);
@@ -103,6 +117,13 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
       handleRelatedResourcesPublication(resources, action);
     } catch (Exception e) {
       throw new StreamxPublicationException("Can't handle publication. " + e.getMessage(), e);
+    }
+  }
+
+  private void handleResourcesPublication(List<ResourceInfo> resources, PublicationAction action) {
+    for (ResourceInfo resource : resources) {
+      handlePublication(resource, false, action);
+      publishedResourcesManager.updatePublishedResources(resource, action);
     }
   }
 
@@ -136,13 +157,6 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     return result;
   }
 
-  private void handleResourcesPublication(List<ResourceInfo> resources, PublicationAction action) {
-    for (ResourceInfo resource : resources) {
-      handlePublication(resource, false, action);
-      publishedResourcesManager.updatePublishedResources(resource, action);
-    }
-  }
-
   private void handlePublication(ResourceInfo resource, boolean isRelatedResource, PublicationAction action) {
     if (action == PublicationAction.UNPUBLISH && isRelatedResource && publishedResourcesManager.isReferencedByOtherResource(resource)) {
       return;
@@ -169,20 +183,6 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
       throw new JobCreationException("Publication job could not be created by JobManager for " + resourcePath);
     }
     LOG.debug("Publication request for [{}: {}] added to queue. Job: {}", handlerId, resourcePath, job);
-  }
-
-  @Override
-  public JobExecutionResult process(Job job, JobExecutionContext jobExecutionContext) {
-    LOG.trace("Processing {}", job);
-    PublicationAction ingestionAction = IngestionTrigger.extractPublicationAction(job);
-    List<ResourceInfo> resources = IngestionTrigger.extractResourcesInfo(job);
-    try {
-      handleResourceAndRelatedResourcesPublication(ingestionAction, resources);
-      return jobExecutionContext.result().succeeded();
-    } catch (StreamxPublicationException exception) {
-      LOG.error("Error while processing job", exception);
-      return jobExecutionContext.result().message("Error while processing job: " + exception.getMessage()).failed();
-    }
   }
 
   @ObjectClassDefinition(name = "StreamX Connector Configuration")
