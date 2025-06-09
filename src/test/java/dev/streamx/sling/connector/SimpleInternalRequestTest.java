@@ -1,13 +1,11 @@
 package dev.streamx.sling.connector;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.streamx.sling.connector.test.util.RandomBytesWriter;
 import dev.streamx.sling.connector.util.SimpleInternalRequest;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.Map;
-import java.util.Optional;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.apache.sling.api.resource.ResourceResolver;
@@ -66,7 +64,7 @@ class SimpleInternalRequestTest {
   };
 
   @Test
-  void mustProduceStringForPlainMarsPage() throws IOException {
+  void mustProduceStringForPlainMarsPage() {
     // given
     SlingUri plainMarsUri = SlingUriBuilder.parse(PLAIN_MARS_URL, resourceResolver).build();
 
@@ -75,11 +73,11 @@ class SimpleInternalRequestTest {
 
     // then
     assertThat(plainMarsRequest.getResponseAsString()).isEqualTo(PLAIN_MARS_HTML);
-    assertThat(bytesOf(plainMarsRequest.getResponseAsInputStream())).hasSize(PLAIN_MARS_HTML.length());
+    assertThat(plainMarsRequest.getResponseAsBytes()).hasValue(PLAIN_MARS_HTML.getBytes(UTF_8));
   }
 
   @Test
-  void mustProduceStringForUsualMarsPage() throws IOException {
+  void mustProduceStringForUsualMarsPage() {
     // given
     SlingUri usualMarsUri = SlingUriBuilder.parse(USUAL_MARS_URL, resourceResolver).build();
 
@@ -88,11 +86,11 @@ class SimpleInternalRequestTest {
 
     // then
     assertThat(usualMarsRequest.getResponseAsString()).isEqualTo(USUAL_MARS_HTML);
-    assertThat(bytesOf(usualMarsRequest.getResponseAsInputStream())).hasSize(USUAL_MARS_HTML.length());
+    assertThat(usualMarsRequest.getResponseAsBytes()).contains(USUAL_MARS_HTML.getBytes(UTF_8));
   }
 
   @Test
-  void mustProduceStringForUnknownPage() throws IOException {
+  void mustProduceStringForUnknownPage() {
     // given
     SlingUri unknownPageUri = SlingUriBuilder.parse(NOT_FOUND_URL, resourceResolver).build();
 
@@ -101,11 +99,11 @@ class SimpleInternalRequestTest {
 
     // then
     assertThat(unknownRequest.getResponseAsString()).isEqualTo(NOT_FOUND_HTML);
-    assertThat(bytesOf(unknownRequest.getResponseAsInputStream())).hasSize(NOT_FOUND_HTML.length());
+    assertThat(unknownRequest.getResponseAsBytes()).contains(NOT_FOUND_HTML.getBytes(UTF_8));
   }
 
   @Test
-  void mustProduceBinaryForBinaryPage() throws IOException {
+  void mustProduceBinaryForBinaryPage() {
     // given
     SlingUri binaryUri = SlingUriBuilder.parse(BINARY_URL, resourceResolver).build();
 
@@ -113,7 +111,8 @@ class SimpleInternalRequestTest {
     SimpleInternalRequest binaryRequest = new SimpleInternalRequest(binaryUri, slingRequestProcessor, resourceResolver);
 
     // then
-    assertThat(bytesOf(binaryRequest.getResponseAsInputStream())).hasSize(BINARY_PAGE_LENGTH);
+    assertThat(binaryRequest.getResponseAsBytes()).isPresent();
+    assertThat(binaryRequest.getResponseAsBytes().get()).hasSize(BINARY_PAGE_LENGTH);
   }
 
   @Test
@@ -127,12 +126,5 @@ class SimpleInternalRequestTest {
 
     // then
     assertThat(request.getResponseAsString()).contains("Received foo = bar flag");
-  }
-
-  @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-  private static byte[] bytesOf(Optional<InputStream> optionalInputStream) throws IOException {
-    try (InputStream inputStream = optionalInputStream.orElseThrow()) {
-      return inputStream.readAllBytes();
-    }
   }
 }

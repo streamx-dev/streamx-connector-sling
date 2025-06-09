@@ -15,12 +15,8 @@ import javax.jcr.query.Query;
 import javax.jcr.query.QueryManager;
 import javax.jcr.query.QueryResult;
 import org.apache.jackrabbit.commons.JcrUtils;
-import org.apache.sling.api.resource.LoginException;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
-import org.apache.sling.api.resource.ResourceResolverFactory;
-import org.osgi.service.component.annotations.Activate;
-import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,31 +26,28 @@ import org.slf4j.LoggerFactory;
  * Usage: while ingesting resources and their related resources.
  * How to use:
  *  1. Ingest main resource.
- *  2. Call {@link #updatePublishedResources(ResourceInfo parentResource, PublicationAction action)}.
+ *  2. Call {@link #updatePublishedResources(ResourceInfo parentResource, PublicationAction action, ResourceResolver resourceResolver)}.
  *  3. If the resource has related resources, ingest them.
- *  4. While attempting to unpublish related resources, you should call {@link #isReferencedByOtherResource(ResourceInfo relatedResource)} to verify if a related resource can be unpublished.
- *  4. Call {@link #updatePublishedResources(Map relatedResources, PublicationAction action)}.
+ *  4. While attempting to unpublish related resources, you should call {@link #isReferencedByOtherResource(ResourceInfo relatedResource, ResourceResolver resourceResolver)} to verify if a related resource can be unpublished.
+ *  4. Call {@link #updatePublishedResources(Map relatedResources, PublicationAction action, ResourceResolver resourceResolver)}.
  *     The map should contain data used for related resources ingestion, with entries of: parent resource path + set of related resources for the parent resource.
  *  </pre>
  */
-public class PublishedResourcesManager {
+public final class PublishedResourcesManager {
 
   private static final Logger LOG = LoggerFactory.getLogger(PublishedResourcesManager.class);
   private static final String BASE_NODE_PATH_FOR_PUBLISHED_RESOURCES = "/var/streamx/connector/sling/resources/published";
   private static final String SLING_FOLDER = "sling:Folder";
   private static final String NT_UNSTRUCTURED = "nt:unstructured";
 
-  private final ResourceResolverFactory resourceResolverFactory;
-
-  @Activate
-  PublishedResourcesManager(@Reference ResourceResolverFactory resourceResolverFactory) {
-    this.resourceResolverFactory = resourceResolverFactory;
+  private PublishedResourcesManager() {
+    // no instances
   }
 
-  void updatePublishedResources(ResourceInfo parentResource, PublicationAction action) {
+  static void updatePublishedResources(ResourceInfo parentResource, PublicationAction action, ResourceResolver resourceResolver) {
     String parentResourceJcrPath = parentResourceJcrPath(parentResource.getPath());
 
-    try (ResourceResolver resourceResolver = getResourceResolver()) {
+    try {
       Resource jcrResource = resourceResolver.getResource(parentResourceJcrPath);
       if (action == PublicationAction.PUBLISH && jcrResource == null) {
         Session session = getSession(resourceResolver);
@@ -68,9 +61,9 @@ public class PublishedResourcesManager {
     }
   }
 
-  void updatePublishedResources(Map<String, Set<ResourceInfo>> relatedResources, PublicationAction action) {
+  static void updatePublishedResources(Map<String, Set<ResourceInfo>> relatedResources, PublicationAction action, ResourceResolver resourceResolver) {
     if (action == PublicationAction.PUBLISH) {
-      try (ResourceResolver resourceResolver = getResourceResolver()) {
+      try {
         Session session = getSession(resourceResolver);
         for (Entry<String, Set<ResourceInfo>> relatedResourcesOfParent : relatedResources.entrySet()) {
           String parentResourcePath = relatedResourcesOfParent.getKey();
@@ -105,8 +98,8 @@ public class PublishedResourcesManager {
     // note: if the methods are used as described in javadoc - entry for parent resource path is already removed from JCR, so nothing to do for UNPUBLISH action here
   }
 
-  boolean isReferencedByOtherResource(ResourceInfo relatedResource) {
-    try (ResourceResolver resourceResolver = getResourceResolver()) {
+  static boolean isReferencedByOtherResource(ResourceInfo relatedResource, ResourceResolver resourceResolver) {
+    try {
       // Case 1: there is a directly published parent resource with the same path as the input related resource: means it is referenced
       Session session = getSession(resourceResolver);
       String parentResourceJcrPath = parentResourceJcrPath(relatedResource.getPath());
@@ -132,11 +125,6 @@ public class PublishedResourcesManager {
       LOG.error("Error verifying JCR state", ex);
       return false;
     }
-  }
-
-  @SuppressWarnings("deprecation")
-  private ResourceResolver getResourceResolver() throws LoginException {
-    return resourceResolverFactory.getAdministrativeResourceResolver(null);
   }
 
   private static Session getSession(ResourceResolver resourceResolver) {
