@@ -179,8 +179,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
   private void configureServices() {
     slingContext.registerService(SlingRequestProcessor.class, requestProcessor);
-    var selector = new ResourceContentRelatedResourcesSelector(relatedResourcesConfig,
-        requestProcessor, resourceResolverFactory);
+    var selector = new ResourceContentRelatedResourcesSelector(relatedResourcesConfig, requestProcessor, resourceResolverFactory);
     slingContext.registerService(RelatedResourcesSelector.class, selector);
     slingContext.registerInjectActivateService(new RelatedResourcesSelectorRegistry());
 
