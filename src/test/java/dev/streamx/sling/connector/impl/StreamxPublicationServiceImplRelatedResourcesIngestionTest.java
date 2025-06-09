@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -49,7 +50,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentMatchers;
 
 @ExtendWith(SlingContextExtension.class)
-class StreamxPublicationServiceImplRelatedResourcesTest {
+class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
   private static final String DAM_ASSET = "dam:Asset";
   private static final String CQ_PAGE = "cq:Page";
@@ -97,7 +98,9 @@ class StreamxPublicationServiceImplRelatedResourcesTest {
   private final Job job = mock(Job.class);
   private final JobExecutionContext jobExecutionContext = mock(JobExecutionContext.class);
 
-  private final SlingRequestProcessor basicRequestProcessor = (HttpServletRequest request, HttpServletResponse response, ResourceResolver resourceResolver) -> {
+  private final AtomicBoolean shouldRequestProcessorSimulateAllResourcesAreEdited = new AtomicBoolean(false);
+
+  private final SlingRequestProcessor requestProcessor = (HttpServletRequest request, HttpServletResponse response, ResourceResolver resourceResolver) -> {
     String requestURI = request.getRequestURI();
     response.setContentType("text/html");
     for (PageInfo pageInfo : allTestPages) {
@@ -105,6 +108,13 @@ class StreamxPublicationServiceImplRelatedResourcesTest {
         response.getWriter().write(pageInfo.content);
         break;
       }
+    }
+    if (requestURI.endsWith(".jpg")) {
+      response.getWriter().write("Content of image " + requestURI);
+    }
+
+    if (shouldRequestProcessorSimulateAllResourcesAreEdited.get()) {
+      response.getWriter().write("edited at " + System.nanoTime());
     }
   };
 
@@ -157,7 +167,7 @@ class StreamxPublicationServiceImplRelatedResourcesTest {
 
     doReturn(ResourceMocks.createResourceMock(DAM_ASSET))
         .when(resourceResolver)
-        .resolve(ArgumentMatchers.<String>argThat(path -> !path.endsWith(".html")));
+        .resolve(ArgumentMatchers.<String>argThat(path -> path.endsWith(".jpg")));
 
     doReturn(ResourceMocks.createResourceMock(CQ_PAGE))
         .when(resourceResolver)
@@ -168,15 +178,14 @@ class StreamxPublicationServiceImplRelatedResourcesTest {
   }
 
   private void configureServices() {
-    var selector = new ResourceContentRelatedResourcesSelector(relatedResourcesConfig, basicRequestProcessor, resourceResolverFactory);
+    slingContext.registerService(SlingRequestProcessor.class, requestProcessor);
+    var selector = new ResourceContentRelatedResourcesSelector(relatedResourcesConfig, requestProcessor, resourceResolverFactory);
     slingContext.registerService(RelatedResourcesSelector.class, selector);
     slingContext.registerInjectActivateService(new RelatedResourcesSelectorRegistry());
 
     slingContext.registerService(PublicationHandler.class, new PagePublicationHandler(resourceResolver));
     slingContext.registerService(PublicationHandler.class, new AssetPublicationHandler(resourceResolver));
     slingContext.registerInjectActivateService(new PublicationHandlerRegistry());
-
-    slingContext.registerService(PublishedResourcesManager.class, new PublishedResourcesManager(resourceResolverFactory));
 
     doReturn(mock(ResultBuilder.class)).when(jobExecutionContext).result();
     slingContext.registerService(JobManager.class, jobManager);
@@ -197,7 +206,21 @@ class StreamxPublicationServiceImplRelatedResourcesTest {
   }
 
   @Test
-  void shouldUnpublishRelatedResources_WhenUnpublishingParentPage_IfNoMoreReferences() {
+  void shouldUnpublishRelatedResources_WhenUnpublishingParentPage_IfNoMoreReferences_WhenResourcesAreNeverEdited() {
+    shouldRequestProcessorSimulateAllResourcesAreEdited.set(false);
+    shouldUnpublishRelatedResources_WhenUnpublishingParentPage_IfNoMoreReferences();
+  }
+
+  @Test
+  void shouldUnpublishRelatedResources_WhenUnpublishingParentPage_IfNoMoreReferences_WhenResourcesAreEditedBetweenEachRequest() {
+    shouldRequestProcessorSimulateAllResourcesAreEdited.set(true);
+    shouldUnpublishRelatedResources_WhenUnpublishingParentPage_IfNoMoreReferences();
+  }
+
+  private void shouldUnpublishRelatedResources_WhenUnpublishingParentPage_IfNoMoreReferences() {
+    // given
+    boolean areResourcesEditedBeforeEachRequest = shouldRequestProcessorSimulateAllResourcesAreEdited.get();
+
     // when 1: publish page that contains image 1, image 2 and image 3
     publishPage(PAGE_WITH_IMAGES_1_2_3);
 
@@ -211,18 +234,18 @@ class StreamxPublicationServiceImplRelatedResourcesTest {
     publishPage(PAGE_WITH_IMAGES_1_AND_3);
 
     // then
-    assertPublishedTimes(IMAGE_1, 2);
+    assertPublishedTimes(IMAGE_1, areResourcesEditedBeforeEachRequest ? 2 : 1);
     assertPublishedTimes(IMAGE_2, 1);
-    assertPublishedTimes(IMAGE_3, 2);
+    assertPublishedTimes(IMAGE_3, areResourcesEditedBeforeEachRequest ? 2 : 1);
     assertResourcesCurrentlyOnStreamX(PAGE_WITH_IMAGES_1_2_3, PAGE_WITH_IMAGES_1_AND_3, IMAGE_1, IMAGE_2, IMAGE_3);
 
     // when 3: unpublish first page
     unpublishPage(PAGE_WITH_IMAGES_1_2_3);
 
     // then: expect image 2 to be gone, as it doesn't have any references anymore
-    assertPublishedTimes(IMAGE_1, 2);
+    assertPublishedTimes(IMAGE_1, areResourcesEditedBeforeEachRequest ? 2 : 1);
     assertPublishedTimes(IMAGE_2, 1);
-    assertPublishedTimes(IMAGE_3, 2);
+    assertPublishedTimes(IMAGE_3, areResourcesEditedBeforeEachRequest ? 2 : 1);
     assertUnpublishedTimes(IMAGE_1, 0);
     assertUnpublishedTimes(IMAGE_2, 1);
     assertUnpublishedTimes(IMAGE_3, 0);
@@ -232,9 +255,9 @@ class StreamxPublicationServiceImplRelatedResourcesTest {
     publishImage(IMAGE_3);
 
     // then
-    assertPublishedTimes(IMAGE_1, 2);
+    assertPublishedTimes(IMAGE_1, areResourcesEditedBeforeEachRequest ? 2 : 1);
     assertPublishedTimes(IMAGE_2, 1);
-    assertPublishedTimes(IMAGE_3, 3);
+    assertPublishedTimes(IMAGE_3, areResourcesEditedBeforeEachRequest ? 3 : 2); // note: by design, the feature of not re-publishing unchanged images is implemented only for related resources, it's not executed when an image is published directly
     assertUnpublishedTimes(IMAGE_1, 0);
     assertUnpublishedTimes(IMAGE_2, 1);
     assertUnpublishedTimes(IMAGE_3, 0);
@@ -244,9 +267,9 @@ class StreamxPublicationServiceImplRelatedResourcesTest {
     unpublishPage(PAGE_WITH_IMAGES_1_AND_3);
 
     // then: expect image 1 to be gone, as it doesn't have any references anymore, but image 3 should stay in StreamX, since it was published directly
-    assertPublishedTimes(IMAGE_1, 2);
+    assertPublishedTimes(IMAGE_1, areResourcesEditedBeforeEachRequest ? 2 : 1);
     assertPublishedTimes(IMAGE_2, 1);
-    assertPublishedTimes(IMAGE_3, 3);
+    assertPublishedTimes(IMAGE_3, areResourcesEditedBeforeEachRequest ? 3 : 2);
     assertUnpublishedTimes(IMAGE_1, 1);
     assertUnpublishedTimes(IMAGE_2, 1);
     assertUnpublishedTimes(IMAGE_3, 0);
@@ -256,9 +279,9 @@ class StreamxPublicationServiceImplRelatedResourcesTest {
     publishPage(PAGE_WITH_IMAGES_1_2_3);
 
     // then
-    assertPublishedTimes(IMAGE_1, 3);
+    assertPublishedTimes(IMAGE_1, areResourcesEditedBeforeEachRequest ? 3 : 2);
     assertPublishedTimes(IMAGE_2, 2);
-    assertPublishedTimes(IMAGE_3, 4);
+    assertPublishedTimes(IMAGE_3, areResourcesEditedBeforeEachRequest ? 4 : 2);
     assertUnpublishedTimes(IMAGE_1, 1);
     assertUnpublishedTimes(IMAGE_2, 1);
     assertUnpublishedTimes(IMAGE_3, 0);
@@ -268,9 +291,9 @@ class StreamxPublicationServiceImplRelatedResourcesTest {
     unpublishImage(IMAGE_3);
 
     // then: expect to allow to always unpublish a main resource
-    assertPublishedTimes(IMAGE_1, 3);
+    assertPublishedTimes(IMAGE_1, areResourcesEditedBeforeEachRequest ? 3 : 2);
     assertPublishedTimes(IMAGE_2, 2);
-    assertPublishedTimes(IMAGE_3, 4);
+    assertPublishedTimes(IMAGE_3, areResourcesEditedBeforeEachRequest ? 4 : 2);
     assertUnpublishedTimes(IMAGE_1, 1);
     assertUnpublishedTimes(IMAGE_2, 1);
     assertUnpublishedTimes(IMAGE_3, 1);
@@ -280,9 +303,9 @@ class StreamxPublicationServiceImplRelatedResourcesTest {
     unpublishPage(PAGE_WITH_IMAGES_1_2_3);
 
     // then: since no image is currently published directly - expecting all images (related resources) from the page to be unpublished
-    assertPublishedTimes(IMAGE_1, 3);
+    assertPublishedTimes(IMAGE_1, areResourcesEditedBeforeEachRequest ? 3 : 2);
     assertPublishedTimes(IMAGE_2, 2);
-    assertPublishedTimes(IMAGE_3, 4);
+    assertPublishedTimes(IMAGE_3, areResourcesEditedBeforeEachRequest ? 4 : 2);
     assertUnpublishedTimes(IMAGE_1, 2);
     assertUnpublishedTimes(IMAGE_2, 2);
     assertUnpublishedTimes(IMAGE_3, 2);
@@ -296,7 +319,9 @@ class StreamxPublicationServiceImplRelatedResourcesTest {
     // then
     assertResourcesCurrentlyOnStreamX(IMAGE_1);
     // and: also verify additional JCR store of published resources
-    assertThat(resourceResolver.getResource("/var/streamx/connector/sling/resources/published" + IMAGE_1)).isNotNull();
+    verifyPublishedResourcesStored(IMAGE_1);
+    // and
+    verifyHashNotStored(IMAGE_1);
 
     // when
     publishPage(PAGE_WITH_IMAGES_1_AND_3);
@@ -304,22 +329,54 @@ class StreamxPublicationServiceImplRelatedResourcesTest {
     // then
     assertResourcesCurrentlyOnStreamX(PAGE_WITH_IMAGES_1_AND_3, IMAGE_1, IMAGE_3);
     // and
-    Resource relatedResourcesForPage = resourceResolver.getResource("/var/streamx/connector/sling/resources/published" + PAGE_WITH_IMAGES_1_AND_3.resourcePath);
-    assertThat(relatedResourcesForPage).isNotNull();
-    assertThat(relatedResourcesForPage.getChildren())
-        .hasSize(2)
-        .extracting(child -> new ResourceInfo(child.getValueMap().get("path", String.class), child.getValueMap().get("primaryNodeType", String.class)))
-        .containsExactly(
-            new ResourceInfo(IMAGE_1, DAM_ASSET),
-            new ResourceInfo(IMAGE_3, DAM_ASSET));
+    verifyPublishedResourcesStored(
+        PAGE_WITH_IMAGES_1_AND_3.resourcePath,
+        new ResourceInfo(IMAGE_1, DAM_ASSET),
+        new ResourceInfo(IMAGE_3, DAM_ASSET)
+    );
+    // and
+    verifyHashStored(IMAGE_1, "a5f27fe5339d01c3729c1a152f68c1d2f6fe4d6eebb421564e29158c4dfca9a8");
+    verifyHashNotStored(IMAGE_2);
+    verifyHashStored(IMAGE_3, "db8b5de55aec3168bbad32271a6cf2421c1e613cdf03713da47c6373b0d952e0");
 
     // when
     unpublishPage(PAGE_WITH_IMAGES_1_AND_3);
     // then
     assertResourcesCurrentlyOnStreamX(IMAGE_1);
     // and
-    assertThat(resourceResolver.getResource("/var/streamx/connector/sling/resources/published" + IMAGE_1)).isNotNull();
-    assertThat(resourceResolver.getResource("/var/streamx/connector/sling/resources/published" + PAGE_WITH_IMAGES_1_AND_3.resourcePath)).isNull();
+    verifyPublishedResourcesStored(IMAGE_1);
+    verifyPublishedResourcesNotStored(PAGE_WITH_IMAGES_1_AND_3.resourcePath);
+    // and
+    verifyHashStored(IMAGE_1, "a5f27fe5339d01c3729c1a152f68c1d2f6fe4d6eebb421564e29158c4dfca9a8");
+    verifyHashNotStored(IMAGE_2);
+    verifyHashNotStored(IMAGE_3);
+  }
+
+  private void verifyPublishedResourcesStored(String parentResourcePath, ResourceInfo... relatedResources) {
+    Resource relatedResourcesForParent = resourceResolver.getResource("/var/streamx/connector/sling/resources/published" + parentResourcePath);
+    assertThat(relatedResourcesForParent).isNotNull();
+    assertThat(relatedResourcesForParent.getChildren())
+        .hasSameSizeAs(relatedResources)
+        .extracting(child -> new ResourceInfo(
+            child.getValueMap().get("path", String.class),
+            child.getValueMap().get("primaryNodeType", String.class)))
+        .containsExactly(relatedResources);
+  }
+
+  private void verifyPublishedResourcesNotStored(String parentResourcePath) {
+    Resource relatedResourcesForParent = resourceResolver.getResource("/var/streamx/connector/sling/resources/published" + parentResourcePath);
+    assertThat(relatedResourcesForParent).isNull();
+  }
+
+  private void verifyHashStored(String resourcePath, String expected) {
+    Resource hashResource = resourceResolver.getResource("/var/streamx/connector/sling/resources/hashes" + resourcePath);
+    String hash = hashResource.getValueMap().get("lastPublishHash", String.class);
+    assertThat(hash).isEqualTo(expected);
+  }
+
+  private void verifyHashNotStored(String resourcePath) {
+    Resource hashResource = resourceResolver.getResource("/var/streamx/connector/sling/resources/hashes" + resourcePath);
+    assertThat(hashResource).isNull();
   }
 
   @Test

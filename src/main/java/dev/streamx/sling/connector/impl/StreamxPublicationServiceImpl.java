@@ -19,6 +19,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.sling.api.resource.ResourceResolver;
+import org.apache.sling.api.resource.ResourceResolverFactory;
+import org.apache.sling.engine.SlingRequestProcessor;
 import org.apache.sling.event.jobs.Job;
 import org.apache.sling.event.jobs.JobManager;
 import org.apache.sling.event.jobs.consumer.JobExecutionContext;
@@ -60,7 +63,10 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
   private StreamxClientStore streamxClientStore;
 
   @Reference
-  private PublishedResourcesManager publishedResourcesManager;
+  private SlingRequestProcessor slingRequestProcessor;
+
+  @Reference
+  private ResourceResolverFactory resourceResolverFactory;
 
   private boolean enabled;
 
@@ -112,15 +118,22 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
       return;
     }
 
-    try {
-      handleResourcesPublication(resources, action);
-      handleRelatedResourcesPublication(resources, action);
+    try (ResourceResolver resourceResolver = resourceResolverFactory.getAdministrativeResourceResolver(null)) {
+      handleResourcesPublication(resources, action, resourceResolver);
+      handleRelatedResourcesPublication(resources, action, resourceResolver);
     } catch (Exception e) {
       throw new StreamxPublicationException("Can't handle publication. " + e.getMessage(), e);
     }
   }
 
-  private void handleRelatedResourcesPublication(List<ResourceInfo> parentResources, PublicationAction action) {
+  private void handleResourcesPublication(List<ResourceInfo> resources, PublicationAction action, ResourceResolver resourceResolver) {
+    for (ResourceInfo resource : resources) {
+      handlePublication(resource, action);
+      PublishedResourcesManager.updatePublishedResources(resource, action, resourceResolver);
+    }
+  }
+
+  private void handleRelatedResourcesPublication(List<ResourceInfo> parentResources, PublicationAction action, ResourceResolver resourceResolver) {
     Map<String, Set<ResourceInfo>> relatedResources = findRelatedResources(parentResources);
 
     LinkedHashSet<ResourceInfo> distinctRelatedResources = relatedResources.values().stream()
@@ -128,10 +141,24 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
         .collect(Collectors.toCollection(LinkedHashSet::new));
 
     for (ResourceInfo resource : distinctRelatedResources) {
-      handlePublication(resource, true, action);
+      if (action == PublicationAction.UNPUBLISH && PublishedResourcesManager.isReferencedByOtherResource(resource, resourceResolver)) {
+        // do not unpublish still referenced resources
+        continue;
+      }
+
+      if (action == PublicationAction.PUBLISH && !ResourceHashManager.hasResourceContentChanged(resource.getPath(), slingRequestProcessor, resourceResolver)) {
+        // do not re-publish unchanged related resources
+        continue;
+      }
+
+      handlePublication(resource, action);
+
+      if (action == PublicationAction.UNPUBLISH) {
+        ResourceHashManager.deleteResourceHash(resource.getPath(), resourceResolver);
+      }
     }
 
-    publishedResourcesManager.updatePublishedResources(relatedResources, action);
+    PublishedResourcesManager.updatePublishedResources(relatedResources, action, resourceResolver);
   }
 
   private Map<String, Set<ResourceInfo>> findRelatedResources(List<ResourceInfo> parentResources) {
@@ -150,18 +177,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     return result;
   }
 
-  private void handleResourcesPublication(List<ResourceInfo> resources, PublicationAction action) {
-    for (ResourceInfo resource : resources) {
-      handlePublication(resource, false, action);
-      publishedResourcesManager.updatePublishedResources(resource, action);
-    }
-  }
-
-  private void handlePublication(ResourceInfo resource, boolean isRelatedResource, PublicationAction action) {
-    if (action == PublicationAction.UNPUBLISH && isRelatedResource && publishedResourcesManager.isReferencedByOtherResource(resource)) {
-      return;
-    }
-
+  private void handlePublication(ResourceInfo resource, PublicationAction action) {
     LOG.trace("Handling publication for resource: {}", resource);
     String resourcePath = resource.getPath();
     for (PublicationHandler<?> handler : publicationHandlerRegistry.getForResource(resource)) {

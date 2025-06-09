@@ -1,6 +1,7 @@
 package dev.streamx.sling.connector.impl;
 
 import dev.streamx.sling.connector.*;
+import dev.streamx.sling.connector.test.util.RandomBytesWriter;
 import dev.streamx.sling.connector.testing.handlers.AssetPublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.ImpostorPublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.OtherPagePublicationHandler;
@@ -10,12 +11,15 @@ import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJobExecutionCont
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJobManager;
 import dev.streamx.sling.connector.testing.streamx.clients.ingestion.FakeStreamxClient;
 import java.util.stream.Collectors;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.sling.api.resource.LoginException;
 import org.apache.sling.api.resource.PersistenceException;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.resource.ResourceResolverFactory;
+import org.apache.sling.engine.SlingRequestProcessor;
 import org.apache.sling.event.jobs.Job;
 import org.apache.sling.event.jobs.JobManager;
 import org.apache.sling.event.jobs.consumer.JobExecutor;
@@ -67,16 +71,14 @@ class StreamxPublicationServiceImplTest {
   private FakeStreamxClient fakeStreamxClient;
   private FakeStreamxClientFactory fakeStreamxClientFactory;
 
-  private static class RelatedPagesSelector implements RelatedResourcesSelector {
+  private final SlingRequestProcessor dummyRequestProcessor = (HttpServletRequest request, HttpServletResponse response, ResourceResolver resolver) ->
+      RandomBytesWriter.writeRandomBytes(response, 100);
 
-    @Override
-    public Collection<ResourceInfo> getRelatedResources(String resourcePath) {
-      return Arrays.asList(
+  private final RelatedResourcesSelector relatedPagesSelector = resourcePath ->
+       Arrays.asList(
           new ResourceInfo(RELATED_PAGE_TO_PUBLISH, "cq:Page"),
           new ResourceInfo(OTHER_RELATED_PAGE_TO_PUBLISH, "cq:Page")
       );
-    }
-  }
 
   @BeforeEach
   void setUp() {
@@ -130,8 +132,8 @@ class StreamxPublicationServiceImplTest {
 
     doReturn(resourceResolver).when(resourceResolverFactory).getAdministrativeResourceResolver(null);
     doNothing().when(resourceResolver).close();
-    slingContext.registerService(PublishedResourcesManager.class, new PublishedResourcesManager(resourceResolverFactory));
 
+    slingContext.registerService(SlingRequestProcessor.class, dummyRequestProcessor);
     slingContext.registerInjectActivateService(publicationService, publicationServiceConfig);
     slingContext.registerInjectActivateService(publicationJobExecutor);
 
@@ -432,7 +434,7 @@ class StreamxPublicationServiceImplTest {
         OTHER_RELATED_PAGE_TO_PUBLISH
     );
 
-    givenRelatedResourcesSelectors(new RelatedPagesSelector());
+    givenRelatedResourcesSelectors(relatedPagesSelector);
 
     whenPathsArePublished(
         "/content/my-site/page-1"
@@ -457,8 +459,7 @@ class StreamxPublicationServiceImplTest {
         OTHER_RELATED_PAGE_TO_PUBLISH
     );
 
-    givenRelatedResourcesSelectors(new RelatedPagesSelector(), new RelatedPagesSelector(),
-        new RelatedPagesSelector());
+    givenRelatedResourcesSelectors(relatedPagesSelector, relatedPagesSelector, relatedPagesSelector);
 
     whenPathsArePublished(
         "/content/my-site/page-1"
@@ -484,7 +485,7 @@ class StreamxPublicationServiceImplTest {
         OTHER_RELATED_PAGE_TO_PUBLISH
     );
 
-    givenRelatedResourcesSelectors(new RelatedPagesSelector());
+    givenRelatedResourcesSelectors(relatedPagesSelector);
 
     whenPathsArePublished(
         "/content/my-site/page-1",
@@ -511,7 +512,7 @@ class StreamxPublicationServiceImplTest {
         OTHER_RELATED_PAGE_TO_PUBLISH
     );
 
-    givenRelatedResourcesSelectors(new RelatedPagesSelector());
+    givenRelatedResourcesSelectors(relatedPagesSelector);
 
     whenPathsArePublished(
         "/content/my-site/page-1",
