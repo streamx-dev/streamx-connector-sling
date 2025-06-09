@@ -2,6 +2,7 @@ package dev.streamx.sling.connector.selectors.content;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.contentOf;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -18,7 +19,6 @@ import javax.jcr.Node;
 import javax.jcr.nodetype.NodeType;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import org.apache.commons.io.FileUtils;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.resource.ResourceResolverFactory;
@@ -38,6 +38,7 @@ class ResourceContentRelatedResourcesSelectorTest {
   private static final String MAIN_FOLDER_RESOURCE = "/content/firsthops/us/en";
   private static final String MAIN_PAGE_RESOURCE = "/content/firsthops/us/en.html";
   private static final File samplePageFile = new File("src/test/resources/sample-page.html");
+  private static final String samplePageHtml = contentOf(samplePageFile, UTF_8);
 
   private final SlingContext context = new SlingContext(ResourceResolverType.JCR_OAK);
   private final ResourceResolverFactory resourceResolverFactoryMock = mock(ResourceResolverFactory.class);
@@ -47,7 +48,7 @@ class ResourceContentRelatedResourcesSelectorTest {
     response.setContentType("text/html");
     response.getWriter().write(
         requestURI.equals(MAIN_PAGE_RESOURCE)
-            ? FileUtils.readFileToString(samplePageFile, UTF_8)
+            ? samplePageHtml
             : "<html><body><h1>Not Found</h1></body></html>"
     );
   };
