@@ -18,6 +18,8 @@ import dev.streamx.sling.connector.RelatedResourcesSelector;
 import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.selectors.content.ResourceContentRelatedResourcesSelector;
 import dev.streamx.sling.connector.selectors.content.ResourceContentRelatedResourcesSelectorConfig;
+import dev.streamx.sling.connector.test.util.AssetResourceInfo;
+import dev.streamx.sling.connector.test.util.PageResourceInfo;
 import dev.streamx.sling.connector.test.util.ResourceMocks;
 import dev.streamx.sling.connector.testing.handlers.AssetPublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.PagePublicationHandler;
@@ -51,9 +53,6 @@ import org.mockito.ArgumentMatchers;
 
 @ExtendWith(SlingContextExtension.class)
 class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
-
-  private static final String DAM_ASSET = "dam:Asset";
-  private static final String CQ_PAGE = "cq:Page";
 
   private static final String IMAGE_1 = "/content/firsthops/us/en/image-1.jpg";
   private static final String IMAGE_2 = "/content/firsthops/us/en/image-2.jpg";
@@ -148,6 +147,11 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     }
 
     @Override
+    public String related_resource_processable_path_regex() {
+      return ".*\\.html$";
+    }
+
+    @Override
     public String resource_required$_$primary$_$node$_$type_regex() {
       return ".*";
     }
@@ -165,11 +169,11 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
       slingContext.load().json(pageInfo.jsonResourceFile, pageInfo.resourcePath);
     }
 
-    doReturn(ResourceMocks.createResourceMock(DAM_ASSET))
+    doReturn(ResourceMocks.createAssetResourceMock())
         .when(resourceResolver)
         .resolve(ArgumentMatchers.<String>argThat(path -> path.endsWith(".jpg")));
 
-    doReturn(ResourceMocks.createResourceMock(CQ_PAGE))
+    doReturn(ResourceMocks.createPageResourceMock())
         .when(resourceResolver)
         .resolve(ArgumentMatchers.<String>argThat(path -> path.endsWith(".html")));
 
@@ -331,8 +335,8 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     // and
     verifyPublishedResourcesStored(
         PAGE_WITH_IMAGES_1_AND_3.resourcePath,
-        new ResourceInfo(IMAGE_1, DAM_ASSET),
-        new ResourceInfo(IMAGE_3, DAM_ASSET)
+        new AssetResourceInfo(IMAGE_1),
+        new AssetResourceInfo(IMAGE_3)
     );
     // and
     verifyHashStored(IMAGE_1, "a5f27fe5339d01c3729c1a152f68c1d2f6fe4d6eebb421564e29158c4dfca9a8");
@@ -417,19 +421,19 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   }
 
   private void publishPage(String resourcePath) {
-    ingest(new ResourceInfo(resourcePath, CQ_PAGE), PublicationAction.PUBLISH);
+    ingest(new PageResourceInfo(resourcePath), PublicationAction.PUBLISH);
   }
 
   private void unpublishPage(String resourcePath) {
-    ingest(new ResourceInfo(resourcePath, CQ_PAGE), PublicationAction.UNPUBLISH);
+    ingest(new PageResourceInfo(resourcePath), PublicationAction.UNPUBLISH);
   }
 
   private void publishImage(String resourcePath) {
-    ingest(new ResourceInfo(resourcePath, DAM_ASSET), PublicationAction.PUBLISH);
+    ingest(new AssetResourceInfo(resourcePath), PublicationAction.PUBLISH);
   }
 
   private void unpublishImage(String resourcePath) {
-    ingest(new ResourceInfo(resourcePath, DAM_ASSET), PublicationAction.UNPUBLISH);
+    ingest(new AssetResourceInfo(resourcePath), PublicationAction.UNPUBLISH);
   }
 
   private void ingest(ResourceInfo resourceInfo, PublicationAction action) {

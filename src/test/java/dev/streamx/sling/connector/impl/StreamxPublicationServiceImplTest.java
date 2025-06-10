@@ -1,6 +1,8 @@
 package dev.streamx.sling.connector.impl;
 
 import dev.streamx.sling.connector.*;
+import dev.streamx.sling.connector.test.util.AssetResourceInfo;
+import dev.streamx.sling.connector.test.util.PageResourceInfo;
 import dev.streamx.sling.connector.test.util.RandomBytesWriter;
 import dev.streamx.sling.connector.testing.handlers.AssetPublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.ImpostorPublicationHandler;
@@ -76,8 +78,8 @@ class StreamxPublicationServiceImplTest {
 
   private final RelatedResourcesSelector relatedPagesSelector = resourcePath ->
        Arrays.asList(
-          new ResourceInfo(RELATED_PAGE_TO_PUBLISH, "cq:Page"),
-          new ResourceInfo(OTHER_RELATED_PAGE_TO_PUBLISH, "cq:Page")
+          new PageResourceInfo(RELATED_PAGE_TO_PUBLISH),
+          new PageResourceInfo(OTHER_RELATED_PAGE_TO_PUBLISH)
       );
 
   @BeforeEach
@@ -624,10 +626,11 @@ class StreamxPublicationServiceImplTest {
   }
 
   private static List<ResourceInfo> toResourceInfoList(String... paths) {
-    return Arrays.stream(paths).map(path -> new ResourceInfo(
-        path,
-        StringUtils.contains(path, "/dam/") ? "dam:Asset" : "cq:Page"
-    )).collect(Collectors.toList());
+    return Arrays.stream(paths).map(path ->
+        StringUtils.contains(path, "/dam/")
+            ? new AssetResourceInfo(path)
+            : new PageResourceInfo(path)
+    ).collect(Collectors.toList());
   }
 
   private void whenAllJobsAreProcessed() {

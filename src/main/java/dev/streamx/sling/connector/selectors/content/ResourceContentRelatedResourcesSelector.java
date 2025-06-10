@@ -3,23 +3,23 @@ package dev.streamx.sling.connector.selectors.content;
 import dev.streamx.sling.connector.RelatedResourcesSelector;
 import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.util.SimpleInternalRequest;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.sling.api.resource.LoginException;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.resource.ResourceResolverFactory;
 import org.apache.sling.api.uri.SlingUri;
 import org.apache.sling.api.uri.SlingUriBuilder;
 import org.apache.sling.engine.SlingRequestProcessor;
+import org.jetbrains.annotations.Nullable;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
@@ -48,6 +48,10 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
   private final SlingRequestProcessor slingRequestProcessor;
   private final ResourceResolverFactory resourceResolverFactory;
 
+  private List<Pattern> relatedResourcePathIncludePatterns;
+  private Pattern relatedResourcePathExcludePattern;
+  private Pattern relatedResourceProcessablePathPattern;
+
   /**
    * Constructs an instance of this class.
    *
@@ -65,11 +69,22 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
     this.config = new AtomicReference<>(config);
     this.slingRequestProcessor = slingRequestProcessor;
     this.resourceResolverFactory = resourceResolverFactory;
+    loadPatterns();
+  }
+
+  private void loadPatterns() {
+    ResourceContentRelatedResourcesSelectorConfig currentConfig = config.get();
+    this.relatedResourcePathIncludePatterns = Arrays.stream(currentConfig.references_search$_$regexes())
+        .map(Pattern::compile)
+        .collect(Collectors.toUnmodifiableList());
+    this.relatedResourcePathExcludePattern = Pattern.compile(currentConfig.references_exclude$_$from$_$result_regex());
+    this.relatedResourceProcessablePathPattern = Pattern.compile(currentConfig.related_resource_processable_path_regex());
   }
 
   @Modified
   void configure(ResourceContentRelatedResourcesSelectorConfig config) {
     this.config.set(config);
+    loadPatterns();
   }
 
   @Override
@@ -92,14 +107,14 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
       return Collections.emptyList();
     }
 
-    Set<String> extractedPaths = extract(resourcePath, resourceResolver);
+    Set<String> extractedPaths = extractPathsOfRelatedResources(resourcePath, resourceResolver);
+    for (String extractedPath : Set.copyOf(extractedPaths)) {
+      extractPathsFromNestedRelatedResource(extractedPath, resourceResolver, extractedPaths);
+    }
     LOG.info("Recognized paths for '{}': {}", resourcePath, extractedPaths);
 
     return extractedPaths.stream()
-        .map(recognizedPath -> new ResourceInfo(
-            recognizedPath,
-            ResourceFilter.extractPrimaryNodeType(recognizedPath, resourceResolver)
-        ))
+        .map(extractedPath -> toResourceInfo(extractedPath, resourceResolver))
         .collect(Collectors.toUnmodifiableList());
   }
 
@@ -113,38 +128,55 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
    * </p>
    *
    * @param resourcePath path to text resource from which to extract paths
-   * @return {@link Collection} of unique resource paths; may be empty if no matches
+   * @return {@link Set} of unique resource paths; may be empty if no matches
    * are found
    */
-  private Set<String> extract(String resourcePath, ResourceResolver resourceResolver) {
-    String[] includeRegexes = config.get().references_search$_$regexes();
-    String excludeRegex = config.get().references_exclude$_$from$_$result_regex();
+  private Set<String> extractPathsOfRelatedResources(String resourcePath, ResourceResolver resourceResolver) {
+    String resourcePathPostfixToAppend = config.get().resource$_$path_postfix$_$to$_$append();
+    String resourceAsString = readResourceAsString(resourcePath, resourceResolver, resourcePathPostfixToAppend);
+    return extractMatchingRelatedResourcePaths(resourceAsString);
+  }
 
-    String resourceAsString = readResourceAsString(resourcePath, resourceResolver);
-    Set<String> resultPaths = new TreeSet<>();
+  private void extractPathsFromNestedRelatedResource(String resourcePath, ResourceResolver resourceResolver, Set<String> extractedPaths) {
+    if (!relatedResourceProcessablePathPattern.matcher(resourcePath).matches()) {
+      return;
+    }
 
-    for (String regex : includeRegexes) {
-      Matcher matcher = Pattern.compile(regex).matcher(resourceAsString);
+    String resourceAsString = readResourceAsString(resourcePath, resourceResolver, null);
+    Set<String> nestedRelatedResourcePaths = extractMatchingRelatedResourcePaths(resourceAsString);
+
+    for (String nestedRelatedResourcePath : nestedRelatedResourcePaths) {
+      if (!extractedPaths.contains(nestedRelatedResourcePath)) { // avoid circular references
+        extractedPaths.add(nestedRelatedResourcePath);
+        extractPathsFromNestedRelatedResource(nestedRelatedResourcePath, resourceResolver, extractedPaths);
+      }
+    }
+  }
+
+  private Set<String> extractMatchingRelatedResourcePaths(String mainResourceContent) {
+    Set<String> matchingPaths = new TreeSet<>();
+    for (Pattern includePattern : relatedResourcePathIncludePatterns) {
+      Matcher matcher = includePattern.matcher(mainResourceContent);
       while (matcher.find()) {
-        String path = matcher.group(1);
-        if (!path.matches(excludeRegex)) {
-          resultPaths.add(path);
+        String relatedResourcePath = matcher.group(1);
+        if (!relatedResourcePathExcludePattern.matcher(relatedResourcePath).matches()) {
+          matchingPaths.add(relatedResourcePath);
         }
       }
     }
-
-    return resultPaths;
+    return matchingPaths;
   }
 
-  private String readResourceAsString(String resourcePath, ResourceResolver resourceResolver) {
-    String rawUri = String.format(
-        "%s%s", resourcePath,
-        Optional.ofNullable(config.get().resource$_$path_postfix$_$to$_$append())
-            .orElse(StringUtils.EMPTY)
-    );
-    SlingUri slingUri = SlingUriBuilder.parse(rawUri, resourceResolver).build();
-    return new SimpleInternalRequest(
-        slingUri, slingRequestProcessor, resourceResolver
-    ).getResponseAsString();
+  private String readResourceAsString(String resourcePath, ResourceResolver resourceResolver, @Nullable String resourcePathPostfixToAppend) {
+    if (resourcePathPostfixToAppend != null) {
+      resourcePath += resourcePathPostfixToAppend;
+    }
+    SlingUri slingUri = SlingUriBuilder.parse(resourcePath, resourceResolver).build();
+    return new SimpleInternalRequest(slingUri, slingRequestProcessor, resourceResolver).getResponseAsString();
+  }
+
+  private static ResourceInfo toResourceInfo(String resourcePath, ResourceResolver resourceResolver) {
+    String primaryNodeType = ResourceFilter.extractPrimaryNodeType(resourcePath, resourceResolver);
+    return new ResourceInfo(resourcePath, primaryNodeType);
   }
 }
