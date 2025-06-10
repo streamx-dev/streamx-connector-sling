@@ -7,6 +7,7 @@ import dev.streamx.sling.connector.PublishData;
 import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.StreamxPublicationException;
 import dev.streamx.sling.connector.UnpublishData;
+import dev.streamx.sling.connector.test.util.AssetResourceInfo;
 import dev.streamx.sling.connector.test.util.RandomBytesWriter;
 import java.lang.annotation.Annotation;
 import java.util.Map;
@@ -87,7 +88,7 @@ class ClientlibsPublicationHandlerTest {
     for (Entry<String, Integer> entry : webResourcePathsAndSizes.entrySet()) {
       String webResourcePath = entry.getKey();
       Integer expectedSize = entry.getValue();
-      ResourceInfo resource = new ResourceInfo(webResourcePath, "dam:Asset");
+      ResourceInfo resource = new AssetResourceInfo(webResourcePath);
       assertThat(handler.canHandle(resource)).isTrue();
 
       PublishData<WebResource> publishData = handler.getPublishData(webResourcePath);

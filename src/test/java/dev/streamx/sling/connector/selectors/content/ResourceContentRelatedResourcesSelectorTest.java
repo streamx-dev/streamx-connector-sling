@@ -13,12 +13,9 @@ import dev.streamx.sling.connector.test.util.ResourceMocks;
 import java.io.File;
 import java.lang.annotation.Annotation;
 import java.util.Collection;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import org.apache.sling.api.resource.Resource;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.resource.ResourceResolverFactory;
 import org.apache.sling.engine.SlingRequestProcessor;
@@ -44,22 +41,25 @@ class ResourceContentRelatedResourcesSelectorTest {
 
   private final SlingRequestProcessor basicRequestProcessor = (HttpServletRequest request, HttpServletResponse response, ResourceResolver resourceResolver) -> {
     String requestURI = request.getRequestURI();
-    assertThat(requestURI).isEqualTo(MAIN_PAGE_RESOURCE);
     response.setContentType("text/html");
-    response.getWriter().write(samplePageHtml);
+    if (requestURI.equals(MAIN_PAGE_RESOURCE)) {
+      response.getWriter().write(samplePageHtml);
+    } else if (StringUtils.endsWithAny(requestURI, ".js", ".css")) {
+      response.getWriter().write("dummy content of a related resource with no nested related resources");
+    } else {
+      throw new IllegalArgumentException("Not handled for " + requestURI);
+    }
   };
 
   @BeforeEach
   void setupResourceResolver() throws Exception {
     ResourceResolver spyResolver = spy(context.resourceResolver());
 
-    Resource folderResourceMock = ResourceMocks.createResourceMock(JcrResourceConstants.NT_SLING_FOLDER);
-    doReturn(folderResourceMock)
+    doReturn(ResourceMocks.createFolderResourceMock())
         .when(spyResolver)
         .resolve(MAIN_FOLDER_RESOURCE);
 
-    Resource assetResourceMock = ResourceMocks.createResourceMock("dam:Asset");
-    doReturn(assetResourceMock)
+    doReturn(ResourceMocks.createAssetResourceMock())
         .when(spyResolver)
         .resolve(ArgumentMatchers.<String>argThat(path -> !path.equals(MAIN_FOLDER_RESOURCE)));
 
@@ -68,9 +68,9 @@ class ResourceContentRelatedResourcesSelectorTest {
   }
 
   @Test
-  void dontHandleUsualAssets() {
+  void shouldFindRelatedResources() {
     // given
-    ResourceContentRelatedResourcesSelector resourceContentRelatedResourcesSelector = new ResourceContentRelatedResourcesSelector(
+    ResourceContentRelatedResourcesSelector relatedResourcesSelector = new ResourceContentRelatedResourcesSelector(
         new ResourceContentRelatedResourcesSelectorConfig() {
 
           @Override
@@ -102,6 +102,11 @@ class ResourceContentRelatedResourcesSelectorTest {
           }
 
           @Override
+          public String related_resource_processable_path_regex() {
+            return ".*\\.(html|css|js)$";
+          }
+
+          @Override
           public String resource_required$_$primary$_$node$_$type_regex() {
             return JcrResourceConstants.NT_SLING_FOLDER;
           }
@@ -110,9 +115,17 @@ class ResourceContentRelatedResourcesSelectorTest {
         resourceResolverFactoryMock
     );
 
-    // and
-    List<ResourceInfo> expectedRelatedResources = Stream.of(
-            "/content/firsthops/us/en/_jcr_content/root/container/container/image.coreimg.85.1024.jpeg/1740144613537/mountain-range.jpeg",
+    // when
+    Collection<ResourceInfo> actualRelatedResources = relatedResourcesSelector.getRelatedResources(MAIN_FOLDER_RESOURCE);
+
+    // then
+    assertThat(actualRelatedResources)
+        .extracting(ResourceInfo::getPrimaryNodeType)
+        .containsOnly("dam:Asset");
+
+    assertThat(actualRelatedResources)
+        .extracting(ResourceInfo::getPath)
+        .containsExactly("/content/firsthops/us/en/_jcr_content/root/container/container/image.coreimg.85.1024.jpeg/1740144613537/mountain-range.jpeg",
             "/content/firsthops/us/en/_jcr_content/root/container/container/image.coreimg.85.1200.jpeg/1740144613537/mountain-range.jpeg",
             "/content/firsthops/us/en/_jcr_content/root/container/container/image.coreimg.85.1600.jpeg/1740144613537/mountain-range.jpeg",
             "/content/firsthops/us/en/_jcr_content/root/container/container/image.coreimg.85.320.jpeg/1740144613537/mountain-range.jpeg",
@@ -137,18 +150,6 @@ class ResourceContentRelatedResourcesSelectorTest {
             "/etc.clientlibs/firsthops/clientlibs/clientlib-dependencies.lc-d41d8cd98f00b204e9800998ecf8427e-lc.min.css",
             "/etc.clientlibs/firsthops/clientlibs/clientlib-dependencies.lc-d41d8cd98f00b204e9800998ecf8427e-lc.min.js",
             "/etc.clientlibs/firsthops/clientlibs/clientlib-site.lc-99a5ff922700a9bff656c1db08c6bc22-lc.min.css",
-            "/etc.clientlibs/firsthops/clientlibs/clientlib-site.lc-d91e521f6b4cc63fe57186d1b172e7e9-lc.min.js"
-        ).map(expectedPath -> new ResourceInfo(expectedPath, "dam:Asset"))
-        .collect(Collectors.toUnmodifiableList());
-
-    // when
-    Collection<ResourceInfo> actualRelatedResources = resourceContentRelatedResourcesSelector.getRelatedResources(
-        MAIN_FOLDER_RESOURCE
-    );
-
-    // then
-    assertThat(actualRelatedResources)
-        .hasSameSizeAs(expectedRelatedResources)
-        .containsExactlyElementsOf(expectedRelatedResources);
+            "/etc.clientlibs/firsthops/clientlibs/clientlib-site.lc-d91e521f6b4cc63fe57186d1b172e7e9-lc.min.js");
   }
 }

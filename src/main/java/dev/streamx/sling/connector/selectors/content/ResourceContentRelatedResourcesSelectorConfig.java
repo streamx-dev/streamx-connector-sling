@@ -92,6 +92,20 @@ public @interface ResourceContentRelatedResourcesSelectorConfig {
   String resource_required$_$path_regex() default ".*";
 
   /**
+   * Regex pattern that a referenced {@link Resource} path must match
+   * to have its content processed in search for referenced resources.
+   *
+   * @return a regex pattern that a referenced {@link Resource} path must match.
+   */
+  @AttributeDefinition(
+      name = "Related Resource Processable Path Regex",
+      description = "Regex pattern that a referenced Resource path must match to have its content processed in search for referenced resources.",
+      type = AttributeType.STRING,
+      defaultValue = ".*\\.(html|css|js)$"
+  )
+  String related_resource_processable_path_regex() default ".*\\.(html|css|js)$";
+
+  /**
    * A regex pattern that the {@link Resource}'s primary {@link NodeType} must match for the
    * {@link Resource} to be considered acceptable.
    *
