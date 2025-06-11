@@ -11,13 +11,13 @@ import org.apache.sling.event.jobs.Job;
 /**
  * Trigger to ingest data into Streamx.
  */
-final class IngestionTrigger {
+final class IngestionTriggerJobHelper {
 
   static final String JOB_TOPIC = "dev/streamx/ingestion-trigger";
   static final String PN_STREAMX_INGESTION_ACTION = "streamx.ingestionAction";
   static final String PN_STREAMX_RESOURCES_INFO = "streamx.resourcesInfo";
 
-  private IngestionTrigger() {
+  private IngestionTriggerJobHelper() {
     // no instances
   }
 

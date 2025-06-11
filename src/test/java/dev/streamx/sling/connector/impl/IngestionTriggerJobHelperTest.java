@@ -11,24 +11,24 @@ import java.util.Map;
 import org.apache.sling.event.jobs.Job;
 import org.junit.jupiter.api.Test;
 
-class IngestionTriggerTest {
+class IngestionTriggerJobHelperTest {
 
   private final Job fakeJob = mock(Job.class);
 
   @Test
   void mustExtractDataOutOfJob() {
     // given
-    when(fakeJob.getProperty(IngestionTrigger.PN_STREAMX_INGESTION_ACTION, String.class))
+    when(fakeJob.getProperty(IngestionTriggerJobHelper.PN_STREAMX_INGESTION_ACTION, String.class))
         .thenReturn("PUBLISH");
-    when(fakeJob.getProperty(IngestionTrigger.PN_STREAMX_RESOURCES_INFO, String[].class))
+    when(fakeJob.getProperty(IngestionTriggerJobHelper.PN_STREAMX_RESOURCES_INFO, String[].class))
         .thenReturn(new String[]{
             new ResourceInfo("http://localhost:4502/content/we-retail/us/en","cq:Page").serialize(),
             new ResourceInfo("/content/wknd/us/en", "cq:Page").serialize()
         });
 
     // when
-    PublicationAction publicationAction = IngestionTrigger.extractPublicationAction(fakeJob);
-    List<ResourceInfo> resourcesInfo = IngestionTrigger.extractResourcesInfo(fakeJob);
+    PublicationAction publicationAction = IngestionTriggerJobHelper.extractPublicationAction(fakeJob);
+    List<ResourceInfo> resourcesInfo = IngestionTriggerJobHelper.extractResourcesInfo(fakeJob);
 
     // then
     assertThat(publicationAction).isSameAs(PublicationAction.PUBLISH);
@@ -46,11 +46,11 @@ class IngestionTriggerTest {
     );
 
     // when
-    Map<String, Object> jobProps = IngestionTrigger.asJobProps(PublicationAction.PUBLISH, resources);
+    Map<String, Object> jobProps = IngestionTriggerJobHelper.asJobProps(PublicationAction.PUBLISH, resources);
 
     // then
-    String rawPublicationAction = (String) jobProps.get(IngestionTrigger.PN_STREAMX_INGESTION_ACTION);
-    String[] resourcesInfo = (String[]) jobProps.get(IngestionTrigger.PN_STREAMX_RESOURCES_INFO);
+    String rawPublicationAction = (String) jobProps.get(IngestionTriggerJobHelper.PN_STREAMX_INGESTION_ACTION);
+    String[] resourcesInfo = (String[]) jobProps.get(IngestionTriggerJobHelper.PN_STREAMX_RESOURCES_INFO);
 
     assertThat(rawPublicationAction).isEqualTo(PublicationAction.PUBLISH.toString());
     assertThat(resourcesInfo).hasSize(2);

@@ -118,8 +118,8 @@ class StreamxPublicationServiceImplTest {
         .toArray(String[]::new);
 
     Job job = mock(Job.class);
-    when(job.getProperty(IngestionTrigger.PN_STREAMX_RESOURCES_INFO, String[].class)).thenReturn(serializedResources);
-    when(job.getProperty(IngestionTrigger.PN_STREAMX_INGESTION_ACTION, String.class)).thenReturn(action);
+    when(job.getProperty(IngestionTriggerJobHelper.PN_STREAMX_RESOURCES_INFO, String[].class)).thenReturn(serializedResources);
+    when(job.getProperty(IngestionTriggerJobHelper.PN_STREAMX_INGESTION_ACTION, String.class)).thenReturn(action);
     publicationService.process(job, new FakeJobExecutionContext());
   }
 
@@ -507,15 +507,15 @@ class StreamxPublicationServiceImplTest {
     assertThat(queuedJobs).hasSize(2);
 
     FakeJob publishJob = queuedJobs.get(0);
-    assertThat(publishJob.getProperty(IngestionTrigger.PN_STREAMX_INGESTION_ACTION, String.class))
+    assertThat(publishJob.getProperty(IngestionTriggerJobHelper.PN_STREAMX_INGESTION_ACTION, String.class))
         .isEqualTo("PUBLISH");
-    assertThat(publishJob.getProperty(IngestionTrigger.PN_STREAMX_RESOURCES_INFO, String[].class))
+    assertThat(publishJob.getProperty(IngestionTriggerJobHelper.PN_STREAMX_RESOURCES_INFO, String[].class))
         .containsExactly("{\"path\":\"path-1\",\"primaryNodeType\":\"type-1\"}");
 
     FakeJob unpublishJob = queuedJobs.get(1);
-    assertThat(unpublishJob.getProperty(IngestionTrigger.PN_STREAMX_INGESTION_ACTION, String.class))
+    assertThat(unpublishJob.getProperty(IngestionTriggerJobHelper.PN_STREAMX_INGESTION_ACTION, String.class))
         .isEqualTo("UNPUBLISH");
-    assertThat(unpublishJob.getProperty(IngestionTrigger.PN_STREAMX_RESOURCES_INFO, String[].class))
+    assertThat(unpublishJob.getProperty(IngestionTriggerJobHelper.PN_STREAMX_RESOURCES_INFO, String[].class))
         .containsExactly("{\"path\":\"path-2\",\"primaryNodeType\":\"type-2\"}");
   }
 

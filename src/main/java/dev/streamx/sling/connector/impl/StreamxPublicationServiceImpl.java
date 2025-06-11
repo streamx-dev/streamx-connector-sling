@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
  */
 @Component(
     service = {StreamxPublicationService.class, JobExecutor.class},
-    property = JobExecutor.PROPERTY_TOPICS + "=" + IngestionTrigger.JOB_TOPIC,
+    property = JobExecutor.PROPERTY_TOPICS + "=" + IngestionTriggerJobHelper.JOB_TOPIC,
     immediate = true
 )
 @Designate(ocd = Config.class)
@@ -83,16 +83,16 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
   }
 
   private void submitIngestionTriggerJob(PublicationAction ingestionAction, List<ResourceInfo> resources) {
-    Map<String, Object> jobProps = IngestionTrigger.asJobProps(ingestionAction, resources);
-    Job addedJob = jobManager.addJob(IngestionTrigger.JOB_TOPIC, jobProps);
+    Map<String, Object> jobProps = IngestionTriggerJobHelper.asJobProps(ingestionAction, resources);
+    Job addedJob = jobManager.addJob(IngestionTriggerJobHelper.JOB_TOPIC, jobProps);
     LOG.debug("Added job: {}", addedJob);
   }
 
   @Override
   public JobExecutionResult process(Job job, JobExecutionContext jobExecutionContext) {
     LOG.trace("Processing {}", job);
-    PublicationAction ingestionAction = IngestionTrigger.extractPublicationAction(job);
-    List<ResourceInfo> resources = IngestionTrigger.extractResourcesInfo(job);
+    PublicationAction ingestionAction = IngestionTriggerJobHelper.extractPublicationAction(job);
+    List<ResourceInfo> resources = IngestionTriggerJobHelper.extractResourcesInfo(job);
     try {
       handlePublication(ingestionAction, resources);
       return jobExecutionContext.result().succeeded();
