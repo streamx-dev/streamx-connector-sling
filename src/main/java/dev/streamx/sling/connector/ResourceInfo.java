@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 
 /**
@@ -32,8 +33,15 @@ public class ResourceInfo {
   public ResourceInfo(
       @JsonProperty("path") String path,
       @JsonProperty("primaryNodeType") String primaryNodeType) {
-    this.path = path;
-    this.primaryNodeType = primaryNodeType;
+    this.path = requireNotBlank("path", path);
+    this.primaryNodeType = requireNotBlank("primaryNodeType", primaryNodeType);
+  }
+
+  private static String requireNotBlank(String fieldName, String fieldValue) {
+    if (StringUtils.isBlank(fieldValue)) {
+      throw new IllegalArgumentException(fieldName + " cannot be blank");
+    }
+    return fieldValue;
   }
 
   /**
