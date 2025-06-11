@@ -242,6 +242,12 @@
       <version>1.4.6</version>
       <scope>provided</scope>
     </dependency>
+    <dependency>
+      <groupId>org.apache.jackrabbit</groupId>
+      <artifactId>jackrabbit-jcr-commons</artifactId>
+      <version>2.22.0</version>
+      <scope>provided</scope>
+    </dependency>
 
     <!-- OSGi Metadata (not used in runtime)-->
     <dependency>

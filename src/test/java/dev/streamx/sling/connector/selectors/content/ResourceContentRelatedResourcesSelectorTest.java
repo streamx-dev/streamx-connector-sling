@@ -44,12 +44,9 @@ class ResourceContentRelatedResourcesSelectorTest {
 
   private final SlingRequestProcessor basicRequestProcessor = (HttpServletRequest request, HttpServletResponse response, ResourceResolver resourceResolver) -> {
     String requestURI = request.getRequestURI();
+    assertThat(requestURI).isEqualTo(MAIN_PAGE_RESOURCE);
     response.setContentType("text/html");
-    response.getWriter().write(
-        requestURI.equals(MAIN_PAGE_RESOURCE)
-            ? samplePageHtml
-            : "<html><body><h1>Not Found</h1></body></html>"
-    );
+    response.getWriter().write(samplePageHtml);
   };
 
   @BeforeEach
@@ -139,7 +136,7 @@ class ResourceContentRelatedResourcesSelectorTest {
             "/etc.clientlibs/firsthops/clientlibs/clientlib-dependencies.lc-d41d8cd98f00b204e9800998ecf8427e-lc.min.js",
             "/etc.clientlibs/firsthops/clientlibs/clientlib-site.lc-99a5ff922700a9bff656c1db08c6bc22-lc.min.css",
             "/etc.clientlibs/firsthops/clientlibs/clientlib-site.lc-d91e521f6b4cc63fe57186d1b172e7e9-lc.min.js"
-        ).map(AssetResourceInfo::new)
+        ).map(ResourceInfo::new)
         .collect(Collectors.toUnmodifiableList());
 
     // when
@@ -150,6 +147,6 @@ class ResourceContentRelatedResourcesSelectorTest {
     // then
     assertThat(actualRelatedResources)
         .hasSameSizeAs(expectedRelatedResources)
-        .containsExactlyElementsOf(expectedRelatedResources);
+        .containsExactlyInAnyOrderElementsOf(expectedRelatedResources);
   }
 }

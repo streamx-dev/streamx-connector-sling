@@ -14,7 +14,7 @@ public interface RelatedResourcesSelector {
    * Retrieves a collection of related resources based on the specified resource path.
    *
    * @param resourcePath the path of the resource for which related resources are to be selected
-   * @return a collection of {@code RelatedResource} objects that are related to the specified resource
+   * @return a collection of {@code ResourceInfo} objects that are related to the specified resource
    */
   Collection<ResourceInfo> getRelatedResources(String resourcePath);
 
