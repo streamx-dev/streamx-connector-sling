@@ -119,6 +119,10 @@ interface to automate this process.
 Its implementation is intended to provide a list of resource paths along with the corresponding
 action to be taken when a particular resource is published.
 
+### Default Related Resources Selector implementation
+
+TODO describe the [ResourceContentRelatedResourcesSelector](./src/main/java/dev/streamx/sling/connector/selectors/content/ResourceContentRelatedResourcesSelector.java)
+
 # Usage:
 
 Build
