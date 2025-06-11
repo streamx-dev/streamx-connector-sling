@@ -11,12 +11,15 @@ import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJobManager;
 import dev.streamx.sling.connector.testing.streamx.clients.ingestion.FakeStreamxClient;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.sling.api.resource.LoginException;
 import org.apache.sling.api.resource.PersistenceException;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
+import org.apache.sling.api.resource.ResourceResolverFactory;
 import org.apache.sling.event.jobs.Job;
 import org.apache.sling.event.jobs.JobManager;
 import org.apache.sling.event.jobs.consumer.JobExecutor;
+import org.apache.sling.testing.mock.sling.ResourceResolverType;
 import org.apache.sling.testing.mock.sling.junit5.SlingContext;
 import org.apache.sling.testing.mock.sling.junit5.SlingContextExtension;
 import org.assertj.core.groups.Tuple;
@@ -28,6 +31,7 @@ import java.util.*;
 import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssumptions.given;
@@ -36,6 +40,7 @@ import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -49,8 +54,9 @@ class StreamxPublicationServiceImplTest {
   private static final String RELATED_PAGE_TO_PUBLISH = "/content/my-site/related-page-to-publish";
   private static final String OTHER_RELATED_PAGE_TO_PUBLISH = "/content/my-site/other-related-page-to-publish";
 
-  private final SlingContext slingContext = new SlingContext();
-  private final ResourceResolver resourceResolver = slingContext.resourceResolver();
+  private final SlingContext slingContext = new SlingContext(ResourceResolverType.JCR_OAK);
+  private final ResourceResolver resourceResolver = spy(slingContext.resourceResolver());
+  private final ResourceResolverFactory resourceResolverFactory = mock(ResourceResolverFactory.class);
   private final Map<String, Object> publicationServiceConfig = new HashMap<>();
   private final List<PublicationHandler<?>> handlers = new ArrayList<>();
   private final List<RelatedResourcesSelector> relatedResourcesSelectors = new ArrayList<>();
@@ -80,7 +86,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @SuppressWarnings("ReturnOfNull")
-  private void initializeComponentsIfNotInitialized() throws StreamxPublicationException {
+  private void initializeComponentsIfNotInitialized() throws LoginException {
     if (publicationService != null) {
       return;
     }
@@ -121,6 +127,10 @@ class StreamxPublicationServiceImplTest {
     slingContext.registerInjectActivateService(new PublicationHandlerRegistry());
 
     slingContext.registerInjectActivateService(new RelatedResourcesSelectorRegistry());
+
+    doReturn(resourceResolver).when(resourceResolverFactory).getAdministrativeResourceResolver(null);
+    doNothing().when(resourceResolver).close();
+    slingContext.registerService(PublishedResourcesManager.class, new PublishedResourcesManager(resourceResolverFactory));
 
     slingContext.registerInjectActivateService(publicationService, publicationServiceConfig);
     slingContext.registerInjectActivateService(publicationJobExecutor);
@@ -168,6 +178,22 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
+  void shouldPublishAndUnpublishSinglePage() throws Exception {
+    givenPageHierarchy("/content/my-site/page-1/page-2");
+
+    whenPathIsPublished("/content/my-site/page-1");
+    whenPathIsUnpublished("/content/my-site/page-1");
+
+    whenAllJobsAreProcessed();
+
+    thenProcessedJobsCountIs(2);
+    thenPublicationsContainsExactly(
+        publishPage("/content/my-site/page-1.html"),
+        unpublishPage("/content/my-site/page-1.html")
+    );
+  }
+
+  @Test
   void shouldUnpublishSinglePage() throws Exception {
     givenPageHierarchy("/content/my-site/page-1/page-2/page-3");
 
@@ -195,7 +221,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldUnpublishEvenIfResourceDoesNotExist() throws StreamxPublicationException {
+  void shouldUnpublishEvenIfResourceDoesNotExist() throws Exception {
     given(resourceResolver.getResource("/content/my-site/page-1.html")).isNull();
     given(resourceResolver.getResource("/content/dam/asset-1.jpeg")).isNull();
 
@@ -259,18 +285,21 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldNotPublishIfPathsAreEmpty() throws Exception {
+  void shouldNotPublishIfAnyPathIsEmpty() throws Exception {
     givenPageHierarchy("/content/my-site/page-1");
 
-    whenPathsArePublished("", "/content/my-site/page-1", null);
-    whenPathsAreUnpublished(null, "/content/my-site/page-1", "");
+    assertThatThrownBy(() -> whenPathsArePublished("/content/my-site/page-1", null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("path cannot be blank");
+
+    assertThatThrownBy(() -> whenPathsAreUnpublished("/content/my-site/page-1", ""))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("path cannot be blank");
+
     whenAllJobsAreProcessed();
 
-    thenProcessedJobsCountIs(2);
-    thenPublicationsContainsExactly(
-        publishPage("/content/my-site/page-1.html"),
-        unpublishPage("/content/my-site/page-1.html")
-    );
+    thenProcessedJobsCountIs(0);
+    thenNoPublicationsWereMade();
   }
 
   @Test
@@ -573,22 +602,22 @@ class StreamxPublicationServiceImplTest {
     this.fakeStreamxClientConfigs.addAll(Arrays.asList(configs));
   }
 
-  private void whenPathIsPublished(String path) throws StreamxPublicationException {
+  private void whenPathIsPublished(String path) throws LoginException {
     initializeComponentsIfNotInitialized();
     publicationService.publish(toResourceInfoList(path));
   }
 
-  private void whenPathsArePublished(String... paths) throws StreamxPublicationException {
+  private void whenPathsArePublished(String... paths) throws LoginException {
     initializeComponentsIfNotInitialized();
     publicationService.publish(toResourceInfoList(paths));
   }
 
-  private void whenPathIsUnpublished(String path) throws StreamxPublicationException {
+  private void whenPathIsUnpublished(String path) throws LoginException {
     initializeComponentsIfNotInitialized();
     publicationService.unpublish(toResourceInfoList(path));
   }
 
-  private void whenPathsAreUnpublished(String... paths) throws StreamxPublicationException {
+  private void whenPathsAreUnpublished(String... paths) throws LoginException {
     initializeComponentsIfNotInitialized();
     publicationService.unpublish(toResourceInfoList(paths));
   }

@@ -9,14 +9,13 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 
 import dev.streamx.sling.connector.ResourceInfo;
+import dev.streamx.sling.connector.test.util.ResourceMocks;
 import java.io.File;
 import java.lang.annotation.Annotation;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import javax.jcr.Node;
-import javax.jcr.nodetype.NodeType;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.apache.sling.api.resource.Resource;
@@ -45,41 +44,27 @@ class ResourceContentRelatedResourcesSelectorTest {
 
   private final SlingRequestProcessor basicRequestProcessor = (HttpServletRequest request, HttpServletResponse response, ResourceResolver resourceResolver) -> {
     String requestURI = request.getRequestURI();
+    assertThat(requestURI).isEqualTo(MAIN_PAGE_RESOURCE);
     response.setContentType("text/html");
-    response.getWriter().write(
-        requestURI.equals(MAIN_PAGE_RESOURCE)
-            ? samplePageHtml
-            : "<html><body><h1>Not Found</h1></body></html>"
-    );
+    response.getWriter().write(samplePageHtml);
   };
 
   @BeforeEach
   void setupResourceResolver() throws Exception {
     ResourceResolver spyResolver = spy(context.resourceResolver());
 
-    Resource folderResourceMock = createResourceMock(JcrResourceConstants.NT_SLING_FOLDER);
+    Resource folderResourceMock = ResourceMocks.createResourceMock(JcrResourceConstants.NT_SLING_FOLDER);
     doReturn(folderResourceMock)
         .when(spyResolver)
         .resolve(MAIN_FOLDER_RESOURCE);
 
-    Resource assetResourceMock = createResourceMock("dam:Asset");
+    Resource assetResourceMock = ResourceMocks.createResourceMock("dam:Asset");
     doReturn(assetResourceMock)
         .when(spyResolver)
         .resolve(ArgumentMatchers.<String>argThat(path -> !path.equals(MAIN_FOLDER_RESOURCE)));
 
     doNothing().when(spyResolver).close();
     doReturn(spyResolver).when(resourceResolverFactoryMock).getAdministrativeResourceResolver(null);
-  }
-
-  private static Resource createResourceMock(String primaryNodeType) throws Exception {
-    Resource resourceMock = mock(Resource.class);
-    Node nodeMock = mock(Node.class);
-    NodeType nodeTypeMock = mock(NodeType.class);
-
-    doReturn(primaryNodeType).when(nodeTypeMock).getName();
-    doReturn(nodeTypeMock).when(nodeMock).getPrimaryNodeType();
-    doReturn(nodeMock).when(resourceMock).adaptTo(Node.class);
-    return resourceMock;
   }
 
   @Test

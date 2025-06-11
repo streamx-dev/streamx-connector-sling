@@ -8,17 +8,17 @@ import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX
 import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.PublicationAction;
 import dev.streamx.sling.connector.PublicationHandler;
-import dev.streamx.sling.connector.RelatedResourcesSelector;
 import dev.streamx.sling.connector.StreamxPublicationException;
 import dev.streamx.sling.connector.StreamxPublicationService;
 import dev.streamx.sling.connector.impl.StreamxPublicationServiceImpl.Config;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.sling.event.jobs.Job;
 import org.apache.sling.event.jobs.JobManager;
 import org.apache.sling.event.jobs.consumer.JobExecutionContext;
@@ -59,6 +59,9 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
   @Reference
   private StreamxClientStore streamxClientStore;
 
+  @Reference
+  private PublishedResourcesManager publishedResourcesManager;
+
   private boolean enabled;
 
   @Activate
@@ -73,12 +76,12 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
   }
 
   @Override
-  public void publish(List<ResourceInfo> resourcesToPublish) throws StreamxPublicationException {
+  public void publish(List<ResourceInfo> resourcesToPublish) {
     submitIngestionTriggerJob(PublicationAction.PUBLISH, resourcesToPublish);
   }
 
   @Override
-  public void unpublish(List<ResourceInfo> resourcesToUnpublish) throws StreamxPublicationException {
+  public void unpublish(List<ResourceInfo> resourcesToUnpublish) {
     submitIngestionTriggerJob(PublicationAction.UNPUBLISH, resourcesToUnpublish);
   }
 
@@ -94,7 +97,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     PublicationAction ingestionAction = IngestionTriggerJobHelper.extractPublicationAction(job);
     List<ResourceInfo> resources = IngestionTriggerJobHelper.extractResourcesInfo(job);
     try {
-      handlePublication(ingestionAction, resources);
+      handleResourceAndRelatedResourcesPublication(ingestionAction, resources);
       return jobExecutionContext.result().succeeded();
     } catch (StreamxPublicationException exception) {
       LOG.error("Error while processing job", exception);
@@ -102,7 +105,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     }
   }
 
-  private void handlePublication(PublicationAction action, List<ResourceInfo> resources)
+  private void handleResourceAndRelatedResourcesPublication(PublicationAction action, List<ResourceInfo> resources)
       throws StreamxPublicationException {
     LOG.trace("Handling publication for paths: {}", resources);
     if (!enabled || resources.isEmpty()) {
@@ -111,73 +114,65 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
 
     try {
       handleResourcesPublication(resources, action);
-      if (action == PublicationAction.PUBLISH) {
-        Set<ResourceInfo> relatedResources = findRelatedResources(resources);
-        publishRelatedResources(relatedResources);
-      }
-    } catch (JobCreationException e) {
+      handleRelatedResourcesPublication(resources, action);
+    } catch (Exception e) {
       throw new StreamxPublicationException("Can't handle publication. " + e.getMessage(), e);
     }
   }
 
-  private Set<ResourceInfo> findRelatedResources(List<ResourceInfo> parentResources) {
-    Set<String> parentResourcesPaths = parentResources.stream()
-        .map(ResourceInfo::getPath)
-        .collect(Collectors.toCollection(LinkedHashSet::new));
-    LOG.trace("Searching for related resources for paths: {}", parentResourcesPaths);
+  private void handleRelatedResourcesPublication(List<ResourceInfo> parentResources, PublicationAction action) {
+    Map<String, Set<ResourceInfo>> relatedResources = findRelatedResources(parentResources);
 
-    return parentResourcesPaths.stream()
-        .flatMap(resourcePath -> findRelatedResources(resourcePath).stream())
-        .filter(relatedResource -> !parentResourcesPaths.contains(relatedResource.getPath()))
+    LinkedHashSet<ResourceInfo> distinctRelatedResources = relatedResources.values().stream()
+        .flatMap(Collection::stream)
         .collect(Collectors.toCollection(LinkedHashSet::new));
+
+    for (ResourceInfo resource : distinctRelatedResources) {
+      handlePublication(resource, true, action);
+    }
+
+    publishedResourcesManager.updatePublishedResources(relatedResources, action);
   }
 
-  private void handleResourcesPublication(List<ResourceInfo> resources, PublicationAction action)
-      throws JobCreationException {
+  private Map<String, Set<ResourceInfo>> findRelatedResources(List<ResourceInfo> parentResources) {
+    LOG.trace("Searching for related resources for {}", parentResources);
+
+    Map<String, Set<ResourceInfo>> result = new LinkedHashMap<>();
+    for (ResourceInfo parentResource : parentResources) {
+      Set<ResourceInfo> relatedResources = relatedResourcesSelectorRegistry.getSelectors().stream()
+          .flatMap(selector -> selector.getRelatedResources(parentResource.getPath()).stream())
+          .filter(relatedResource -> !parentResources.contains(relatedResource))
+          .collect(Collectors.toCollection(LinkedHashSet::new));
+      if (!relatedResources.isEmpty()) {
+        result.put(parentResource.getPath(), relatedResources);
+      }
+    }
+    return result;
+  }
+
+  private void handleResourcesPublication(List<ResourceInfo> resources, PublicationAction action) {
     for (ResourceInfo resource : resources) {
-      if (StringUtils.isBlank(resource.getPath())) {
-        continue;
-      }
-      handlePublication(resource, action);
+      handlePublication(resource, false, action);
+      publishedResourcesManager.updatePublishedResources(resource, action);
     }
   }
 
-  private void handlePublication(ResourceInfo resource, PublicationAction action)
-      throws JobCreationException {
+  private void handlePublication(ResourceInfo resource, boolean isRelatedResource, PublicationAction action) {
+    if (action == PublicationAction.UNPUBLISH && isRelatedResource && publishedResourcesManager.isReferencedByOtherResource(resource)) {
+      return;
+    }
+
     LOG.trace("Handling publication for resource: {}", resource);
-    for (PublicationHandler<?> handler : publicationHandlerRegistry.getHandlers()) {
-      if (handler.canHandle(resource)) {
-        addPublicationToQueue(handler.getId(), action, resource.getPath());
+    String resourcePath = resource.getPath();
+    for (PublicationHandler<?> handler : publicationHandlerRegistry.getForResource(resource)) {
+      for (StreamxInstanceClient client : streamxClientStore.getForResource(resourcePath)) {
+        LOG.debug("Adding publication request for [{}: {}] to queue", handler.getId(), resourcePath);
+        addPublicationToQueue(handler.getId(), action, resourcePath, client.getName());
       }
     }
   }
 
-  private void publishRelatedResources(Set<ResourceInfo> relatedResources) throws JobCreationException {
-    for (ResourceInfo relatedResource : relatedResources) {
-      LOG.trace("Handling related resource publication: {}", relatedResource);
-      handlePublication(relatedResource, PublicationAction.PUBLISH);
-    }
-  }
-
-  private Set<ResourceInfo> findRelatedResources(String parentResourcePath) {
-    Set<ResourceInfo> relatedResources = new LinkedHashSet<>();
-    for (RelatedResourcesSelector relatedResourcesSelector : relatedResourcesSelectorRegistry.getSelectors()) {
-      relatedResources.addAll(relatedResourcesSelector.getRelatedResources(parentResourcePath));
-    }
-    return relatedResources;
-  }
-
-  private void addPublicationToQueue(String handlerId, PublicationAction action,
-      String resourcePath) throws JobCreationException {
-    LOG.debug("Adding publication request for [{}: {}] to queue", handlerId, resourcePath);
-    for (StreamxInstanceClient client : streamxClientStore.getForResource(resourcePath)) {
-      addPublicationToQueue(handlerId, action, resourcePath, client.getName());
-    }
-  }
-
-  private void addPublicationToQueue(String handlerId, PublicationAction action,
-      String resourcePath,
-      String clientName) throws JobCreationException {
+  private void addPublicationToQueue(String handlerId, PublicationAction action, String resourcePath, String clientName) {
     Map<String, Object> jobProperties = new HashMap<>();
     jobProperties.put(PN_STREAMX_HANDLER_ID, handlerId);
     jobProperties.put(PN_STREAMX_CLIENT_NAME, clientName);
@@ -185,11 +180,9 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     jobProperties.put(PN_STREAMX_PATH, resourcePath);
     Job job = jobManager.addJob(PublicationJobExecutor.JOB_TOPIC, jobProperties);
     if (job == null) {
-      throw new JobCreationException("Publication job could not be created by JobManager");
+      throw new JobCreationException("Publication job could not be created by JobManager for " + resourcePath);
     }
-    LOG.debug(
-        "Publication request for [{}: {}] added to queue. Job: {}", handlerId, resourcePath, job
-    );
+    LOG.debug("Publication request for [{}: {}] added to queue. Job: {}", handlerId, resourcePath, job);
   }
 
   @ObjectClassDefinition(name = "StreamX Connector Configuration")
