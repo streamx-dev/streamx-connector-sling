@@ -82,13 +82,24 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     submitIngestionTriggerJob(PublicationAction.UNPUBLISH, resourcesToUnpublish);
   }
 
-  private void submitIngestionTriggerJob(
-      PublicationAction ingestionAction, List<ResourceInfo> resources
-  ) {
-    IngestionTrigger ingestionTrigger = new IngestionTrigger(ingestionAction, resources);
-    Map<String, Object> jobProps = ingestionTrigger.asJobProps();
+  private void submitIngestionTriggerJob(PublicationAction ingestionAction, List<ResourceInfo> resources) {
+    Map<String, Object> jobProps = IngestionTrigger.asJobProps(ingestionAction, resources);
     Job addedJob = jobManager.addJob(IngestionTrigger.JOB_TOPIC, jobProps);
     LOG.debug("Added job: {}", addedJob);
+  }
+
+  @Override
+  public JobExecutionResult process(Job job, JobExecutionContext jobExecutionContext) {
+    LOG.trace("Processing {}", job);
+    PublicationAction ingestionAction = IngestionTrigger.extractPublicationAction(job);
+    List<ResourceInfo> resources = IngestionTrigger.extractResourcesInfo(job);
+    try {
+      handlePublication(ingestionAction, resources);
+      return jobExecutionContext.result().succeeded();
+    } catch (StreamxPublicationException exception) {
+      LOG.error("Error while processing job", exception);
+      return jobExecutionContext.result().message("Error while processing job: " + exception.getMessage()).failed();
+    }
   }
 
   private void handlePublication(PublicationAction action, List<ResourceInfo> resources)
@@ -186,21 +197,6 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     LOG.debug(
         "Publication request for [{}: {}] added to queue. Job: {}", handlerId, resourcePath, job
     );
-  }
-
-  @Override
-  public JobExecutionResult process(Job job, JobExecutionContext jobExecutionContext) {
-    LOG.trace("Processing {}", job);
-    IngestionTrigger ingestionTrigger = new IngestionTrigger(job);
-    PublicationAction ingestionAction = ingestionTrigger.ingestionAction();
-    List<ResourceInfo> resources = ingestionTrigger.resourcesInfo();
-    try {
-      handlePublication(ingestionAction, resources);
-      return jobExecutionContext.result().succeeded();
-    } catch (StreamxPublicationException exception) {
-      LOG.error("Error while processing job", exception);
-      return jobExecutionContext.result().message("Error while processing job: " + exception.getMessage()).failed();
-    }
   }
 
   @ObjectClassDefinition(name = "StreamX Connector Configuration")
