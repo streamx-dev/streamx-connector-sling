@@ -15,9 +15,7 @@ public interface RelatedResourcesSelector {
    *
    * @param resourcePath the path of the resource for which related resources are to be selected
    * @return a collection of {@code RelatedResource} objects that are related to the specified resource
-   * @throws StreamxPublicationException if a temporary error occurs and the operation should be retried
    */
-  Collection<ResourceInfo> getRelatedResources(String resourcePath)
-      throws StreamxPublicationException;
+  Collection<ResourceInfo> getRelatedResources(String resourcePath);
 
 }
