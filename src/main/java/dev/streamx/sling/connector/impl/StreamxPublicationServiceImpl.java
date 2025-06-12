@@ -129,7 +129,9 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
   private void handleResourcesPublication(List<ResourceInfo> resources, PublicationAction action, ResourceResolver resourceResolver) {
     for (ResourceInfo resource : resources) {
       handlePublication(resource, action);
-      PublishedResourcesManager.updatePublishedResources(resource, action, resourceResolver);
+      if (action == PublicationAction.UNPUBLISH) {
+        PublishedRelatedResourcesManager.removePublishedResourcesData(resource, resourceResolver);
+      }
     }
   }
 
@@ -140,25 +142,21 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
         .flatMap(Collection::stream)
         .collect(Collectors.toCollection(LinkedHashSet::new));
 
-    for (ResourceInfo resource : distinctRelatedResources) {
-      if (action == PublicationAction.UNPUBLISH && PublishedResourcesManager.isReferencedByOtherResource(resource, resourceResolver)) {
-        // do not unpublish still referenced resources
-        continue;
+    if (action == PublicationAction.PUBLISH) {
+      for (ResourceInfo relatedResource : distinctRelatedResources) {
+        if (ResourceHashManager.hasResourceContentChanged(relatedResource, slingRequestProcessor, resourceResolver)) {
+          handlePublication(relatedResource, action);
+        }
       }
-
-      if (action == PublicationAction.PUBLISH && !ResourceHashManager.hasResourceContentChanged(resource.getPath(), slingRequestProcessor, resourceResolver)) {
-        // do not re-publish unchanged related resources
-        continue;
-      }
-
-      handlePublication(resource, action);
-
-      if (action == PublicationAction.UNPUBLISH) {
-        ResourceHashManager.deleteResourceHash(resource.getPath(), resourceResolver);
+      PublishedRelatedResourcesManager.updatePublishedResourcesData(relatedResources, resourceResolver);
+    } else if (action == PublicationAction.UNPUBLISH) {
+      for (ResourceInfo relatedResource : distinctRelatedResources) {
+        if (!PublishedRelatedResourcesManager.isReferencedByOtherPublishedResource(relatedResource, resourceResolver)) {
+          handlePublication(relatedResource, action);
+          ResourceHashManager.deleteResourceHash(relatedResource, resourceResolver);
+        }
       }
     }
-
-    PublishedResourcesManager.updatePublishedResources(relatedResources, action, resourceResolver);
   }
 
   private Map<String, Set<ResourceInfo>> findRelatedResources(List<ResourceInfo> parentResources) {
