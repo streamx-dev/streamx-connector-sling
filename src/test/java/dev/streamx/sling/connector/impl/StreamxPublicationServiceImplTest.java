@@ -1,6 +1,8 @@
 package dev.streamx.sling.connector.impl;
 
 import dev.streamx.sling.connector.*;
+import dev.streamx.sling.connector.test.util.AssetResourceInfo;
+import dev.streamx.sling.connector.test.util.PageResourceInfo;
 import dev.streamx.sling.connector.testing.handlers.AssetPublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.ImpostorPublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.OtherPagePublicationHandler;
@@ -66,8 +68,8 @@ class StreamxPublicationServiceImplTest {
     @Override
     public Collection<ResourceInfo> getRelatedResources(String resourcePath) {
       return Arrays.asList(
-          new ResourceInfo(RELATED_PAGE_TO_PUBLISH, "cq:Page"),
-          new ResourceInfo(OTHER_RELATED_PAGE_TO_PUBLISH, "cq:Page")
+          new PageResourceInfo(RELATED_PAGE_TO_PUBLISH),
+          new PageResourceInfo(OTHER_RELATED_PAGE_TO_PUBLISH)
       );
     }
   }
@@ -522,8 +524,8 @@ class StreamxPublicationServiceImplTest {
     doCallRealMethod().when(publicationService).unpublish(anyList());
 
     // when
-    publicationService.publish(Collections.singletonList(new ResourceInfo("path-1", "type-1")));
-    publicationService.unpublish(Collections.singletonList(new ResourceInfo("path-2", "type-2")));
+    publicationService.publish(Collections.singletonList(new PageResourceInfo("path-1")));
+    publicationService.unpublish(Collections.singletonList(new AssetResourceInfo("path-2")));
 
     // then
     List<FakeJob> queuedJobs = fakeJobManager.getJobQueue();
@@ -533,13 +535,13 @@ class StreamxPublicationServiceImplTest {
     assertThat(publishJob.getProperty(IngestionTriggerJobHelper.PN_STREAMX_INGESTION_ACTION, String.class))
         .isEqualTo("PUBLISH");
     assertThat(publishJob.getProperty(IngestionTriggerJobHelper.PN_STREAMX_RESOURCES_INFO, String[].class))
-        .containsExactly("{\"path\":\"path-1\",\"primaryNodeType\":\"type-1\"}");
+        .containsExactly("{\"path\":\"path-1\",\"primaryNodeType\":\"cq:Page\"}");
 
     FakeJob unpublishJob = queuedJobs.get(1);
     assertThat(unpublishJob.getProperty(IngestionTriggerJobHelper.PN_STREAMX_INGESTION_ACTION, String.class))
         .isEqualTo("UNPUBLISH");
     assertThat(unpublishJob.getProperty(IngestionTriggerJobHelper.PN_STREAMX_RESOURCES_INFO, String[].class))
-        .containsExactly("{\"path\":\"path-2\",\"primaryNodeType\":\"type-2\"}");
+        .containsExactly("{\"path\":\"path-2\",\"primaryNodeType\":\"dam:Asset\"}");
   }
 
   private void givenPageHierarchy(String... paths) throws PersistenceException {
@@ -594,10 +596,11 @@ class StreamxPublicationServiceImplTest {
   }
 
   private static List<ResourceInfo> toResourceInfoList(String... paths) {
-    return Arrays.stream(paths).map(path -> new ResourceInfo(
-        path,
-        StringUtils.contains(path, "/dam/") ? "dam:Asset" : "cq:Page"
-    )).collect(Collectors.toList());
+    return Arrays.stream(paths).map(path ->
+        StringUtils.contains(path, "/dam/")
+            ? new AssetResourceInfo(path)
+            : new PageResourceInfo(path)
+    ).collect(Collectors.toList());
   }
 
   private void whenAllJobsAreProcessed() {
