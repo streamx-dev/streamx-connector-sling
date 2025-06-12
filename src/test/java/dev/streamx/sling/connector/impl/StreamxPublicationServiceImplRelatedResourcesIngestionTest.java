@@ -510,7 +510,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   private void verifyPublishedResourcesDataIsStored(String parentPagePath, String... expectedRelatedAssetPaths) {
     for (String relatedAssetPath : expectedRelatedAssetPaths) {
       String expectedJcrPath = String.join("",
-          "/var/streamx/connector/sling/resources/published",
+          "/var/streamx/connector/sling/resources/published/grouped-by-parent-resource-path",
           parentPagePath,
           "/related-resources",
           relatedAssetPath
@@ -522,7 +522,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   }
 
   private void verifyPublishedResourcesDataIsNotStored(String parentResourcePath) {
-    Resource relatedResourcesForParent = resourceResolver.getResource("/var/streamx/connector/sling/resources/published" + parentResourcePath);
+    Resource relatedResourcesForParent = resourceResolver.getResource("/var/streamx/connector/sling/resources/published/grouped-by-parent-resource-path" + parentResourcePath);
     assertThat(relatedResourcesForParent).isNull();
   }
 
