@@ -145,7 +145,7 @@ final class PublishedRelatedResourcesManager {
       ValueFactory valueFactory = session.getValueFactory();
 
       for (ResourceInfo relatedResource : relatedResources) {
-         query.bindValue("relatedResourcePath", valueFactory.createValue("%" + relatedResource.getPath()));
+        query.bindValue("relatedResourcePath", valueFactory.createValue("%" + relatedResource.getPath()));
         query.setLimit(1);
         NodeIterator resultNodes = query.execute().getNodes();
         if (!resultNodes.hasNext()) {
