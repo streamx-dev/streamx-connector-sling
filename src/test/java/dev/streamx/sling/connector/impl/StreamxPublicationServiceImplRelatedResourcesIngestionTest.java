@@ -5,7 +5,7 @@ import static dev.streamx.sling.connector.impl.IngestionTriggerJobHelper.PN_STRE
 import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_ACTION;
 import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PATH;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.contentOf;
+import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
@@ -15,7 +15,6 @@ import static org.mockito.Mockito.spy;
 import dev.streamx.sling.connector.PublicationAction;
 import dev.streamx.sling.connector.PublicationHandler;
 import dev.streamx.sling.connector.RelatedResourcesSelector;
-import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.selectors.content.ResourceContentRelatedResourcesSelector;
 import dev.streamx.sling.connector.selectors.content.ResourceContentRelatedResourcesSelectorConfig;
 import dev.streamx.sling.connector.test.util.PageResourceInfo;
@@ -23,17 +22,24 @@ import dev.streamx.sling.connector.test.util.ResourceMocks;
 import dev.streamx.sling.connector.testing.handlers.AssetPublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.PagePublicationHandler;
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJobManager;
-import java.io.File;
 import java.lang.annotation.Annotation;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import org.apache.sling.api.resource.PersistenceException;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.resource.ResourceResolverFactory;
@@ -57,36 +63,11 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   private static final String IMAGE_2 = "/content/firsthops/us/en/image-2.jpg";
   private static final String IMAGE_3 = "/content/firsthops/us/en/image-3.jpg";
 
-  private static final PageInfo PAGE_WITH_IMAGES_1_2_3 = new PageInfo(
-      "/content/my-site/us/en/page-with-images-1-2-3.html",
-      "src/test/resources/page-with-images-1-2-3.html"
-  );
-
-  private static final PageInfo PAGE_WITH_IMAGES_1_AND_3 = new PageInfo(
-      "/content/my-site/us/en/page-with-images-1-and-3.html",
-      "src/test/resources/page-with-images-1-and-3.html"
-  );
-
   private static final String REFERENCED_PAGE_1 = "/content/my-site/us/en/referenced-page-1.html";
   private static final String REFERENCED_PAGE_2 = "/content/my-site/us/en/referenced-page-2.html";
   private static final String REFERENCED_PAGE_3 = "/content/my-site/us/en/referenced-page-3.html";
 
-  private static final PageInfo PAGE_WITH_REFERENCED_PAGES_1_2_3 = new PageInfo(
-      "/content/my-site/us/en/page-with-referenced-pages-1-2-3.html",
-      "src/test/resources/page-with-referenced-pages-1-2-3.html"
-  );
-
-  private static final PageInfo PAGE_WITH_REFERENCED_PAGES_1_AND_3 = new PageInfo(
-      "/content/my-site/us/en/page-with-referenced-pages-1-and-3.html",
-      "src/test/resources/page-with-referenced-pages-1-and-3.html"
-  );
-
-  private static final List<PageInfo> allTestPages = List.of(
-      PAGE_WITH_IMAGES_1_2_3,
-      PAGE_WITH_IMAGES_1_AND_3,
-      PAGE_WITH_REFERENCED_PAGES_1_2_3,
-      PAGE_WITH_REFERENCED_PAGES_1_AND_3
-  );
+  private static final String PAGE_JSON_RESOURCE_FILE_PATH = "src/test/resources/page.json";
 
   private final SlingContext slingContext = new SlingContext(ResourceResolverType.JCR_OAK);
   private final ResourceResolver resourceResolver = spy(slingContext.resourceResolver());
@@ -96,22 +77,43 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   private final Job job = mock(Job.class);
   private final JobExecutionContext jobExecutionContext = mock(JobExecutionContext.class);
 
-  private final AtomicBoolean shouldRequestProcessorSimulateAllResourcesAreEdited = new AtomicBoolean(false);
+  // resource path + content
+  private final Map<String, String> allTestPages = new LinkedHashMap<>();
+
+  private final String PAGE_WITH_IMAGES_1_2_3 = registerPage(
+      "/content/my-site/us/en/page-with-images-1-2-3.html",
+      generateHtmlPageContent(IMAGE_1, IMAGE_2, IMAGE_3)
+  );
+
+  private final String PAGE_WITH_IMAGES_1_AND_3 = registerPage(
+      "/content/my-site/us/en/page-with-images-1-and-3.html",
+      generateHtmlPageContent(IMAGE_1, IMAGE_3)
+  );
+
+  private final String PAGE_WITH_REFERENCED_PAGES_1_2_3 = registerPage(
+      "/content/my-site/us/en/page-with-referenced-pages-1-2-3.html",
+      generateHtmlPageContent(REFERENCED_PAGE_1, REFERENCED_PAGE_2, REFERENCED_PAGE_3)
+  );
+
+  private final String PAGE_WITH_REFERENCED_PAGES_1_AND_3 = registerPage(
+      "/content/my-site/us/en/page-with-referenced-pages-1-and-3.html",
+      generateHtmlPageContent(REFERENCED_PAGE_1, REFERENCED_PAGE_3)
+  );
+
+  private final AtomicBoolean simulateResourcesAreEditedOnEachRead = new AtomicBoolean(false);
 
   private final SlingRequestProcessor requestProcessor = (HttpServletRequest request, HttpServletResponse response, ResourceResolver resourceResolver) -> {
     String requestURI = request.getRequestURI();
-    response.setContentType("text/html");
-    for (PageInfo pageInfo : allTestPages) {
-      if (requestURI.equals(pageInfo.resourcePath)) {
-        response.getWriter().write(pageInfo.content);
-        break;
-      }
-    }
+
     if (requestURI.endsWith(".jpg")) {
+      response.setContentType("application/octet-stream");
       response.getWriter().write("Content of image " + requestURI);
+    } else {
+      response.setContentType("text/html");
+      response.getWriter().write(allTestPages.get(requestURI));
     }
 
-    if (shouldRequestProcessorSimulateAllResourcesAreEdited.get()) {
+    if (simulateResourcesAreEditedOnEachRead.get()) {
       response.getWriter().write("edited at " + System.nanoTime());
     }
   };
@@ -151,6 +153,8 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     }
   };
 
+  private long publicationServiceProcessingTotalTimeMillis = 0;
+
   @BeforeEach
   void setup() throws Exception {
     configureResources();
@@ -158,11 +162,8 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     configureServices();
   }
 
+  @SuppressWarnings("deprecation")
   private void configureResources() throws Exception {
-    for (PageInfo pageInfo : allTestPages) {
-      slingContext.load().json(pageInfo.jsonResourceFile, pageInfo.resourcePath);
-    }
-
     doReturn(ResourceMocks.createAssetResourceMock())
         .when(resourceResolver)
         .resolve(ArgumentMatchers.<String>argThat(path -> path.endsWith(".jpg")));
@@ -205,19 +206,19 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
   @Test
   void shouldUnpublishRelatedResources_WhenUnpublishingParentPage_IfNoMoreReferences_WhenResourcesAreNeverEdited() {
-    shouldRequestProcessorSimulateAllResourcesAreEdited.set(false);
+    simulateResourcesAreEditedOnEachRead.set(false);
     shouldUnpublishRelatedResources_WhenUnpublishingParentPage_IfNoMoreReferences();
   }
 
   @Test
   void shouldUnpublishRelatedResources_WhenUnpublishingParentPage_IfNoMoreReferences_WhenResourcesAreEditedBetweenEachRequest() {
-    shouldRequestProcessorSimulateAllResourcesAreEdited.set(true);
+    simulateResourcesAreEditedOnEachRead.set(true);
     shouldUnpublishRelatedResources_WhenUnpublishingParentPage_IfNoMoreReferences();
   }
 
   private void shouldUnpublishRelatedResources_WhenUnpublishingParentPage_IfNoMoreReferences() {
     // given
-    boolean areResourcesEditedBeforeEachRequest = shouldRequestProcessorSimulateAllResourcesAreEdited.get();
+    boolean areResourcesEditedOnEachRead = simulateResourcesAreEditedOnEachRead.get();
 
     // when 1: publish page that contains image 1, image 2 and image 3
     publishPage(PAGE_WITH_IMAGES_1_2_3);
@@ -232,18 +233,18 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     publishPage(PAGE_WITH_IMAGES_1_AND_3);
 
     // then
-    assertPublishedTimes(IMAGE_1, areResourcesEditedBeforeEachRequest ? 2 : 1);
+    assertPublishedTimes(IMAGE_1, areResourcesEditedOnEachRead ? 2 : 1);
     assertPublishedTimes(IMAGE_2, 1);
-    assertPublishedTimes(IMAGE_3, areResourcesEditedBeforeEachRequest ? 2 : 1);
+    assertPublishedTimes(IMAGE_3, areResourcesEditedOnEachRead ? 2 : 1);
     assertResourcesCurrentlyOnStreamX(PAGE_WITH_IMAGES_1_2_3, PAGE_WITH_IMAGES_1_AND_3, IMAGE_1, IMAGE_2, IMAGE_3);
 
     // when 3: unpublish first page
     unpublishPage(PAGE_WITH_IMAGES_1_2_3);
 
     // then: expect image 2 to be gone, as it doesn't have any references anymore
-    assertPublishedTimes(IMAGE_1, areResourcesEditedBeforeEachRequest ? 2 : 1);
+    assertPublishedTimes(IMAGE_1, areResourcesEditedOnEachRead ? 2 : 1);
     assertPublishedTimes(IMAGE_2, 1);
-    assertPublishedTimes(IMAGE_3, areResourcesEditedBeforeEachRequest ? 2 : 1);
+    assertPublishedTimes(IMAGE_3, areResourcesEditedOnEachRead ? 2 : 1);
     assertUnpublishedTimes(IMAGE_1, 0);
     assertUnpublishedTimes(IMAGE_2, 1);
     assertUnpublishedTimes(IMAGE_3, 0);
@@ -253,9 +254,9 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     unpublishPage(PAGE_WITH_IMAGES_1_AND_3);
 
     // then: expect images to be gone
-    assertPublishedTimes(IMAGE_1, areResourcesEditedBeforeEachRequest ? 2 : 1);
+    assertPublishedTimes(IMAGE_1, areResourcesEditedOnEachRead ? 2 : 1);
     assertPublishedTimes(IMAGE_2, 1);
-    assertPublishedTimes(IMAGE_3, areResourcesEditedBeforeEachRequest ? 2 : 1);
+    assertPublishedTimes(IMAGE_3, areResourcesEditedOnEachRead ? 2 : 1);
     assertUnpublishedTimes(IMAGE_1, 1);
     assertUnpublishedTimes(IMAGE_2, 1);
     assertUnpublishedTimes(IMAGE_3, 1);
@@ -265,9 +266,9 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     publishPage(PAGE_WITH_IMAGES_1_2_3);
 
     // then
-    assertPublishedTimes(IMAGE_1, areResourcesEditedBeforeEachRequest ? 3 : 2);
+    assertPublishedTimes(IMAGE_1, areResourcesEditedOnEachRead ? 3 : 2);
     assertPublishedTimes(IMAGE_2, 2);
-    assertPublishedTimes(IMAGE_3, areResourcesEditedBeforeEachRequest ? 3 : 2);
+    assertPublishedTimes(IMAGE_3, areResourcesEditedOnEachRead ? 3 : 2);
     assertUnpublishedTimes(IMAGE_1, 1);
     assertUnpublishedTimes(IMAGE_2, 1);
     assertUnpublishedTimes(IMAGE_3, 1);
@@ -277,13 +278,43 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     unpublishPage(PAGE_WITH_IMAGES_1_2_3);
 
     // then: expect images to be gone
-    assertPublishedTimes(IMAGE_1, areResourcesEditedBeforeEachRequest ? 3 : 2);
+    assertPublishedTimes(IMAGE_1, areResourcesEditedOnEachRead ? 3 : 2);
     assertPublishedTimes(IMAGE_2, 2);
-    assertPublishedTimes(IMAGE_3, areResourcesEditedBeforeEachRequest ? 3 : 2);
+    assertPublishedTimes(IMAGE_3, areResourcesEditedOnEachRead ? 3 : 2);
     assertUnpublishedTimes(IMAGE_1, 2);
     assertUnpublishedTimes(IMAGE_2, 2);
     assertUnpublishedTimes(IMAGE_3, 2);
     assertResourcesCurrentlyOnStreamX();
+  }
+
+  @Test
+  void shouldUnpublishUnreferencedImageWhenPublishingEditedPage() {
+    // given
+    unregisterAllPages();
+    String page1Path = "/content/my-site/page-1.html";
+    String page2Path = "/content/my-site/page-2.html";
+
+    // when
+    registerPage(page1Path, generateHtmlPageContent(IMAGE_1, IMAGE_2, IMAGE_3));
+    registerPage(page2Path, generateHtmlPageContent(IMAGE_2, IMAGE_3));
+    publishPage(page1Path);
+    publishPage(page2Path);
+
+    // then
+    assertResourcesCurrentlyOnStreamX(page1Path, page2Path, IMAGE_1, IMAGE_2, IMAGE_3);
+    // and
+    verifyPublishedResourcesDataIsStored(page1Path, IMAGE_1, IMAGE_2, IMAGE_3);
+    verifyPublishedResourcesDataIsStored(page2Path, IMAGE_2, IMAGE_3);
+
+    // when: user edits page 1 to remove images 1 and 2 (leave only image 3 in it), and republishes the page
+    editPage(page1Path, generateHtmlPageContent(IMAGE_3));
+    publishPage(page1Path);
+
+    // then: expecting image 1 to be automatically unpublished, since no other published page references it (page 2 is still referencing image 2)
+    assertResourcesCurrentlyOnStreamX(page1Path, page2Path, IMAGE_2, IMAGE_3);
+    // and
+    verifyPublishedResourcesDataIsStored(page1Path, IMAGE_3);
+    verifyPublishedResourcesDataIsStored(page2Path, IMAGE_2, IMAGE_3);
   }
 
   @Test
@@ -294,7 +325,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     // then
     assertResourcesCurrentlyOnStreamX(PAGE_WITH_IMAGES_1_AND_3, IMAGE_1, IMAGE_3);
     // and
-    verifyPublishedResourcesDataIsStored(PAGE_WITH_IMAGES_1_AND_3.resourcePath, IMAGE_1, IMAGE_3);
+    verifyPublishedResourcesDataIsStored(PAGE_WITH_IMAGES_1_AND_3, IMAGE_1, IMAGE_3);
     // and
     verifyHashIsStored(IMAGE_1, "a5f27fe5339d01c3729c1a152f68c1d2f6fe4d6eebb421564e29158c4dfca9a8");
     verifyHashIsNotStored(IMAGE_2);
@@ -305,7 +336,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     // then
     assertResourcesCurrentlyOnStreamX(PAGE_WITH_IMAGES_1_AND_3, PAGE_WITH_IMAGES_1_2_3, IMAGE_1, IMAGE_2, IMAGE_3);
     // and
-    verifyPublishedResourcesDataIsStored(PAGE_WITH_IMAGES_1_2_3.resourcePath, IMAGE_1, IMAGE_2, IMAGE_3);
+    verifyPublishedResourcesDataIsStored(PAGE_WITH_IMAGES_1_2_3, IMAGE_1, IMAGE_2, IMAGE_3);
     // and
     verifyHashIsStored(IMAGE_1, "a5f27fe5339d01c3729c1a152f68c1d2f6fe4d6eebb421564e29158c4dfca9a8");
     verifyHashIsStored(IMAGE_2, "54dfcf99c689cc1becdf12cefcf3aa9ea8fb5e91c74f510ec6454516e53afd2e");
@@ -316,7 +347,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     // then
     assertResourcesCurrentlyOnStreamX(PAGE_WITH_IMAGES_1_AND_3, IMAGE_1, IMAGE_3);
     // and
-    verifyPublishedResourcesDataIsNotStored(PAGE_WITH_IMAGES_1_2_3.resourcePath);
+    verifyPublishedResourcesDataIsNotStored(PAGE_WITH_IMAGES_1_2_3);
     // and
     verifyHashIsStored(IMAGE_1, "a5f27fe5339d01c3729c1a152f68c1d2f6fe4d6eebb421564e29158c4dfca9a8");
     verifyHashIsNotStored(IMAGE_2);
@@ -327,40 +358,11 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     // then
     assertResourcesCurrentlyOnStreamX();
     // and
-    verifyPublishedResourcesDataIsNotStored(PAGE_WITH_IMAGES_1_AND_3.resourcePath);
+    verifyPublishedResourcesDataIsNotStored(PAGE_WITH_IMAGES_1_AND_3);
     // and
     verifyHashIsNotStored(IMAGE_1);
     verifyHashIsNotStored(IMAGE_2);
     verifyHashIsNotStored(IMAGE_3);
-  }
-
-  private void verifyPublishedResourcesDataIsStored(String parentResourcePath, String... relatedResourcePaths) {
-    for (String relatedResourcePath : relatedResourcePaths) {
-      String expectedJcrPath = String.join("",
-          "/var/streamx/connector/sling/resources/published",
-          parentResourcePath,
-          "/related-resources",
-          relatedResourcePath
-      );
-      assertThat(resourceResolver.getResource(expectedJcrPath)).isNotNull();
-    }
-  }
-
-  private void verifyPublishedResourcesDataIsNotStored(String parentResourcePath) {
-    Resource relatedResourcesForParent = resourceResolver.getResource("/var/streamx/connector/sling/resources/published" + parentResourcePath);
-    assertThat(relatedResourcesForParent).isNull();
-  }
-
-  private void verifyHashIsStored(String resourcePath, String expected) {
-    Resource hashResource = resourceResolver.getResource("/var/streamx/connector/sling/resources/hashes" + resourcePath);
-    assertThat(hashResource).isNotNull();
-    String hash = hashResource.getValueMap().get("lastPublishHash", String.class);
-    assertThat(hash).isEqualTo(expected);
-  }
-
-  private void verifyHashIsNotStored(String resourcePath) {
-    Resource hashResource = resourceResolver.getResource("/var/streamx/connector/sling/resources/hashes" + resourcePath);
-    assertThat(hashResource).isNull();
   }
 
   @Test
@@ -386,32 +388,176 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     assertResourcesCurrentlyOnStreamX();
   }
 
-  private void publishPage(PageInfo page) {
-    publishPage(page.resourcePath);
+  @Test
+  void shouldHandleBigNumberOfPagesWithBigNumberOfRelatedResources() {
+    // given
+    unregisterAllPages();
+    final int N = 100; // pages and images max count
+    final String imagePathFormat = "/content/dam/images/image-%d.jpg";
+
+    Map<Integer, String> pagePaths = IntStream
+        .rangeClosed(1, N).boxed()
+        .collect(Collectors.toMap(
+            Function.identity(),
+            pageNumber -> "/content/my-site/page-" + pageNumber + ".html"
+        ));
+
+    // when: publish all the pages, each with references to images that have numbers from 1 to the page number (inclusive)
+    pagePaths.forEach((pageNumber, pagePath) -> {
+      registerPage(pagePath,
+          generateHtmlPageContent(
+              IntStream.rangeClosed(1, pageNumber).boxed()
+                  .map(imageNumber -> String.format(imagePathFormat, imageNumber))
+                  .toArray(String[]::new)
+          )
+      );
+      publishPage(pagePath);
+    });
+
+    // and: unpublish pages 2,4,6,8,...,N
+    pagePaths.forEach((pageNumber, pagePath) -> {
+      if (pageNumber % 2 == 0) {
+        unpublishPage(pagePath);
+      }
+    });
+
+    // and: republish pages 1,3,5,7,...,N-1 edited to remove images 11,13,15,17,...,N-1
+    pagePaths.forEach((pageNumber, pagePath) -> {
+      if (pageNumber % 2 == 1) {
+        editPage(pagePath, generateHtmlPageContent(
+            IntStream.rangeClosed(1, pageNumber)
+                .boxed()
+                .filter(imageNumber -> imageNumber <= 10 || imageNumber % 2 == 0) // leave only images 1-10 and 12,14,16,...,N
+                .map(imageNumber -> String.format(imagePathFormat, imageNumber))
+                .toArray(String[]::new)
+        ));
+        publishPage(pagePath);
+      }
+    });
+
+    // then:
+    Set<String> expectedResourcesOnStreamX = new TreeSet<>();
+    // expect pages 1,3,5,7,...,N-1 on StreamX
+    pagePaths.entrySet().stream()
+        .filter(entry -> entry.getKey() % 2 == 1)
+        .map(Entry::getValue)
+        .forEach(expectedResourcesOnStreamX::add);
+    // expect images 1-10 and 12,14,16,...,N-1 on StreamX
+    IntStream.rangeClosed(1, N)
+        .boxed()
+        .filter(imageNumber -> imageNumber <= 10 || imageNumber % 2 == 0)
+        .filter(imageNumber -> !imageNumber.equals(N)) // last page was unpublished and was the only page referencing image N
+        .map(imageNumber -> String.format(imagePathFormat, imageNumber))
+        .forEach(expectedResourcesOnStreamX::add);
+
+    assertResourcesCurrentlyOnStreamX(expectedResourcesOnStreamX);
+
+    // and: expect only the edited republished pages 1,3,5,...,N-1 to be published two times
+    pagePaths.forEach((pageNumber, pagePath) -> {
+      if (pageNumber % 2 == 0) {
+        assertPublishedTimes(pagePath, 1);
+      } else {
+        assertPublishedTimes(pagePath, 2);
+      }
+    });
+
+    // and: expect images 1...N to be published exactly once, since their content never changes
+    for (int i = 1; i < N; i++) {
+      String imagePath = String.format(imagePathFormat, i);
+      assertPublishedTimes(imagePath, 1);
+    }
+
+    // final assertion: make sure publication (along with the JCR operations) are efficient enough
+    assertThat(publicationServiceProcessingTotalTimeMillis).isLessThan(1000);
   }
 
-  private void unpublishPage(PageInfo page) {
-    unpublishPage(page.resourcePath);
+  private String registerPage(String pageResourcePath, String content) {
+    allTestPages.put(pageResourcePath, content);
+    loadPageToSlingContext(pageResourcePath);
+    return pageResourcePath;
+  }
+
+  private void editPage(String pageResourcePath, String content) {
+    allTestPages.put(pageResourcePath, content);
+  }
+
+  private void unregisterAllPages() {
+    for (String pageResourcePath : allTestPages.keySet()) {
+      unloadPageFromSlingContext(pageResourcePath);
+    }
+    allTestPages.clear();
+  }
+
+  private void loadPageToSlingContext(String pageResourcePath) {
+    slingContext.load().json(PAGE_JSON_RESOURCE_FILE_PATH, pageResourcePath);
+  }
+
+  private void unloadPageFromSlingContext(String pageResourcePath) {
+    Resource resource = Objects.requireNonNull(resourceResolver.getResource(pageResourcePath));
+    try {
+      resourceResolver.delete(resource);
+    } catch (PersistenceException e) {
+      fail(e.getMessage());
+    }
+  }
+
+  private static String generateHtmlPageContent(String... relatedResourcePathsToInclude) {
+    return Arrays.stream(relatedResourcePathsToInclude)
+        .map(path -> "<include path='" + path + "' />") // any include tag, doesn't have to exist in HTML language
+        .collect(Collectors.joining("\n", "<html><body>", "</body></html>"));
+  }
+
+  private void verifyPublishedResourcesDataIsStored(String parentPagePath, String... expectedRelatedAssetPaths) {
+    for (String relatedAssetPath : expectedRelatedAssetPaths) {
+      String expectedJcrPath = String.join("",
+          "/var/streamx/connector/sling/resources/published",
+          parentPagePath,
+          "/related-resources",
+          relatedAssetPath
+      );
+      Resource jcrResource = resourceResolver.getResource(expectedJcrPath);
+      assertThat(jcrResource).isNotNull();
+      assertThat(jcrResource.getValueMap()).containsEntry("primaryNodeType", "dam:Asset");
+    }
+  }
+
+  private void verifyPublishedResourcesDataIsNotStored(String parentResourcePath) {
+    Resource relatedResourcesForParent = resourceResolver.getResource("/var/streamx/connector/sling/resources/published" + parentResourcePath);
+    assertThat(relatedResourcesForParent).isNull();
+  }
+
+  private void verifyHashIsStored(String resourcePath, String expectedHash) {
+    Resource hashResource = resourceResolver.getResource("/var/streamx/connector/sling/resources/hashes" + resourcePath);
+    assertThat(hashResource).isNotNull();
+    assertThat(hashResource.getValueMap()).containsEntry("lastPublishHash", expectedHash);
+  }
+
+  private void verifyHashIsNotStored(String resourcePath) {
+    Resource hashResource = resourceResolver.getResource("/var/streamx/connector/sling/resources/hashes" + resourcePath);
+    assertThat(hashResource).isNull();
   }
 
   private void publishPage(String resourcePath) {
-    ingest(new PageResourceInfo(resourcePath), PublicationAction.PUBLISH);
+    ingestPage(resourcePath, PublicationAction.PUBLISH);
   }
 
   private void unpublishPage(String resourcePath) {
-    ingest(new PageResourceInfo(resourcePath), PublicationAction.UNPUBLISH);
+    ingestPage(resourcePath, PublicationAction.UNPUBLISH);
   }
 
-  private void ingest(ResourceInfo resourceInfo, PublicationAction action) {
+  private void ingestPage(String resourcePath, PublicationAction action) {
     doReturn(action.name())
         .when(job)
         .getProperty(PN_STREAMX_INGESTION_ACTION, String.class);
 
-    doReturn(new String[] {resourceInfo.serialize()})
+    doReturn(new String[] {new PageResourceInfo(resourcePath).serialize()})
         .when(job)
         .getProperty(PN_STREAMX_RESOURCES_INFO, String[].class);
 
+    long startTimeNanos = System.nanoTime();
     publicationService.process(job, jobExecutionContext);
+    long elapsedTimeNanos = System.nanoTime() - startTimeNanos;
+    publicationServiceProcessingTotalTimeMillis += Duration.ofNanos(elapsedTimeNanos).toMillis();
   }
 
   private void assertPublishedTimes(String resourcePath, int times) {
@@ -428,11 +574,15 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
         .filter(job -> job.hasProperty(PN_STREAMX_ACTION, action.name()))
         .filter(job -> job.hasProperty(PN_STREAMX_PATH, resourcePath))
         .count();
-    assertThat(actualIngestedTimes).isEqualTo(times);
+    assertThat(actualIngestedTimes).describedAs(resourcePath).isEqualTo(times);
   }
 
-  private void assertResourcesCurrentlyOnStreamX(Object... expectedResources) {
-    Set<String> actualResourcePaths = new LinkedHashSet<>();
+  private void assertResourcesCurrentlyOnStreamX(String... expectedResourcePaths) {
+    assertResourcesCurrentlyOnStreamX(new TreeSet<>(Set.of(expectedResourcePaths)));
+  }
+
+  private void assertResourcesCurrentlyOnStreamX(Set<String> expectedResourcePaths) {
+    Set<String> actualResourcePaths = new TreeSet<>();
     for (var job : jobManager.getJobQueue()) {
       String action = job.getProperty(PN_STREAMX_ACTION, String.class);
       String resourcePath = job.getProperty(PN_STREAMX_PATH, String.class);
@@ -443,22 +593,6 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
       }
     }
 
-    List<String> expectedResourcePaths = Arrays.stream(expectedResources)
-        .map(item -> item instanceof PageInfo ? ((PageInfo) item).resourcePath : (String) item)
-        .collect(Collectors.toList());
-
     assertThat(actualResourcePaths).containsExactlyInAnyOrderElementsOf(expectedResourcePaths);
-  }
-
-  private static class PageInfo {
-    private final String resourcePath;
-    private final String jsonResourceFile;
-    private final String content;
-
-    private PageInfo(String resourcePath, String contentResourceFile) {
-      this.resourcePath = resourcePath;
-      this.jsonResourceFile = "src/test/resources/page.json";
-      this.content = contentOf(new File(contentResourceFile));
-    }
   }
 }

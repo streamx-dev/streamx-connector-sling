@@ -136,26 +136,39 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
   }
 
   private void handleRelatedResourcesPublication(List<ResourceInfo> parentResources, PublicationAction action, ResourceResolver resourceResolver) {
-    Map<String, Set<ResourceInfo>> relatedResources = findRelatedResources(parentResources);
+    Map<String, Set<ResourceInfo>> relatedResourcesMap = findRelatedResources(parentResources);
 
-    LinkedHashSet<ResourceInfo> distinctRelatedResources = relatedResources.values().stream()
+    LinkedHashSet<ResourceInfo> distinctRelatedResources = relatedResourcesMap.values().stream()
         .flatMap(Collection::stream)
         .collect(Collectors.toCollection(LinkedHashSet::new));
 
     if (action == PublicationAction.PUBLISH) {
-      for (ResourceInfo relatedResource : distinctRelatedResources) {
-        if (ResourceHashManager.hasResourceContentChanged(relatedResource, slingRequestProcessor, resourceResolver)) {
-          handlePublication(relatedResource, action);
-        }
-      }
-      PublishedRelatedResourcesManager.updatePublishedResourcesData(relatedResources, resourceResolver);
+      Set<ResourceInfo> disappearedRelatedResources = publishRelatedResources(distinctRelatedResources, relatedResourcesMap, resourceResolver);
+      unpublishRelatedResources(disappearedRelatedResources, resourceResolver);
     } else if (action == PublicationAction.UNPUBLISH) {
-      for (ResourceInfo relatedResource : distinctRelatedResources) {
-        if (!PublishedRelatedResourcesManager.isReferencedByOtherPublishedResource(relatedResource, resourceResolver)) {
-          handlePublication(relatedResource, action);
-          ResourceHashManager.deleteResourceHash(relatedResource, resourceResolver);
-        }
+      unpublishRelatedResources(distinctRelatedResources, resourceResolver);
+    }
+  }
+
+  /**
+   * Publishes the related resources and returns set of related resources that have disappeared from content of the parent resources.
+   * For example, if page-1.html contained references to image-1.png and image-2.png when published before,
+   * and now it contains only image-1.png (due to the page being edited) - the method will return image-2.png
+   */
+  private Set<ResourceInfo> publishRelatedResources(Set<ResourceInfo> distinctRelatedResources, Map<String, Set<ResourceInfo>> relatedResourcesMap, ResourceResolver resourceResolver) {
+    for (ResourceInfo relatedResource : distinctRelatedResources) {
+      if (ResourceHashManager.hasResourceContentChanged(relatedResource, slingRequestProcessor, resourceResolver)) {
+        handlePublication(relatedResource, PublicationAction.PUBLISH);
       }
+    }
+    return PublishedRelatedResourcesManager.updatePublishedResourcesData(relatedResourcesMap, resourceResolver);
+  }
+
+  private void unpublishRelatedResources(Set<ResourceInfo> relatedResources, ResourceResolver resourceResolver) {
+    Set<ResourceInfo> relatedResourceToUnpublish = PublishedRelatedResourcesManager.filterUnreferencedResources(relatedResources, resourceResolver);
+    for (ResourceInfo relatedResource : relatedResourceToUnpublish) {
+      handlePublication(relatedResource, PublicationAction.UNPUBLISH);
+      ResourceHashManager.deleteResourceHash(relatedResource, resourceResolver);
     }
   }
 
