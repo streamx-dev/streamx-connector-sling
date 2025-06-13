@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
 public final class ResourceHashManager {
 
   private static final Logger LOG = LoggerFactory.getLogger(ResourceHashManager.class);
-  private static final String BASE_NODE_PATH_FOR_RESOURCE_HASHES = "/var/streamx/connector/sling/resources/hashes";
+  private static final String BASE_NODE_PATH = "/var/streamx/connector/sling/resources/hashes";
   private static final String PN_LAST_PUBLISH_HASH = "lastPublishHash";
 
   private ResourceHashManager() {
@@ -79,7 +79,7 @@ public final class ResourceHashManager {
   }
 
   private static String getJcrPathForResource(ResourceInfo resource) {
-    return BASE_NODE_PATH_FOR_RESOURCE_HASHES + resource.getPath();
+    return BASE_NODE_PATH + resource.getPath();
   }
 
   private static Node getOrCreateHashNode(ResourceInfo resource, Session session) throws RepositoryException {
