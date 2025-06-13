@@ -129,9 +129,9 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
   private void handleResourcesPublication(List<ResourceInfo> resources, PublicationAction action, ResourceResolver resourceResolver) {
     for (ResourceInfo resource : resources) {
       handlePublication(resource, action);
-      if (action == PublicationAction.UNPUBLISH) {
-        PublishedRelatedResourcesManager.removePublishedResourcesData(resource, resourceResolver);
-      }
+    }
+    if (action == PublicationAction.UNPUBLISH) {
+      PublishedRelatedResourcesManager.removePublishedResourcesData(resources, resourceResolver);
     }
   }
 

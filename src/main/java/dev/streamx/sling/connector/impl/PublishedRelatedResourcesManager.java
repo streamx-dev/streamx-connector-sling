@@ -3,6 +3,7 @@ package dev.streamx.sling.connector.impl;
 import dev.streamx.sling.connector.ResourceInfo;
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -56,10 +57,16 @@ final class PublishedRelatedResourcesManager {
         Set<ResourceInfo> existingRelatedResources = collectRelatedResources(relatedResourcesNode);
 
         Set<ResourceInfo> relatedResourcesToAddToJcr = itemsOnlyInFirstSet(relatedResources, existingRelatedResources);
-        addPublishedResourcesData(relatedResourcesNodeJcrPath, relatedResourcesToAddToJcr, session);
+        for (ResourceInfo resource : relatedResourcesToAddToJcr) {
+          Node relatedResourceNode = JcrUtils.getOrCreateByPath(relatedResourcesNodeJcrPath + resource.getPath(), "sling:Folder", "nt:unstructured", session, false);
+          relatedResourceNode.setProperty(PN_PRIMARY_NODE_TYPE, resource.getPrimaryNodeType());
+        }
 
         Set<ResourceInfo> relatedResourcesToDeleteFromJcr = itemsOnlyInFirstSet(existingRelatedResources, relatedResources);
-        removePublishedResourcesData(relatedResourcesNodeJcrPath, relatedResourcesToDeleteFromJcr, session);
+        for (ResourceInfo resource : relatedResourcesToDeleteFromJcr) {
+          String relatedResourceFullPath = relatedResourcesNodeJcrPath + resource.getPath();
+          session.removeItem(relatedResourceFullPath);
+        }
 
         disappearedRelatedResources.addAll(relatedResourcesToDeleteFromJcr);
       }
@@ -68,24 +75,6 @@ final class PublishedRelatedResourcesManager {
       LOG.error("Error updating JCR state for related resources", ex);
     }
     return disappearedRelatedResources;
-  }
-
-  private static void addPublishedResourcesData(String relatedResourcesNodeJcrPath, Set<ResourceInfo> relatedResourcesToAddToJcr, Session session) throws RepositoryException {
-    if (!relatedResourcesToAddToJcr.isEmpty()) {
-      for (ResourceInfo relatedResourceToAdd : relatedResourcesToAddToJcr) {
-        Node relatedResourceNode = JcrUtils.getOrCreateByPath(relatedResourcesNodeJcrPath + relatedResourceToAdd.getPath(), "sling:Folder", "nt:unstructured", session, false);
-        relatedResourceNode.setProperty(PN_PRIMARY_NODE_TYPE, relatedResourceToAdd.getPrimaryNodeType());
-      }
-    }
-  }
-
-  private static void removePublishedResourcesData(String relatedResourcesNodeJcrPath, Set<ResourceInfo> relatedResourcesToDeleteFromJcr, Session session) throws RepositoryException {
-    if (!relatedResourcesToDeleteFromJcr.isEmpty()) {
-      for (ResourceInfo relatedResourceToDelete : relatedResourcesToDeleteFromJcr) {
-        String relatedResourceFullPath = relatedResourcesNodeJcrPath + relatedResourceToDelete.getPath();
-        session.removeItem(relatedResourceFullPath);
-      }
-    }
   }
 
   private static Set<ResourceInfo> collectRelatedResources(Node root) throws RepositoryException {
@@ -116,15 +105,16 @@ final class PublishedRelatedResourcesManager {
     return result;
   }
 
-  static void removePublishedResourcesData(ResourceInfo parentResource, ResourceResolver resourceResolver) {
-    String parentResourceJcrPath = BASE_NODE_PATH_FOR_PUBLISHED_RESOURCES + parentResource.getPath();
-
+  static void removePublishedResourcesData(List<ResourceInfo> parentResources, ResourceResolver resourceResolver) {
     try {
-      Resource jcrResource = resourceResolver.getResource(parentResourceJcrPath);
-      if (jcrResource != null) {
-        resourceResolver.delete(jcrResource);
-        resourceResolver.commit();
+      for (ResourceInfo resource : parentResources) {
+        String parentResourceJcrPath = BASE_NODE_PATH_FOR_PUBLISHED_RESOURCES + resource.getPath();
+        Resource jcrResource = resourceResolver.getResource(parentResourceJcrPath);
+        if (jcrResource != null) {
+          resourceResolver.delete(jcrResource);
+        }
       }
+      resourceResolver.commit();
     } catch (Exception ex) {
       LOG.error("Error updating JCR state for parent resource", ex);
     }
