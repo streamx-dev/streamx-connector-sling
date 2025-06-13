@@ -1,7 +1,6 @@
 package dev.streamx.sling.connector.impl;
 
 import dev.streamx.sling.connector.ResourceInfo;
-import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -10,13 +9,9 @@ import java.util.Objects;
 import java.util.Set;
 import javax.jcr.Node;
 import javax.jcr.NodeIterator;
-import javax.jcr.Property;
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
-import javax.jcr.Value;
-import javax.jcr.ValueFactory;
-import javax.jcr.query.Query;
-import javax.jcr.query.QueryManager;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.jackrabbit.commons.JcrUtils;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
@@ -26,8 +21,9 @@ import org.slf4j.LoggerFactory;
 final class PublishedRelatedResourcesManager {
 
   private static final Logger LOG = LoggerFactory.getLogger(PublishedRelatedResourcesManager.class);
-  private static final String BASE_NODE_PATH_FOR_PUBLISHED_RESOURCES = "/var/streamx/connector/sling/resources/published";
-  private static final String PN_RELATED_RESOURCES = "relatedResources";
+  private static final String BASE_NODE_PATH_FOR_PUBLISHED_RESOURCES = "/var/streamx/connector/sling/resources/published/grouped-by-parent-resource-path";
+  private static final String INTERMEDIATE_NODE_NAME_BETWEEN_PARENT_AND_RELATED_RESOURCE_PATHS = "/related-resources";
+  private static final String PN_PRIMARY_NODE_TYPE = "primaryNodeType";
 
   private PublishedRelatedResourcesManager() {
     // no instances
@@ -48,18 +44,27 @@ final class PublishedRelatedResourcesManager {
         String parentResourcePath = relatedResourcesForParentPath.getKey();
         Set<ResourceInfo> relatedResources = relatedResourcesForParentPath.getValue();
 
-        String relatedResourcesNodeJcrPath = BASE_NODE_PATH_FOR_PUBLISHED_RESOURCES + parentResourcePath;
-        Node relatedResourcesNode = JcrUtils.getOrCreateByPath(relatedResourcesNodeJcrPath, "sling:Folder", "nt:unstructured", session, false);
+        String relatedResourcesNodeJcrPath =
+            BASE_NODE_PATH_FOR_PUBLISHED_RESOURCES
+            + parentResourcePath
+            + INTERMEDIATE_NODE_NAME_BETWEEN_PARENT_AND_RELATED_RESOURCE_PATHS;
+        Node relatedResourcesNode = JcrUtils.getOrCreateByPath(relatedResourcesNodeJcrPath, "sling:Folder", session);
 
-        Set<ResourceInfo> relatedResourcesInJcr = collectRelatedResources(relatedResourcesNode);
+        Set<ResourceInfo> existingRelatedResources = collectRelatedResources(relatedResourcesNode);
 
-        Set<ResourceInfo> relatedResourcesToAddToJcr = itemsOnlyInFirstSet(relatedResources, relatedResourcesInJcr);
-        relatedResourcesInJcr.addAll(relatedResourcesToAddToJcr);
+        Set<ResourceInfo> relatedResourcesToAddToJcr = itemsOnlyInFirstSet(relatedResources, existingRelatedResources);
+        for (ResourceInfo resource : relatedResourcesToAddToJcr) {
+          Node relatedResourceNode = JcrUtils.getOrCreateByPath(relatedResourcesNodeJcrPath + resource.getPath(), "sling:Folder", "nt:unstructured", session, false);
+          relatedResourceNode.setProperty(PN_PRIMARY_NODE_TYPE, resource.getPrimaryNodeType());
+        }
+        PublishedRelatedResourcesInversedTreeManager.addData(parentResourcePath, relatedResourcesToAddToJcr, session);
 
-        Set<ResourceInfo> relatedResourcesToDeleteFromJcr = itemsOnlyInFirstSet(relatedResourcesInJcr, relatedResources);
-        relatedResourcesInJcr.removeAll(relatedResourcesToDeleteFromJcr);
-
-        updateRelatedResources(relatedResourcesNode, relatedResourcesInJcr);
+        Set<ResourceInfo> relatedResourcesToDeleteFromJcr = itemsOnlyInFirstSet(existingRelatedResources, relatedResources);
+        for (ResourceInfo resource : relatedResourcesToDeleteFromJcr) {
+          String relatedResourceFullPath = relatedResourcesNodeJcrPath + resource.getPath();
+          session.removeItem(relatedResourceFullPath);
+        }
+        PublishedRelatedResourcesInversedTreeManager.removeData(parentResourcePath, relatedResourcesToDeleteFromJcr, resourceResolver);
 
         disappearedRelatedResources.addAll(relatedResourcesToDeleteFromJcr);
       }
@@ -70,30 +75,42 @@ final class PublishedRelatedResourcesManager {
     return disappearedRelatedResources;
   }
 
-  private static Set<ResourceInfo> collectRelatedResources(Node relatedResourcesNode) throws RepositoryException {
+  private static Set<ResourceInfo> collectRelatedResources(Node root) throws RepositoryException {
     Set<ResourceInfo> relatedResources = new LinkedHashSet<>();
-    if (relatedResourcesNode.hasProperty(PN_RELATED_RESOURCES)) {
-      Property property = relatedResourcesNode.getProperty(PN_RELATED_RESOURCES);
-      for (Value value : property.getValues()) {
-        relatedResources.add(ResourceInfo.deserialize(value.getString()));
-      }
-    }
+    collectRelatedResources(root.getPath(), root, relatedResources);
     return relatedResources;
   }
 
-  private static void updateRelatedResources(Node relatedResourcesNode, Set<ResourceInfo> relatedResourcesToSet) throws RepositoryException {
-    String[] valuesToSet = relatedResourcesToSet.stream()
-        .map(ResourceInfo::serialize)
-        .toArray(String[]::new);
-    relatedResourcesNode.setProperty(PN_RELATED_RESOURCES, valuesToSet);
+  private static void collectRelatedResources(String rootPath, Node node, Set<ResourceInfo> relatedResources) throws RepositoryException {
+    if (node.hasNodes()) {
+      NodeIterator childNodes = node.getNodes();
+      while (childNodes.hasNext()) {
+        Node child = childNodes.nextNode();
+        collectRelatedResources(rootPath, child, relatedResources);
+      }
+    } else {
+      if (node.hasProperty(PN_PRIMARY_NODE_TYPE)) {
+        String nodeRelativePath = StringUtils.substringAfter(node.getPath(), rootPath);
+        String primaryNodeType = node.getProperty(PN_PRIMARY_NODE_TYPE).getString();
+        relatedResources.add(new ResourceInfo(nodeRelativePath, primaryNodeType));
+      }
+    }
   }
 
   static void removePublishedResourcesData(List<ResourceInfo> parentResources, ResourceResolver resourceResolver) {
     try {
-      for (ResourceInfo resource : parentResources) {
-        String parentResourceJcrPath = BASE_NODE_PATH_FOR_PUBLISHED_RESOURCES + resource.getPath();
+      for (ResourceInfo parentResource : parentResources) {
+        String parentResourceJcrPath = BASE_NODE_PATH_FOR_PUBLISHED_RESOURCES + parentResource.getPath();
         Resource jcrResource = resourceResolver.getResource(parentResourceJcrPath);
         if (jcrResource != null) {
+          // start
+          String relatedResourcesNodeJcrPath = parentResourceJcrPath + INTERMEDIATE_NODE_NAME_BETWEEN_PARENT_AND_RELATED_RESOURCE_PATHS;
+          Resource relatedResourcesNode = resourceResolver.getResource(relatedResourcesNodeJcrPath);
+          if (relatedResourcesNode != null) {
+            Set<ResourceInfo> existingRelatedResources = collectRelatedResources(relatedResourcesNode.adaptTo(Node.class));
+            PublishedRelatedResourcesInversedTreeManager.removeData(parentResource.getPath(), existingRelatedResources, resourceResolver);
+          }
+          // end
           resourceResolver.delete(jcrResource);
         }
       }
@@ -104,32 +121,7 @@ final class PublishedRelatedResourcesManager {
   }
 
   static Set<ResourceInfo> filterUnreferencedResources(Set<ResourceInfo> relatedResources, ResourceResolver resourceResolver) {
-    String queryString =
-        "SELECT [jcr:path] " +
-        "  FROM [nt:base] AS node " +
-        " WHERE ISDESCENDANTNODE([" + BASE_NODE_PATH_FOR_PUBLISHED_RESOURCES + "]) " +
-        "   AND node.[" + PN_RELATED_RESOURCES + "] = $relatedResource";
-
-    Set<ResourceInfo> unreferencedResources = new LinkedHashSet<>();
-    try {
-      Session session = getSession(resourceResolver);
-      QueryManager queryManager = session.getWorkspace().getQueryManager();
-      Query query = queryManager.createQuery(queryString, Query.JCR_SQL2);
-      ValueFactory valueFactory = session.getValueFactory();
-
-      for (ResourceInfo relatedResource : relatedResources) {
-        query.bindValue("relatedResource", valueFactory.createValue(relatedResource.serialize()));
-        query.setLimit(1);
-        NodeIterator resultNodes = query.execute().getNodes();
-        if (!resultNodes.hasNext()) {
-          unreferencedResources.add(relatedResource);
-        }
-      }
-      return unreferencedResources;
-    } catch (Exception ex) {
-      LOG.error("Error verifying JCR state of related resource", ex);
-      return Collections.emptySet();
-    }
+    return PublishedRelatedResourcesInversedTreeManager.filterUnreferencedResources(relatedResources, resourceResolver);
   }
 
   private static Session getSession(ResourceResolver resourceResolver) {
