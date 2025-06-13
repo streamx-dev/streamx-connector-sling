@@ -144,7 +144,9 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
 
     if (action == PublicationAction.PUBLISH) {
       Set<ResourceInfo> disappearedRelatedResources = publishRelatedResources(distinctRelatedResources, relatedResourcesMap, resourceResolver);
-      unpublishRelatedResources(disappearedRelatedResources, resourceResolver);
+      if (!disappearedRelatedResources.isEmpty()) {
+        unpublishRelatedResources(disappearedRelatedResources, resourceResolver);
+      }
     } else if (action == PublicationAction.UNPUBLISH) {
       unpublishRelatedResources(distinctRelatedResources, resourceResolver);
     }

@@ -1,9 +1,5 @@
 package dev.streamx.sling.connector;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 
@@ -12,7 +8,7 @@ import org.apache.commons.lang3.builder.EqualsBuilder;
  */
 public class ResourceInfo {
 
-  private static ObjectMapper objectMapper;
+  private static final String FIELDS_SEPARATOR = "`@`";
 
   /**
    * Path of the resource
@@ -29,10 +25,7 @@ public class ResourceInfo {
    * @param path path of the resource
    * @param primaryNodeType primary node type of the resource
    */
-  @JsonCreator
-  public ResourceInfo(
-      @JsonProperty("path") String path,
-      @JsonProperty("primaryNodeType") String primaryNodeType) {
+  public ResourceInfo(String path, String primaryNodeType) {
     this.path = requireNotBlank("path", path);
     this.primaryNodeType = requireNotBlank("primaryNodeType", primaryNodeType);
   }
@@ -62,11 +55,7 @@ public class ResourceInfo {
    * @return the current instance serialized to JSON
    */
   public String serialize() {
-    try {
-      return getOrCreateObjectMapper().writeValueAsString(this);
-    } catch (JsonProcessingException ex) {
-      throw new IllegalArgumentException("Error serializing from " + ResourceInfo.class, ex);
-    }
+    return path + FIELDS_SEPARATOR + primaryNodeType;
   }
 
   /**
@@ -74,20 +63,13 @@ public class ResourceInfo {
    * @return the JSON string deserialized to a {@link ResourceInfo} instance
    */
   public static ResourceInfo deserialize(String serialized) {
-    try {
-      return getOrCreateObjectMapper().readValue(serialized, ResourceInfo.class);
-    } catch (JsonProcessingException ex) {
-      throw new IllegalArgumentException("Error deserializing to " + ResourceInfo.class, ex);
+    if (serialized != null) {
+      String[] parts = serialized.split(FIELDS_SEPARATOR);
+      if (parts.length == 2) {
+        return new ResourceInfo(parts[0], parts[1]);
+      }
     }
-  }
-
-  private static ObjectMapper getOrCreateObjectMapper() {
-    if (objectMapper == null) {
-      // use lazy init, since initializing at declaration causes the following runtime problem when this class is used in OSGI context:
-      //   NoClassDefFound com/fasterxml/jackson/databind/util/internal/PrivateMaxEntriesMap$Builder
-      objectMapper = new ObjectMapper();
-    }
-    return objectMapper;
+    throw new IllegalArgumentException("Error deserializing " + serialized + "to " + ResourceInfo.class);
   }
 
   @Override
@@ -109,6 +91,6 @@ public class ResourceInfo {
 
   @Override
   public String toString() {
-    return "Path: " + path + ", Primary Node Type: " + primaryNodeType;
+    return serialize();
   }
 }

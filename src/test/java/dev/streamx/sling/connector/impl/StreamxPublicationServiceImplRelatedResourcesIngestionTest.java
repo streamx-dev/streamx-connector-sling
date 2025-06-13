@@ -25,6 +25,7 @@ import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJobManager;
 import java.lang.annotation.Annotation;
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -403,23 +404,23 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
         ));
 
     // when: publish all the pages, each with references to images that have numbers from 1 to the page number (inclusive)
-    pagePaths.forEach((pageNumber, pagePath) -> {
-      registerPage(pagePath,
-          generateHtmlPageContent(
-              IntStream.rangeClosed(1, pageNumber).boxed()
-                  .map(imageNumber -> String.format(imagePathFormat, imageNumber))
-                  .toArray(String[]::new)
-          )
-      );
-      publishPage(pagePath);
-    });
+    pagePaths.forEach((pageNumber, pagePath) ->
+        registerPage(pagePath,
+            generateHtmlPageContent(
+                IntStream.rangeClosed(1, pageNumber).boxed()
+                    .map(imageNumber -> String.format(imagePathFormat, imageNumber))
+                    .toArray(String[]::new)
+            )
+        )
+    );
+    publishPages(pagePaths.values());
 
     // and: unpublish pages 2,4,6,8,...,N
-    pagePaths.forEach((pageNumber, pagePath) -> {
-      if (pageNumber % 2 == 0) {
-        unpublishPage(pagePath);
-      }
-    });
+    unpublishPages(pagePaths.entrySet().stream()
+        .filter(entry -> entry.getKey() % 2 == 0)
+        .map(Entry::getValue)
+        .collect(Collectors.toList())
+    );
 
     // and: republish pages 1,3,5,7,...,N-1 edited to remove images 11,13,15,17,...,N-1
     pagePaths.forEach((pageNumber, pagePath) -> {
@@ -431,9 +432,13 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
                 .map(imageNumber -> String.format(imagePathFormat, imageNumber))
                 .toArray(String[]::new)
         ));
-        publishPage(pagePath);
       }
     });
+    publishPages(pagePaths.entrySet().stream()
+        .filter(entry -> entry.getKey() % 2 == 1)
+        .map(Entry::getValue)
+        .collect(Collectors.toList())
+    );
 
     // then:
     Set<String> expectedResourcesOnStreamX = new TreeSet<>();
@@ -468,7 +473,9 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     }
 
     // final assertion: make sure publication (along with the JCR operations) are efficient enough
-    assertThat(publicationServiceProcessingTotalTimeMillis).isLessThan(10000); // TODO expect to be faster
+    // TODO remove log:
+    System.out.println("Millis: " + publicationServiceProcessingTotalTimeMillis);
+    assertThat(publicationServiceProcessingTotalTimeMillis).isLessThan(1000);
   }
 
   private String registerPage(String pageResourcePath, String content) {
@@ -508,21 +515,17 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   }
 
   private void verifyPublishedResourcesDataIsStored(String parentPagePath, String... expectedRelatedAssetPaths) {
-    for (String relatedAssetPath : expectedRelatedAssetPaths) {
-      String expectedJcrPath = String.join("",
-          "/var/streamx/connector/sling/resources/published/grouped-by-parent-resource-path",
-          parentPagePath,
-          "/related-resources",
-          relatedAssetPath
-      );
-      Resource jcrResource = resourceResolver.getResource(expectedJcrPath);
-      assertThat(jcrResource).isNotNull();
-      assertThat(jcrResource.getValueMap()).containsEntry("primaryNodeType", "dam:Asset");
-    }
+    String expectedJcrPath = "/var/streamx/connector/sling/resources/published" + parentPagePath;
+    Resource jcrResource = resourceResolver.getResource(expectedJcrPath);
+    assertThat(jcrResource).isNotNull();
+    assertThat(jcrResource.getValueMap()).containsEntry("relatedResources",
+        Arrays.stream(expectedRelatedAssetPaths)
+            .map(relatedAssetPath -> relatedAssetPath + "`@`" + "dam:Asset")
+            .toArray(String[]::new));
   }
 
-  private void verifyPublishedResourcesDataIsNotStored(String parentResourcePath) {
-    Resource relatedResourcesForParent = resourceResolver.getResource("/var/streamx/connector/sling/resources/published/grouped-by-parent-resource-path" + parentResourcePath);
+  private void verifyPublishedResourcesDataIsNotStored(String parentPagePath) {
+    Resource relatedResourcesForParent = resourceResolver.getResource("/var/streamx/connector/sling/resources/published/" + parentPagePath);
     assertThat(relatedResourcesForParent).isNull();
   }
 
@@ -538,19 +541,27 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   }
 
   private void publishPage(String resourcePath) {
-    ingestPage(resourcePath, PublicationAction.PUBLISH);
+    publishPages(List.of(resourcePath));
+  }
+
+  private void publishPages(Collection<String> resourcePaths) {
+    ingestPages(resourcePaths, PublicationAction.PUBLISH);
   }
 
   private void unpublishPage(String resourcePath) {
-    ingestPage(resourcePath, PublicationAction.UNPUBLISH);
+    unpublishPages(List.of(resourcePath));
   }
 
-  private void ingestPage(String resourcePath, PublicationAction action) {
+  private void unpublishPages(Collection<String> resourcePaths) {
+    ingestPages(resourcePaths, PublicationAction.UNPUBLISH);
+  }
+
+  private void ingestPages(Collection<String> resourcePaths, PublicationAction action) {
     doReturn(action.name())
         .when(job)
         .getProperty(PN_STREAMX_INGESTION_ACTION, String.class);
 
-    doReturn(new String[] {new PageResourceInfo(resourcePath).serialize()})
+    doReturn(resourcePaths.stream().map(path -> new PageResourceInfo(path).serialize()).toArray(String[]::new))
         .when(job)
         .getProperty(PN_STREAMX_RESOURCES_INFO, String[].class);
 

@@ -565,13 +565,13 @@ class StreamxPublicationServiceImplTest {
     assertThat(publishJob.getProperty(IngestionTriggerJobHelper.PN_STREAMX_INGESTION_ACTION, String.class))
         .isEqualTo("PUBLISH");
     assertThat(publishJob.getProperty(IngestionTriggerJobHelper.PN_STREAMX_RESOURCES_INFO, String[].class))
-        .containsExactly("{\"path\":\"path-1\",\"primaryNodeType\":\"cq:Page\"}");
+        .containsExactly("path-1`@`cq:Page");
 
     FakeJob unpublishJob = queuedJobs.get(1);
     assertThat(unpublishJob.getProperty(IngestionTriggerJobHelper.PN_STREAMX_INGESTION_ACTION, String.class))
         .isEqualTo("UNPUBLISH");
     assertThat(unpublishJob.getProperty(IngestionTriggerJobHelper.PN_STREAMX_RESOURCES_INFO, String[].class))
-        .containsExactly("{\"path\":\"path-2\",\"primaryNodeType\":\"dam:Asset\"}");
+        .containsExactly("path-2`@`dam:Asset");
   }
 
   private void givenPageHierarchy(String... paths) throws PersistenceException {
