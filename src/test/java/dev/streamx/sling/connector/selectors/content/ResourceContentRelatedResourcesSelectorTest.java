@@ -44,12 +44,9 @@ class ResourceContentRelatedResourcesSelectorTest {
 
   private final SlingRequestProcessor basicRequestProcessor = (HttpServletRequest request, HttpServletResponse response, ResourceResolver resourceResolver) -> {
     String requestURI = request.getRequestURI();
+    assertThat(requestURI).isEqualTo(MAIN_PAGE_RESOURCE);
     response.setContentType("text/html");
-    response.getWriter().write(
-        requestURI.equals(MAIN_PAGE_RESOURCE)
-            ? samplePageHtml
-            : "<html><body><h1>Not Found</h1></body></html>"
-    );
+    response.getWriter().write(samplePageHtml);
   };
 
   @BeforeEach
