@@ -92,7 +92,7 @@ final class PublishedRelatedResourcesManager {
         String parentResourceJcrPath = BASE_NODE_PATH + parentResource.getPath();
         Resource jcrResource = resourceResolver.getResource(parentResourceJcrPath);
         if (jcrResource != null) {
-          Set<ResourceInfo> relatedResources = collectRelatedResources(jcrResource.adaptTo(Node.class)); // TODO one input type
+          Set<ResourceInfo> relatedResources = collectRelatedResources(jcrResource.adaptTo(Node.class));
           PublishedRelatedResourcesInversedTreeManager.removeData(parentResource.getPath(), relatedResources, resourceResolver);
           resourceResolver.delete(jcrResource);
         }
