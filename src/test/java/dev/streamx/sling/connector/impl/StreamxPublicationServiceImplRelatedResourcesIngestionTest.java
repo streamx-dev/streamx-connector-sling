@@ -473,9 +473,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     }
 
     // final assertion: make sure publication (along with the JCR operations) are efficient enough
-    // TODO remove log:
-    System.out.println("Millis: " + publicationServiceProcessingTotalTimeMillis);
-    assertThat(publicationServiceProcessingTotalTimeMillis).isLessThan(10000); // TODO should be faster
+    assertThat(publicationServiceProcessingTotalTimeMillis).isLessThan(1000);
   }
 
   private String registerPage(String pageResourcePath, String content) {
@@ -515,17 +513,13 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   }
 
   private void verifyPublishedResourcesDataIsStored(String parentPagePath, String... expectedRelatedAssetPaths) {
-    for (String relatedAssetPath : expectedRelatedAssetPaths) {
-      String expectedJcrPath = String.join("",
-          "/var/streamx/connector/sling/resources/published/grouped-by-parent-resource-path",
-          parentPagePath,
-          "/related-resources",
-          relatedAssetPath
-      );
-      Resource jcrResource = resourceResolver.getResource(expectedJcrPath);
-      assertThat(jcrResource).isNotNull();
-      assertThat(jcrResource.getValueMap()).containsEntry("primaryNodeType", "dam:Asset");
-    }
+    String expectedJcrPath = "/var/streamx/connector/sling/resources/published/grouped-by-parent-resource-path" + parentPagePath;
+    Resource jcrResource = resourceResolver.getResource(expectedJcrPath);
+    assertThat(jcrResource).isNotNull();
+    assertThat(jcrResource.getValueMap()).containsEntry("relatedResources",
+        Arrays.stream(expectedRelatedAssetPaths)
+            .map(relatedAssetPath -> relatedAssetPath + "`@`" + "dam:Asset")
+            .toArray(String[]::new));
   }
 
   private void verifyPublishedResourcesDataIsNotStored(String parentPagePath) {
