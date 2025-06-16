@@ -25,6 +25,12 @@ public class StreamxClientFactoryImpl implements StreamxClientFactory {
   @Reference
   private DefaultHttpClientFactory defaultHttpClientFactory;
 
+  /**
+   * Constructs an instance of this class.
+   */
+  public StreamxClientFactoryImpl() {
+  }
+
   @Override
   public StreamxInstanceClient createStreamxClient(StreamxClientConfig config)
       throws StreamxClientException {

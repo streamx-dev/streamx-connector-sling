@@ -21,6 +21,12 @@ public class DefaultPublicationRetryPolicy implements PublicationRetryPolicy {
   private int maxRetryDelay;
 
   /**
+   * Constructs an instance of this class.
+   */
+  public DefaultPublicationRetryPolicy() {
+  }
+
+  /**
    * Configure this service.
    * @param config configuration for this service
    */

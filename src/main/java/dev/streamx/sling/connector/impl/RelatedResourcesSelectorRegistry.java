@@ -21,6 +21,12 @@ public class RelatedResourcesSelectorRegistry {
 
   private final List<RelatedResourcesSelector> selectors = new CopyOnWriteArrayList<>();
 
+  /**
+   * Constructs an instance of this class.
+   */
+  public RelatedResourcesSelectorRegistry() {
+  }
+
   @Reference(
       service = RelatedResourcesSelector.class,
       cardinality = ReferenceCardinality.MULTIPLE,

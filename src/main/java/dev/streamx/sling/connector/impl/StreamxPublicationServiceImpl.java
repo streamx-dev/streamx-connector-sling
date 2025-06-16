@@ -61,6 +61,12 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
 
   private boolean enabled;
 
+  /**
+   * Constructs an instance of this class.
+   */
+  public StreamxPublicationServiceImpl() {
+  }
+
   @Activate
   @Modified
   private void activate(Config config) {
