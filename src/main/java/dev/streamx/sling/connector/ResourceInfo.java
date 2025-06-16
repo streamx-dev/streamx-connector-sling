@@ -37,6 +37,7 @@ public class ResourceInfo {
   }
 
   /**
+   * Returns path of the resource
    * @return path of the resource
    */
   public String getPath() {
@@ -44,6 +45,7 @@ public class ResourceInfo {
   }
 
   /**
+   * Returns primary node type of the resource
    * @return primary node type of the resource
    */
   public String getPrimaryNodeType() {
@@ -51,6 +53,7 @@ public class ResourceInfo {
   }
 
   /**
+   * Returns the current instance serialized to JSON
    * @return the current instance serialized to JSON
    */
   public String serialize() {
@@ -62,6 +65,7 @@ public class ResourceInfo {
   }
 
   /**
+   * Returns the JSON string deserialized to a {@link ResourceInfo} instance
    * @param serialized a {@link ResourceInfo} instance serialized to JSON
    * @return the JSON string deserialized to a {@link ResourceInfo} instance
    */
