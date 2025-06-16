@@ -2,24 +2,23 @@ package dev.streamx.sling.connector.selectors.content;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.contentOf;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 
 import dev.streamx.sling.connector.ResourceInfo;
+import dev.streamx.sling.connector.test.util.AssetResourceInfo;
+import dev.streamx.sling.connector.test.util.ResourceMocks;
 import java.io.File;
 import java.lang.annotation.Annotation;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import javax.jcr.Node;
-import javax.jcr.nodetype.NodeType;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import org.apache.commons.io.FileUtils;
-import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.resource.ResourceResolverFactory;
 import org.apache.sling.engine.SlingRequestProcessor;
@@ -38,17 +37,17 @@ class ResourceContentRelatedResourcesSelectorTest {
   private static final String MAIN_FOLDER_RESOURCE = "/content/firsthops/us/en";
   private static final String MAIN_PAGE_RESOURCE = "/content/firsthops/us/en.html";
   private static final File samplePageFile = new File("src/test/resources/sample-page.html");
+  private static final String samplePageHtml = contentOf(samplePageFile, UTF_8);
 
   private final SlingContext context = new SlingContext(ResourceResolverType.JCR_OAK);
   private final ResourceResolverFactory resourceResolverFactoryMock = mock(ResourceResolverFactory.class);
 
-  private final SlingRequestProcessor basicRequestProcessor = (HttpServletRequest request, HttpServletResponse response, ResourceResolver resourceResolver) ->
-  {
+  private final SlingRequestProcessor basicRequestProcessor = (HttpServletRequest request, HttpServletResponse response, ResourceResolver resourceResolver) -> {
     String requestURI = request.getRequestURI();
     response.setContentType("text/html");
     response.getWriter().write(
         requestURI.equals(MAIN_PAGE_RESOURCE)
-            ? FileUtils.readFileToString(samplePageFile, UTF_8)
+            ? samplePageHtml
             : "<html><body><h1>Not Found</h1></body></html>"
     );
   };
@@ -57,29 +56,16 @@ class ResourceContentRelatedResourcesSelectorTest {
   void setupResourceResolver() throws Exception {
     ResourceResolver spyResolver = spy(context.resourceResolver());
 
-    Resource folderResourceMock = createResourceMock(JcrResourceConstants.NT_SLING_FOLDER);
-    doReturn(folderResourceMock)
+    doReturn(ResourceMocks.createFolderResourceMock())
         .when(spyResolver)
         .resolve(MAIN_FOLDER_RESOURCE);
 
-    Resource assetResourceMock = createResourceMock("dam:Asset");
-    doReturn(assetResourceMock)
+    doReturn(ResourceMocks.createAssetResourceMock())
         .when(spyResolver)
         .resolve(ArgumentMatchers.<String>argThat(path -> !path.equals(MAIN_FOLDER_RESOURCE)));
 
     doNothing().when(spyResolver).close();
     doReturn(spyResolver).when(resourceResolverFactoryMock).getAdministrativeResourceResolver(null);
-  }
-
-  private static Resource createResourceMock(String primaryNodeType) throws Exception {
-    Resource resourceMock = mock(Resource.class);
-    Node nodeMock = mock(Node.class);
-    NodeType nodeTypeMock = mock(NodeType.class);
-
-    doReturn(primaryNodeType).when(nodeTypeMock).getName();
-    doReturn(nodeTypeMock).when(nodeMock).getPrimaryNodeType();
-    doReturn(nodeMock).when(resourceMock).adaptTo(Node.class);
-    return resourceMock;
   }
 
   @Test
@@ -153,7 +139,7 @@ class ResourceContentRelatedResourcesSelectorTest {
             "/etc.clientlibs/firsthops/clientlibs/clientlib-dependencies.lc-d41d8cd98f00b204e9800998ecf8427e-lc.min.js",
             "/etc.clientlibs/firsthops/clientlibs/clientlib-site.lc-99a5ff922700a9bff656c1db08c6bc22-lc.min.css",
             "/etc.clientlibs/firsthops/clientlibs/clientlib-site.lc-d91e521f6b4cc63fe57186d1b172e7e9-lc.min.js"
-        ).map(expectedPath -> new ResourceInfo(expectedPath, "dam:Asset"))
+        ).map(AssetResourceInfo::new)
         .collect(Collectors.toUnmodifiableList());
 
     // when

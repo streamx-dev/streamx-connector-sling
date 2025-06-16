@@ -14,38 +14,35 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
 import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
-import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.metatype.annotations.Designate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Component(
     service = {
-        ResourcePathPublicationHandler.class, PublicationHandler.class, ClientlibsHandler.class
+        ResourcePathPublicationHandler.class, PublicationHandler.class, ClientlibsPublicationHandler.class
     },
     immediate = true,
     configurationPolicy = ConfigurationPolicy.REQUIRE
 )
-@Designate(ocd = ClientlibsHandlerConfig.class)
-public class ClientlibsHandler extends ResourcePathPublicationHandler<WebResource> {
+@Designate(ocd = ClientlibsPublicationHandlerConfig.class)
+public class ClientlibsPublicationHandler extends ResourcePathPublicationHandler<WebResource> {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ClientlibsHandler.class);
-  private final AtomicReference<ClientlibsHandlerConfig> config;
+  private static final Logger LOG = LoggerFactory.getLogger(ClientlibsPublicationHandler.class);
+  private final AtomicReference<ClientlibsPublicationHandlerConfig> config;
 
   @Activate
-  public ClientlibsHandler(
-      @Reference(cardinality = ReferenceCardinality.MANDATORY)
-      ResourceResolverFactory resourceResolverFactory,
-      @Reference(cardinality = ReferenceCardinality.MANDATORY)
-      SlingRequestProcessor slingRequestProcessor,
-      ClientlibsHandlerConfig config
+  public ClientlibsPublicationHandler(
+      @Reference ResourceResolverFactory resourceResolverFactory,
+      @Reference SlingRequestProcessor slingRequestProcessor,
+      ClientlibsPublicationHandlerConfig config
   ) {
     super(resourceResolverFactory, slingRequestProcessor);
     this.config = new AtomicReference<>(config);
   }
 
   @Modified
-  void configure(ClientlibsHandlerConfig config) {
+  void configure(ClientlibsPublicationHandlerConfig config) {
     this.config.set(config);
   }
 
@@ -90,6 +87,6 @@ public class ClientlibsHandler extends ResourcePathPublicationHandler<WebResourc
 
   @Override
   public String getId() {
-    return ClientlibsHandler.class.getSimpleName();
+    return ClientlibsPublicationHandler.class.getSimpleName();
   }
 }

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.lang3.builder.EqualsBuilder;
 
 /**
  * Specifies path and JCR primary node type of a resource to be published or unpublished
@@ -36,6 +37,7 @@ public class ResourceInfo {
   }
 
   /**
+   * Returns path of the resource
    * @return path of the resource
    */
   public String getPath() {
@@ -43,6 +45,7 @@ public class ResourceInfo {
   }
 
   /**
+   * Returns primary node type of the resource
    * @return primary node type of the resource
    */
   public String getPrimaryNodeType() {
@@ -50,6 +53,7 @@ public class ResourceInfo {
   }
 
   /**
+   * Returns the current instance serialized to JSON
    * @return the current instance serialized to JSON
    */
   public String serialize() {
@@ -61,6 +65,7 @@ public class ResourceInfo {
   }
 
   /**
+   * Returns the JSON string deserialized to a {@link ResourceInfo} instance
    * @param serialized a {@link ResourceInfo} instance serialized to JSON
    * @return the JSON string deserialized to a {@link ResourceInfo} instance
    */
@@ -88,17 +93,14 @@ public class ResourceInfo {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof ResourceInfo)) {
-      return false;
+    if (o instanceof ResourceInfo) {
+      ResourceInfo that = (ResourceInfo) o;
+      return new EqualsBuilder()
+          .append(path, that.path)
+          .append(primaryNodeType, that.primaryNodeType)
+          .isEquals();
     }
-
-    if (getPath() == null && ((ResourceInfo) o).getPath() == null
-        && getPrimaryNodeType() == null && ((ResourceInfo) o).getPrimaryNodeType() == null) {
-      return true;
-    }
-
-    return getPath() != null && getPath().equals(((ResourceInfo) o).getPath())
-           && getPrimaryNodeType() != null && getPrimaryNodeType().equals(((ResourceInfo) o).getPrimaryNodeType());
+    return false;
   }
 
   @Override

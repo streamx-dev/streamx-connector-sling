@@ -7,8 +7,8 @@ import dev.streamx.sling.connector.PublishData;
 import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.StreamxPublicationException;
 import dev.streamx.sling.connector.UnpublishData;
+import dev.streamx.sling.connector.test.util.AssetResourceInfo;
 import dev.streamx.sling.connector.test.util.RandomBytesWriter;
-import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -24,7 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(SlingContextExtension.class)
-class ClientlibsHandlerTest {
+class ClientlibsPublicationHandlerTest {
 
   private static final Map<String, Integer> webResourcePathsAndSizes = Map.of(
       "/etc.clientlibs/clientlibs/granite/jquery/granite/csrf.lc-56934e461ff6c436f962a5990541a527-lc.min.js",
@@ -51,32 +51,22 @@ class ClientlibsHandlerTest {
 
   private final SlingContext context = new SlingContext(ResourceResolverType.JCR_OAK);
 
-  private static class BasicRequestProcessor implements SlingRequestProcessor {
-
-    @Override
-    public void processRequest(
-        HttpServletRequest request, HttpServletResponse response, ResourceResolver resourceResolver
-    ) throws IOException {
-      String requestURI = request.getRequestURI();
-      if (webResourcePathsAndSizes.containsKey(requestURI)) {
-        Integer size = webResourcePathsAndSizes.get(requestURI);
-        RandomBytesWriter.writeRandomBytes(response, size);
-      } else {
-        response.setContentType("text/html");
-        response.getWriter().write("<html><body><h1>Not Found</h1></body></html>");
-      }
-    }
-  }
+  private final SlingRequestProcessor basicRequestProcessor = (HttpServletRequest request, HttpServletResponse response, ResourceResolver resolver) -> {
+    String requestURI = request.getRequestURI();
+    assertThat(webResourcePathsAndSizes).containsKey(requestURI);
+    Integer size = webResourcePathsAndSizes.get(requestURI);
+    RandomBytesWriter.writeRandomBytes(response, size);
+  };
 
   @Test
   void canGetPublishData() throws StreamxPublicationException {
-    PublicationHandler<WebResource> handler = new ClientlibsHandler(
+    PublicationHandler<WebResource> handler = new ClientlibsPublicationHandler(
         context.getService(ResourceResolverFactory.class),
-        new BasicRequestProcessor(),
-        new ClientlibsHandlerConfig() {
+        basicRequestProcessor,
+        new ClientlibsPublicationHandlerConfig() {
           @Override
           public Class<? extends Annotation> annotationType() {
-            return ClientlibsHandlerConfig.class;
+            return ClientlibsPublicationHandlerConfig.class;
           }
 
           @Override
@@ -98,7 +88,7 @@ class ClientlibsHandlerTest {
     for (Entry<String, Integer> entry : webResourcePathsAndSizes.entrySet()) {
       String webResourcePath = entry.getKey();
       Integer expectedSize = entry.getValue();
-      ResourceInfo resource = new ResourceInfo(webResourcePath, "dam:Asset");
+      ResourceInfo resource = new AssetResourceInfo(webResourcePath);
       assertThat(handler.canHandle(resource)).isTrue();
 
       PublishData<WebResource> publishData = handler.getPublishData(webResourcePath);

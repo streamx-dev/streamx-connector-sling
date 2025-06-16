@@ -7,14 +7,13 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.sling.api.resource.LoginException;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.resource.ResourceResolverFactory;
@@ -26,7 +25,6 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
 import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
-import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.metatype.annotations.Designate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,9 +43,7 @@ import org.slf4j.LoggerFactory;
 )
 public class ResourceContentRelatedResourcesSelector implements RelatedResourcesSelector {
 
-  private static final Logger LOG = LoggerFactory.getLogger(
-      ResourceContentRelatedResourcesSelector.class
-  );
+  private static final Logger LOG = LoggerFactory.getLogger(ResourceContentRelatedResourcesSelector.class);
   private final AtomicReference<ResourceContentRelatedResourcesSelectorConfig> config;
   private final SlingRequestProcessor slingRequestProcessor;
   private final ResourceResolverFactory resourceResolverFactory;
@@ -63,10 +59,8 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
   @Activate
   public ResourceContentRelatedResourcesSelector(
       ResourceContentRelatedResourcesSelectorConfig config,
-      @Reference(cardinality = ReferenceCardinality.MANDATORY)
-      SlingRequestProcessor slingRequestProcessor,
-      @Reference(cardinality = ReferenceCardinality.MANDATORY)
-      ResourceResolverFactory resourceResolverFactory
+      @Reference SlingRequestProcessor slingRequestProcessor,
+      @Reference ResourceResolverFactory resourceResolverFactory
   ) {
     this.config = new AtomicReference<>(config);
     this.slingRequestProcessor = slingRequestProcessor;
@@ -81,6 +75,10 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
   @Override
   public Collection<ResourceInfo> getRelatedResources(String resourcePath) {
     LOG.debug("Getting related resources for '{}'", resourcePath);
+    if (!ResourceFilter.isAcceptableResourcePath(resourcePath, config.get())) {
+      return Collections.emptyList();
+    }
+
     try (ResourceResolver resourceResolver = resourceResolverFactory.getAdministrativeResourceResolver(null)) {
       return getRelatedResources(resourcePath, resourceResolver);
     } catch (LoginException exception) {
@@ -89,32 +87,18 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
     }
   }
 
-  private List<ResourceInfo> getRelatedResources(
-      String resourcePath, ResourceResolver resourceResolver
-  ) {
-    ResourceFilter resourceFilter = new ResourceFilter(config.get(), resourceResolver);
-    boolean isAcceptableResource = resourceFilter.isAcceptable(resourcePath);
-    LOG.trace(
-        "Is resource at path '{}' acceptable? Answer: {}", resourcePath, isAcceptableResource
-    );
-    if (!isAcceptableResource) {
+  private List<ResourceInfo> getRelatedResources(String resourcePath, ResourceResolver resourceResolver) {
+    if (!ResourceFilter.isAcceptablePrimaryNodeType(resourcePath, resourceResolver, config.get())) {
       return Collections.emptyList();
     }
 
-    Collection<String> extractedPaths = extract(resourcePath, resourceResolver);
-    if (LOG.isInfoEnabled()) {
-      LOG.info(
-          "Recognized paths for '{}': {}", resourcePath,
-          extractedPaths.stream()
-              .sorted()
-              .collect(Collectors.toList())
-      );
-    }
+    Set<String> extractedPaths = extract(resourcePath, resourceResolver);
+    LOG.info("Recognized paths for '{}': {}", resourcePath, extractedPaths);
 
     return extractedPaths.stream()
         .map(recognizedPath -> new ResourceInfo(
             recognizedPath,
-            resourceFilter.extractPrimaryNodeType(recognizedPath, resourceResolver)
+            ResourceFilter.extractPrimaryNodeType(recognizedPath, resourceResolver)
         ))
         .collect(Collectors.toUnmodifiableList());
   }
@@ -132,26 +116,26 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
    * @return {@link Collection} of unique resource paths; may be empty if no matches
    * are found
    */
-  private Collection<String> extract(String resourcePath, ResourceResolver resourceResolver) {
-    List<Pattern> patterns = Stream.of(config.get().references_search$_$regexes())
-        .map(Pattern::compile)
-        .collect(Collectors.toUnmodifiableList());
-    LOG.trace("Recognizing paths for '{}' with these patterns: {}", resourcePath, patterns);
+  private Set<String> extract(String resourcePath, ResourceResolver resourceResolver) {
+    String[] includeRegexes = config.get().references_search$_$regexes();
+    String excludeRegex = config.get().references_exclude$_$from$_$result_regex();
 
     String resourceAsString = readResourceAsString(resourcePath, resourceResolver);
+    Set<String> resultPaths = new TreeSet<>();
 
-    Collection<String> extractedPaths = patterns.stream()
-        .flatMap(
-            pattern -> {
-              Matcher matcher = pattern.matcher(resourceAsString);
-              return Stream.iterate(matcher, Matcher::find, nextMatcher -> nextMatcher)
-                  .map(mappingMatcher -> mappingMatcher.group(NumberUtils.INTEGER_ONE));
-            }
-        )
-        .filter(path -> !path.matches(config.get().references_exclude$_$from$_$result_regex()))
-        .collect(Collectors.toCollection(TreeSet::new));
-    LOG.debug("From '{}' these paths were extracted: {}", resourcePath, extractedPaths);
-    return extractedPaths;
+    for (String regex : includeRegexes) {
+      Matcher matcher = Pattern.compile(regex).matcher(resourceAsString);
+      while (matcher.find()) {
+        if (matcher.groupCount() > 0) {
+          String path = matcher.group(1);
+          if (!path.matches(excludeRegex)) {
+            resultPaths.add(path);
+          }
+        }
+      }
+    }
+
+    return resultPaths;
   }
 
   private String readResourceAsString(String resourcePath, ResourceResolver resourceResolver) {

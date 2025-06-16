@@ -40,7 +40,8 @@ public @interface ResourceContentRelatedResourcesSelectorConfig {
   @AttributeDefinition(
       name = "References Search Regexes",
       description = "Array of regex patterns used to search for paths within "
-          + "the textual representation of a Resource.",
+          + "the textual representation of a Resource."
+          + "Every regex must contain the desired expression wrapped in parentheses",
       type = AttributeType.STRING
   )
   String[] references_search$_$regexes() default {};
