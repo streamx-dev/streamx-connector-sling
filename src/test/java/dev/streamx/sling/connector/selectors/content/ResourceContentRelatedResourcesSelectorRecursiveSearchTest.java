@@ -15,9 +15,11 @@ import java.io.File;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import org.apache.commons.collections4.SetUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.resource.ResourceResolverFactory;
@@ -110,9 +112,16 @@ class ResourceContentRelatedResourcesSelectorRecursiveSearchTest {
         new ResourceInfo("/etc.clientlibs/my-site/icons/icon-sprite.svg")
     );
 
-    // and: should collect all test resources
+    // and: should collect all test resources, except the included-config.json file
+    //  since it is included in config.json file, and json extension is not part of the relatedResourceProcessablePathRegex setting
     assertThat(actualRelatedResources)
         .extracting(ResourceInfo::getPath)
-        .containsExactlyInAnyOrderElementsOf(testResourceFiles.keySet());
+        .containsExactlyInAnyOrderElementsOf(
+            setWithoutItem(testResourceFiles.keySet(), "/etc.clientlibs/my-site/assets/included-config.json")
+        );
+  }
+
+  private static Set<String> setWithoutItem(Set<String> set, String item) {
+    return SetUtils.difference(set, Set.of(item));
   }
 }
