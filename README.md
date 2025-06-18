@@ -148,7 +148,7 @@ This service is primarily intended for use cases where you need to gather and pu
 To use `ResourceContentRelatedResourcesSelector`, you must also provide an implementation of [ResourcePathPublicationHandler](./src/main/java/dev/streamx/sling/connector/handlers/resourcepath/ResourcePathPublicationHandler.java).
 This handler is responsible for actually publishing or unpublishing the related resources identified by the selector.
 
-The `ResourcePathPublicationHandler` implementation requires providing settings such as `resourcePathRegex` and `channel` for ingesting data, as defined in the[ResourcePathPublicationHandlerConfig](./src/main/java/dev/streamx/sling/connector/handlers/resourcepath/ResourcePathPublicationHandlerConfig.java).
+The `ResourcePathPublicationHandler` implementation requires providing settings such as `resourcePathRegex` and `channel` for ingesting data, as defined in the [ResourcePathPublicationHandlerConfig](./src/main/java/dev/streamx/sling/connector/handlers/resourcepath/ResourcePathPublicationHandlerConfig.java).
 
 If you're already using a custom [PublicationHandler](./src/main/java/dev/streamx/sling/connector/PublicationHandler.java) in your code to publish assets, and you also use `ResourceContentRelatedResourcesSelector` to identify related assets, make sure your existing `PublicationHandler` is configured to ignore those related assets.
 This prevents duplicate processing or conflicts with the resources handled by your `ResourcePathPublicationHandler` implementation.
