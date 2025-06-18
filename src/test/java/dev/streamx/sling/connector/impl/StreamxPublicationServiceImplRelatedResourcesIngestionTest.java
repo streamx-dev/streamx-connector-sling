@@ -140,6 +140,11 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     }
 
     @Override
+    public String related_resource_processable_path_regex() {
+      return ".*\\.html$";
+    }
+
+    @Override
     public String resource_required$_$primary$_$node$_$type_regex() {
       return ".*";
     }
