@@ -7,19 +7,20 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.sling.api.resource.LoginException;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.resource.ResourceResolverFactory;
 import org.apache.sling.api.uri.SlingUri;
 import org.apache.sling.api.uri.SlingUriBuilder;
 import org.apache.sling.engine.SlingRequestProcessor;
-import org.jetbrains.annotations.Nullable;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
@@ -118,6 +119,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
     for (String extractedPath : Set.copyOf(extractedPaths)) {
       extractPathsFromNestedRelatedResource(extractedPath, resourceResolver, extractedPaths);
     }
+    extractedPaths.remove(resourcePath + getResourcePathPostfixToAppend()); // some related resources may reference the main resource
 
     LOG.info("Recognized paths for '{}': {}", resourcePath, extractedPaths);
 
@@ -140,8 +142,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
    * are found
    */
   private Set<String> extractPathsOfRelatedResources(String resourcePath, ResourceResolver resourceResolver) {
-    String resourcePathPostfixToAppend = config.get().resource$_$path_postfix$_$to$_$append();
-    String resourceAsString = readResourceAsString(resourcePath, resourceResolver, resourcePathPostfixToAppend);
+    String resourceAsString = readResourceAsString(resourcePath + getResourcePathPostfixToAppend(), resourceResolver);
     return extractMatchingRelatedResourcePaths(resourceAsString);
   }
 
@@ -149,7 +150,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
     if (!relatedResourceProcessablePathPattern.matcher(resourcePath).matches()) {
       return;
     }
-    String resourceAsString = readResourceAsString(resourcePath, resourceResolver, null);
+    String resourceAsString = readResourceAsString(resourcePath, resourceResolver);
     Set<String> nestedRelatedResourcePaths = extractMatchingRelatedResourcePaths(resourceAsString);
     for (String nestedRelatedResourcePath : nestedRelatedResourcePaths) {
       if (!extractedPaths.contains(nestedRelatedResourcePath)) { // avoid circular references
@@ -176,11 +177,14 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
     return matchingPaths;
   }
 
-  private String readResourceAsString(String resourcePath, ResourceResolver resourceResolver, @Nullable String resourcePathPostfixToAppend) {
-    if (resourcePathPostfixToAppend != null) {
-      resourcePath += resourcePathPostfixToAppend;
-    }
+  private String readResourceAsString(String resourcePath, ResourceResolver resourceResolver) {
     SlingUri slingUri = SlingUriBuilder.parse(resourcePath, resourceResolver).build();
     return new SimpleInternalRequest(slingUri, slingRequestProcessor, resourceResolver).getResponseAsString();
+  }
+
+  private String getResourcePathPostfixToAppend() {
+    return Optional
+        .ofNullable(config.get().resource$_$path_postfix$_$to$_$append())
+        .orElse(StringUtils.EMPTY);
   }
 }

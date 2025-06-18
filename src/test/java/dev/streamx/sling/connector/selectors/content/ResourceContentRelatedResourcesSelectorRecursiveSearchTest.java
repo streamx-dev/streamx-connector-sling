@@ -13,6 +13,7 @@ import dev.streamx.sling.connector.test.util.ResourceContentRelatedResourcesSele
 import dev.streamx.sling.connector.test.util.ResourceMocks;
 import java.io.File;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -37,6 +38,7 @@ class ResourceContentRelatedResourcesSelectorRecursiveSearchTest {
 
   private static final File TEST_RESOURCES_ROOT_DIR = new File("src/test/resources/page-with-nested-references");
   private static final String MAIN_PAGE_RESOURCE = "/content/my-site/us/en/main-page";
+  private static final String MAIN_PAGE_HTML_PATH = "/content/my-site/us/en/main-page.html";
 
   // key: AEM-style path, value: resource content
   private static final Map<String, String> testResourceFiles = FileUtils
@@ -75,7 +77,86 @@ class ResourceContentRelatedResourcesSelectorRecursiveSearchTest {
   }
 
   @Test
-  void shouldFindRelatedResources() {
+  void shouldFindRelatedResources_WhenSearchingRecursivelyInHtmlCssAndJsFiles() {
+    shouldFindRelatedResources(
+        ".*\\.(html|css|js)$",
+        List.of(
+            "/apps/my-site/clientlibs/react-app/main.chunk.js",
+            "/apps/my-site/clientlibs/react-app/runtime~main.chunk.js",
+            "/content/dam/images/bg-1.png",
+            "/content/dam/images/bg-2.png",
+            "/content/my-site/us/en/other-page.html",
+            "/etc.clientlibs/my-site/assets/config.json",
+            "/etc.clientlibs/my-site/clientlibs/clientlib-base-1.css",
+            "/etc.clientlibs/my-site/clientlibs/clientlib-base-1.js",
+            "/etc.clientlibs/my-site/clientlibs/clientlib-base-2.css",
+            "/etc.clientlibs/my-site/clientlibs/clientlib-base-2.js",
+            "/etc.clientlibs/my-site/clientlibs/theme/colors-1.css",
+            "/etc.clientlibs/my-site/clientlibs/theme/colors-2.css",
+            "/etc.clientlibs/my-site/icons/icon-sprite.svg"
+        ),
+        List.of(
+            MAIN_PAGE_HTML_PATH,
+            "/etc.clientlibs/my-site/assets/included-config.json"
+        )
+    );
+  }
+
+  @Test
+  void shouldFindRelatedResources_WhenSearchingRecursivelyInCssAndJsFiles() {
+    shouldFindRelatedResources(
+        ".*\\.(css|js)$",
+        List.of(
+            "/apps/my-site/clientlibs/react-app/main.chunk.js",
+            "/apps/my-site/clientlibs/react-app/runtime~main.chunk.js",
+            "/content/dam/images/bg-1.png",
+            "/content/my-site/us/en/other-page.html",
+            "/etc.clientlibs/my-site/assets/config.json",
+            "/etc.clientlibs/my-site/clientlibs/clientlib-base-1.css",
+            "/etc.clientlibs/my-site/clientlibs/clientlib-base-1.js",
+            "/etc.clientlibs/my-site/clientlibs/theme/colors-1.css",
+            "/etc.clientlibs/my-site/icons/icon-sprite.svg"
+        ),
+        List.of(
+            MAIN_PAGE_HTML_PATH,
+            "/content/dam/images/bg-2.png",
+            "/etc.clientlibs/my-site/assets/included-config.json",
+            "/etc.clientlibs/my-site/clientlibs/clientlib-base-2.css",
+            "/etc.clientlibs/my-site/clientlibs/clientlib-base-2.js",
+            "/etc.clientlibs/my-site/clientlibs/theme/colors-2.css"
+        )
+    );
+  }
+
+  @Test
+  void shouldFindRelatedResources_WhenSearchingRecursivelyInAllTypesOfFiles() {
+    shouldFindRelatedResources(
+        ".*",
+        List.of(
+            "/apps/my-site/clientlibs/react-app/main.chunk.js",
+            "/apps/my-site/clientlibs/react-app/runtime~main.chunk.js",
+            "/content/dam/images/bg-1.png",
+            "/content/dam/images/bg-2.png",
+            "/content/my-site/us/en/other-page.html",
+            "/etc.clientlibs/my-site/assets/config.json",
+            "/etc.clientlibs/my-site/assets/included-config.json",
+            "/etc.clientlibs/my-site/clientlibs/clientlib-base-1.css",
+            "/etc.clientlibs/my-site/clientlibs/clientlib-base-1.js",
+            "/etc.clientlibs/my-site/clientlibs/clientlib-base-2.css",
+            "/etc.clientlibs/my-site/clientlibs/clientlib-base-2.js",
+            "/etc.clientlibs/my-site/clientlibs/theme/colors-1.css",
+            "/etc.clientlibs/my-site/clientlibs/theme/colors-2.css",
+            "/etc.clientlibs/my-site/icons/icon-sprite.svg"
+        ),
+        List.of(
+            MAIN_PAGE_HTML_PATH
+        )
+    );
+  }
+
+  private void shouldFindRelatedResources(String relatedResourceProcessablePathRegex,
+      List<String> expectedFoundResources, List<String> expectedNotFoundResources) {
+
     // given
     ResourceContentRelatedResourcesSelector relatedResourcesSelector = new ResourceContentRelatedResourcesSelector(
         new ResourceContentRelatedResourcesSelectorConfigImpl()
@@ -85,7 +166,7 @@ class ResourceContentRelatedResourcesSelectorRecursiveSearchTest {
                 "(/etc\\.clientlibs[^\"']*)")
             .withResourcePathPostfixToAppend(".html")
             .withResourceRequiredPathRegex("^/content/my-site/us/en/.*")
-            .withRelatedResourceProcessablePathRegex(".*\\.(html|css|js)$")
+            .withRelatedResourceProcessablePathRegex(relatedResourceProcessablePathRegex)
             .withResourceRequiredPrimaryNodeTypeRegex("cq:Page"),
         basicRequestProcessor,
         resourceResolverFactoryMock
@@ -95,33 +176,15 @@ class ResourceContentRelatedResourcesSelectorRecursiveSearchTest {
     Collection<ResourceInfo> actualRelatedResources = relatedResourcesSelector.getRelatedResources(MAIN_PAGE_RESOURCE);
 
     // then
-    assertThat(actualRelatedResources).containsExactly(
-        new ResourceInfo("/apps/my-site/clientlibs/react-app/main.chunk.js"),
-        new ResourceInfo("/apps/my-site/clientlibs/react-app/runtime~main.chunk.js"),
-        new ResourceInfo("/content/dam/images/bg-1.png"),
-        new ResourceInfo("/content/dam/images/bg-2.png"),
-        new ResourceInfo("/content/my-site/us/en/main-page.html"),
-        new ResourceInfo("/content/my-site/us/en/other-page.html"),
-        new ResourceInfo("/etc.clientlibs/my-site/assets/config.json"),
-        new ResourceInfo("/etc.clientlibs/my-site/clientlibs/clientlib-base-1.css"),
-        new ResourceInfo("/etc.clientlibs/my-site/clientlibs/clientlib-base-1.js"),
-        new ResourceInfo("/etc.clientlibs/my-site/clientlibs/clientlib-base-2.css"),
-        new ResourceInfo("/etc.clientlibs/my-site/clientlibs/clientlib-base-2.js"),
-        new ResourceInfo("/etc.clientlibs/my-site/clientlibs/theme/colors-1.css"),
-        new ResourceInfo("/etc.clientlibs/my-site/clientlibs/theme/colors-2.css"),
-        new ResourceInfo("/etc.clientlibs/my-site/icons/icon-sprite.svg")
-    );
+    assertThat(actualRelatedResources)
+        .extracting(ResourceInfo::getPath)
+        .containsExactlyElementsOf(expectedFoundResources);
 
-    // and: should collect all test resources, except the included-config.json file
-    //  since it is included in config.json file, and json extension is not part of the relatedResourceProcessablePathRegex setting
+    // and: should collect all test resources, except the ones provided in the expectedNotFoundResources list
     assertThat(actualRelatedResources)
         .extracting(ResourceInfo::getPath)
         .containsExactlyInAnyOrderElementsOf(
-            setWithoutItem(testResourceFiles.keySet(), "/etc.clientlibs/my-site/assets/included-config.json")
+            SetUtils.difference(testResourceFiles.keySet(), Set.copyOf(expectedNotFoundResources))
         );
-  }
-
-  private static Set<String> setWithoutItem(Set<String> set, String item) {
-    return SetUtils.difference(set, Set.of(item));
   }
 }
