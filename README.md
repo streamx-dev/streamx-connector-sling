@@ -121,7 +121,37 @@ action to be taken when a particular resource is published.
 
 ### Default Related Resources Selector implementation
 
-TODO describe the [ResourceContentRelatedResourcesSelector](./src/main/java/dev/streamx/sling/connector/selectors/content/ResourceContentRelatedResourcesSelector.java)
+The connector includes a built-in implementation of [RelatedResourcesSelector](./src/main/java/dev/streamx/sling/connector/RelatedResourcesSelector.java),
+called [ResourceContentRelatedResourcesSelector](./src/main/java/dev/streamx/sling/connector/selectors/content/ResourceContentRelatedResourcesSelector.java).
+
+The `getRelatedResources(String resourcePath)` method makes an internal Sling request to retrieve the content of the specified resource.
+It scans that content to identify and collect related resources referenced within it.
+A typical example is extracting links from HTML elements like `<a href=...>`, `<img src=...>`, or `<script src=...>`.
+
+Example configuration for finding referenced clientlibs and core images in a page content:
+```json
+{
+  "configurations": {
+    "dev.streamx.sling.connector.selectors.content.ResourceContentRelatedResourcesSelector~pages": {
+      "references.search-regexes":"$[env:STREAMX_REFERENCES_SEARCH_REGEXES;type=String[];delimiter=,;default=(/content[^\"'\\s]*\\.coreimg\\.[^\"'\\s]*),(/[^\"'\\s]*etc\\.clientlibs[^\"'\\s]*)]",
+      "references.exclude-from-result.regex":".*\\{\\.width\\}.*",
+      "resource-path.postfix-to-append":".html",
+      "resource.required-path.regex":"^/content/.*",
+      "resource.required-primary-node-type.regex":"cq:Page"
+    }
+  }
+}
+```
+
+This service is primarily intended for use cases where you need to gather and publish assets (such as images, scripts, etc.) that are referenced within a page.
+
+To use `ResourceContentRelatedResourcesSelector`, you must also provide an implementation of [ResourcePathPublicationHandler](./src/main/java/dev/streamx/sling/connector/handlers/resourcepath/ResourcePathPublicationHandler.java).
+This handler is responsible for actually publishing or unpublishing the related resources identified by the selector.
+
+The `ResourcePathPublicationHandler` implementation requires providing settings such as `resourcePathRegex` and `channel` for ingesting data, as defined in the[ResourcePathPublicationHandlerConfig](./src/main/java/dev/streamx/sling/connector/handlers/resourcepath/ResourcePathPublicationHandlerConfig.java).
+
+If you're already using a custom [PublicationHandler](./src/main/java/dev/streamx/sling/connector/PublicationHandler.java) in your code to publish assets, and you also use `ResourceContentRelatedResourcesSelector` to identify related assets, make sure your existing `PublicationHandler` is configured to ignore those related assets.
+This prevents duplicate processing or conflicts with the resources handled by your `ResourcePathPublicationHandler` implementation.
 
 # Usage:
 
