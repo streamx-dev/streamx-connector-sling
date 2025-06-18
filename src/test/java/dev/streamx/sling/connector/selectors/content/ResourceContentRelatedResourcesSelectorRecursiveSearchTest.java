@@ -9,9 +9,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 
 import dev.streamx.sling.connector.ResourceInfo;
+import dev.streamx.sling.connector.test.util.ResourceContentRelatedResourcesSelectorConfigImpl;
 import dev.streamx.sling.connector.test.util.ResourceMocks;
 import java.io.File;
-import java.lang.annotation.Annotation;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
@@ -76,47 +76,15 @@ class ResourceContentRelatedResourcesSelectorRecursiveSearchTest {
   void shouldFindRelatedResources() {
     // given
     ResourceContentRelatedResourcesSelector relatedResourcesSelector = new ResourceContentRelatedResourcesSelector(
-        new ResourceContentRelatedResourcesSelectorConfig() {
-
-          @Override
-          public Class<? extends Annotation> annotationType() {
-            return ResourceContentRelatedResourcesSelectorConfig.class;
-          }
-
-          @Override
-          public String[] references_search$_$regexes() {
-            return new String[]{
+        new ResourceContentRelatedResourcesSelectorConfigImpl()
+            .withReferencesSearchRegexes(
                 "(/apps/[^\"']+)",
                 "(/content/[^\"']+)",
-                "(/etc\\.clientlibs[^\"']*)"
-            };
-          }
-
-          @Override
-          public String references_exclude$_$from$_$result_regex() {
-            return "";
-          }
-
-          @Override
-          public String resource$_$path_postfix$_$to$_$append() {
-            return ".html";
-          }
-
-          @Override
-          public String resource_required$_$path_regex() {
-            return "^/content/my-site/us/en/.*";
-          }
-
-          @Override
-          public String related_resource_processable_path_regex() {
-            return ".*\\.(html|css|js)$";
-          }
-
-          @Override
-          public String resource_required$_$primary$_$node$_$type_regex() {
-            return "cq:Page";
-          }
-        },
+                "(/etc\\.clientlibs[^\"']*)")
+            .withResourcePathPostfixToAppend(".html")
+            .withResourceRequiredPathRegex("^/content/my-site/us/en/.*")
+            .withRelatedResourceProcessablePathRegex(".*\\.(html|css|js)$")
+            .withResourceRequiredPrimaryNodeTypeRegex("cq:Page"),
         basicRequestProcessor,
         resourceResolverFactoryMock
     );

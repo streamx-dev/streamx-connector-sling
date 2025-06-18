@@ -9,9 +9,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 
 import dev.streamx.sling.connector.ResourceInfo;
+import dev.streamx.sling.connector.test.util.ResourceContentRelatedResourcesSelectorConfigImpl;
 import dev.streamx.sling.connector.test.util.ResourceMocks;
 import java.io.File;
-import java.lang.annotation.Annotation;
 import java.util.Collection;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -71,46 +71,15 @@ class ResourceContentRelatedResourcesSelectorTest {
   void shouldFindRelatedResources() {
     // given
     ResourceContentRelatedResourcesSelector relatedResourcesSelector = new ResourceContentRelatedResourcesSelector(
-        new ResourceContentRelatedResourcesSelectorConfig() {
-
-          @Override
-          public Class<? extends Annotation> annotationType() {
-            return ResourceContentRelatedResourcesSelectorConfig.class;
-          }
-
-          @Override
-          public String[] references_search$_$regexes() {
-            return new String[]{
+        new ResourceContentRelatedResourcesSelectorConfigImpl()
+            .withReferencesSearchRegexes(
                 "(/content[^\"'\\s]*\\.coreimg\\.[^\"'\\s]*)",
-                "(/[^\"'\\s]*etc\\.clientlibs[^\"'\\s]*)"
-            };
-          }
-
-          @Override
-          public String references_exclude$_$from$_$result_regex() {
-            return ".*\\{\\.width\\}.*";
-          }
-
-          @Override
-          public String resource$_$path_postfix$_$to$_$append() {
-            return ".html";
-          }
-
-          @Override
-          public String resource_required$_$path_regex() {
-            return "^/content/.*";
-          }
-
-          @Override
-          public String related_resource_processable_path_regex() {
-            return ".*\\.(html|css|js)$";
-          }
-
-          @Override
-          public String resource_required$_$primary$_$node$_$type_regex() {
-            return JcrResourceConstants.NT_SLING_FOLDER;
-          }
-        },
+                "(/[^\"'\\s]*etc\\.clientlibs[^\"'\\s]*)")
+            .withReferencesExcludeFromResultRegex(".*\\{\\.width\\}.*")
+            .withResourcePathPostfixToAppend(".html")
+            .withResourceRequiredPathRegex("^/content/.*")
+            .withRelatedResourceProcessablePathRegex(".*\\.(html|css|js)$")
+            .withResourceRequiredPrimaryNodeTypeRegex(JcrResourceConstants.NT_SLING_FOLDER),
         basicRequestProcessor,
         resourceResolverFactoryMock
     );
