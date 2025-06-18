@@ -56,10 +56,18 @@ final class PublishedRelatedResourcesManager {
   private static void updatePublishedResourcesData(String parentResourcePath, Set<ResourceInfo> relatedResources, Session session,
       Map<String, Set<ResourceInfo>> disappearedRelatedResources) throws RepositoryException {
     String parentResourceJcrPath = BASE_NODE_PATH + parentResourcePath;
-    Node parentResourceJcrNode = JcrUtils.getOrCreateByPath(parentResourceJcrPath, "sling:Folder", "nt:unstructured", session, false);
+
+    Node parentResourceJcrNode;
+    Set<String> relatedResourcesInJcr;
+    if (session.nodeExists(parentResourceJcrPath)) {
+      parentResourceJcrNode = session.getNode(parentResourceJcrPath);
+      relatedResourcesInJcr = collectRelatedResources(parentResourceJcrNode);
+    } else {
+      parentResourceJcrNode = JcrUtils.getOrCreateByPath(parentResourceJcrPath, "sling:Folder", "nt:unstructured", session, false);
+      relatedResourcesInJcr = new LinkedHashSet<>();
+    }
 
     Set<String> relatedResourcesToProcess = relatedResources.stream().map(ResourceInfo::getPath).collect(Collectors.toCollection(LinkedHashSet::new));
-    Set<String> relatedResourcesInJcr = collectRelatedResources(parentResourceJcrNode);
 
     Set<String> relatedResourcesToAddToJcr = itemsOnlyInFirstSet(relatedResourcesToProcess, relatedResourcesInJcr);
     relatedResourcesInJcr.addAll(relatedResourcesToAddToJcr);
@@ -101,7 +109,13 @@ final class PublishedRelatedResourcesManager {
           Node parentResourceJcrNode = session.getNode(parentResourceJcrPath);
           Set<String> relatedResources = collectRelatedResources(parentResourceJcrNode);
           PublishedRelatedResourcesInversedTreeManager.removeData(relatedResources, parentResourcePath, session);
-          session.removeItem(parentResourceJcrPath);
+          if (parentResourceJcrNode.hasProperty(PN_RELATED_RESOURCES)) {
+            if (parentResourceJcrNode.hasNodes()) {
+              parentResourceJcrNode.setProperty(PN_RELATED_RESOURCES, (String[]) null);
+            } else {
+              parentResourceJcrNode.remove();
+            }
+          }
         }
       }
       session.save();

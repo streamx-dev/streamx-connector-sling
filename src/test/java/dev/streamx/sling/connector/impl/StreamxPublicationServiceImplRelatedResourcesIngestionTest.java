@@ -410,6 +410,49 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   }
 
   @Test
+  void unpublishingPageShouldNotRemoveDataAboutOtherPublishedPage() throws Exception {
+    // given
+    String page1 = registerPage("/content/my-site/a/b/c", generateHtmlPageContent(GLOBAL_JS_CLIENTLIB));
+    String page2 = registerPage("/content/my-site/a/b", generateHtmlPageContent(GLOBAL_JS_CLIENTLIB));
+    String page3 = registerPage("/content/my-site/a", generateHtmlPageContent(GLOBAL_JS_CLIENTLIB));
+
+    // when 1
+    publishPage(page1);
+    publishPage(page2);
+    publishPage(page3);
+
+    // then
+    assertResourcesCurrentlyOnStreamX(page1, page2, page3, GLOBAL_JS_CLIENTLIB);
+
+    verifyStateOfPublishedResourcesData(
+        Map.of(
+            page1, List.of(GLOBAL_JS_CLIENTLIB),
+            page2, List.of(GLOBAL_JS_CLIENTLIB),
+            page3, List.of(GLOBAL_JS_CLIENTLIB)
+        ),
+        List.of(
+            GLOBAL_JS_CLIENTLIB
+        )
+    );
+
+    // when 2:
+    unpublishPage(page3);
+
+    // then
+    assertResourcesCurrentlyOnStreamX(page1, page2, GLOBAL_JS_CLIENTLIB);
+
+    verifyStateOfPublishedResourcesData(
+        Map.of(
+            page1, List.of(GLOBAL_JS_CLIENTLIB),
+            page2, List.of(GLOBAL_JS_CLIENTLIB)
+        ),
+        List.of(
+            GLOBAL_JS_CLIENTLIB
+        )
+    );
+  }
+
+  @Test
   void shouldHandlePageWith1000RelatedResources() throws Exception {
     // given
     String imagePathFormat = page1WithImagesAndCss
@@ -521,7 +564,9 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   }
 
   private void loadPageToSlingContext(String pageResourcePath) {
-    slingContext.load().json(PAGE_JSON_RESOURCE_FILE_PATH, pageResourcePath);
+    if (resourceResolver.getResource(pageResourcePath) == null) {
+      slingContext.load().json(PAGE_JSON_RESOURCE_FILE_PATH, pageResourcePath);
+    }
   }
 
   private static String generateHtmlPageContent(String... relatedResourcePathsToInclude) {
