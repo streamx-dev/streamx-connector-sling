@@ -3,7 +3,7 @@ package dev.streamx.sling.connector.impl;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.streamx.sling.connector.RelatedResourcesSelector;
-import dev.streamx.sling.connector.ResourceInfo;
+import java.util.Collection;
 import java.util.List;
 import org.apache.sling.testing.mock.sling.ResourceResolverType;
 import org.apache.sling.testing.mock.sling.junit5.SlingContext;
@@ -21,14 +21,33 @@ class RelatedResourcesSelectorRegistryTest {
   @Test
   void shouldBindAndUnbindSelectors() {
     // given
-    RelatedResourcesSelector selector1 = resourcePath -> List.of(
-        new ResourceInfo("/content/pages/page.html", "cq:Page"),
-        new ResourceInfo("/content/dam/image.jpg", "dam:Asset")
-    );
-    RelatedResourcesSelector selector2 = resourcePath -> List.of(
-        new ResourceInfo("/content/pages/other-page.html", "cq:Page"),
-        new ResourceInfo("/content/dam/other-image.jpg", "dam:Asset")
-    );
+    RelatedResourcesSelector selector1 = new RelatedResourcesSelector() {
+      @Override
+      public Collection<String> getRelatedResources(String resourcePath) {
+        return List.of(
+            "/content/pages/page.html",
+            "/content/dam/image.jpg"
+        );
+      }
+
+      @Override
+      public void removeParentResources(Collection<String> relatedResourcePaths, Collection<String> parentResourcePaths) {
+      }
+    };
+
+    RelatedResourcesSelector selector2 = new RelatedResourcesSelector() {
+      @Override
+      public Collection<String> getRelatedResources(String resourcePath) {
+        return List.of(
+            "/content/pages/other-page.html",
+            "/content/dam/other-image.jpg"
+        );
+      }
+
+      @Override
+      public void removeParentResources(Collection<String> relatedResourcePaths, Collection<String> parentResourcePaths) {
+      }
+    };
 
     BundleContext bundleContext = slingContext.bundleContext();
 

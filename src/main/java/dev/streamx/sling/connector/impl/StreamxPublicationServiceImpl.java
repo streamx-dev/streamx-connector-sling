@@ -5,13 +5,13 @@ import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX
 import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_HANDLER_ID;
 import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PATH;
 
+import dev.streamx.sling.connector.RelatedResourcesSelector;
 import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.PublicationAction;
 import dev.streamx.sling.connector.PublicationHandler;
 import dev.streamx.sling.connector.StreamxPublicationException;
 import dev.streamx.sling.connector.StreamxPublicationService;
 import dev.streamx.sling.connector.impl.StreamxPublicationServiceImpl.Config;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -19,7 +19,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.resource.ResourceResolverFactory;
 import org.apache.sling.event.jobs.Job;
@@ -131,14 +130,21 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
 
   private Map<String, Set<ResourceInfo>> findRelatedResources(List<ResourceInfo> parentResources) {
     LOG.trace("Searching for related resources for {}", parentResources);
+    Set<String> parentResourcesPaths = SetUtils.mapToLinkedHashSet(parentResources, ResourceInfo::getPath);
 
     Map<String, Set<ResourceInfo>> result = new LinkedHashMap<>();
-    for (ResourceInfo parentResource : parentResources) {
-      Set<ResourceInfo> relatedResources = relatedResourcesSelectorRegistry.getSelectors().stream()
-          .flatMap(selector -> selector.getRelatedResources(parentResource.getPath()).stream())
-          .filter(relatedResource -> !parentResources.contains(relatedResource))
-          .collect(Collectors.toCollection(LinkedHashSet::new));
-      result.put(parentResource.getPath(), relatedResources);
+    for (String parentResourcePath : parentResourcesPaths) {
+      List<RelatedResourcesSelector> selectors = relatedResourcesSelectorRegistry.getSelectors();
+      Set<String> relatedResourcePaths = SetUtils.flattenToLinkedHashSet(
+          selectors,
+          selector -> selector.getRelatedResources(parentResourcePath)
+      );
+      for (RelatedResourcesSelector selector : selectors) {
+        selector.removeParentResources(relatedResourcePaths, parentResourcesPaths);
+      }
+
+      Set<ResourceInfo> relatedResources = SetUtils.mapToLinkedHashSet(relatedResourcePaths, ResourceInfo::new);
+      result.put(parentResourcePath, relatedResources);
     }
     return result;
   }
@@ -156,9 +162,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
       throws JobCreationException {
     Map<String, Set<ResourceInfo>> relatedResourcesMap = findRelatedResources(parentResources);
 
-    LinkedHashSet<ResourceInfo> distinctRelatedResources = relatedResourcesMap.values().stream()
-        .flatMap(Collection::stream)
-        .collect(Collectors.toCollection(LinkedHashSet::new));
+    Set<ResourceInfo> distinctRelatedResources = SetUtils.flattenToLinkedHashSet(relatedResourcesMap.values());
 
     if (action == PublicationAction.PUBLISH) {
       publishRelatedResources(distinctRelatedResources, resourceResolver);
