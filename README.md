@@ -133,17 +133,22 @@ Example configuration for finding referenced clientlibs and core images in a pag
 {
   "configurations": {
     "dev.streamx.sling.connector.selectors.content.ResourceContentRelatedResourcesSelector~pages": {
-      "references.search-regexes":"$[env:STREAMX_REFERENCES_SEARCH_REGEXES;type=String[];delimiter=,;default=(/content[^\"'\\s]*\\.coreimg\\.[^\"'\\s]*),(/[^\"'\\s]*etc\\.clientlibs[^\"'\\s]*)]",
-      "references.exclude-from-result.regex":".*\\{\\.width\\}.*",
-      "resource-path.postfix-to-append":".html",
-      "resource.required-path.regex":"^/content/.*",
-      "resource.required-primary-node-type.regex":"cq:Page"
+      "references.search-regexes": "$[env:STREAMX_REFERENCES_SEARCH_REGEXES;type=String[];delimiter=,;default=(/content[^\"'\\s]*\\.coreimg\\.[^\"'\\s]*),(/[^\"'\\s]*etc\\.clientlibs[^\"'\\s]*)]",
+      "references.exclude-from-result.regex": ".*\\{\\.width\\}.*",
+      "resource-path.postfix-to-append": ".html",
+      "resource.required-path.regex": "^/content/.*",
+      "resource.required-primary-node-type.regex": "cq:Page",
+      "related-resource.processable-path.regex": ".*\\.(css|js)$"
     }
   }
 }
 ```
 
 This service is primarily intended for use cases where you need to gather and publish paths (such as images, scripts, etc.) that are referenced within a page but are not published to StreamX in regular way.
+
+The selector searches for referenced resources recursively.
+To control this behavior, you can use the `related-resource.processable-path.regex` configuration.
+This setting lets you specify which related resources should themselves be processed recursively to find their own related resources.
 
 To use `ResourceContentRelatedResourcesSelector`, you must also provide an implementation of [ResourcePathPublicationHandler](./src/main/java/dev/streamx/sling/connector/handlers/resourcepath/ResourcePathPublicationHandler.java).
 This handler is responsible for actually publishing or unpublishing the related resources identified by the selector.

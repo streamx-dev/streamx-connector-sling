@@ -51,6 +51,8 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
 
   private List<Pattern> relatedResourcePathIncludePatterns;
   private Pattern relatedResourcePathExcludePattern;
+  private Pattern resourceRequiredPathRegex;
+  private Pattern resourceRequiredPrimaryNodeTypeRegex;
   private Pattern relatedResourceProcessablePathPattern;
 
   /**
@@ -75,11 +77,13 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
 
   private void loadPatterns() {
     ResourceContentRelatedResourcesSelectorConfig currentConfig = config.get();
-    this.relatedResourcePathIncludePatterns = Arrays.stream(currentConfig.references_search$_$regexes())
+    relatedResourcePathIncludePatterns = Arrays.stream(currentConfig.references_search$_$regexes())
         .map(Pattern::compile)
         .collect(Collectors.toUnmodifiableList());
-    this.relatedResourcePathExcludePattern = Pattern.compile(currentConfig.references_exclude$_$from$_$result_regex());
-    this.relatedResourceProcessablePathPattern = Pattern.compile(currentConfig.related_resource_processable_path_regex());
+    relatedResourcePathExcludePattern = Pattern.compile(currentConfig.references_exclude$_$from$_$result_regex());
+    resourceRequiredPathRegex = Pattern.compile(currentConfig.resource_required$_$path_regex());
+    resourceRequiredPrimaryNodeTypeRegex = Pattern.compile(currentConfig.resource_required$_$primary$_$node$_$type_regex());
+    relatedResourceProcessablePathPattern = Pattern.compile(currentConfig.related$_$resource_processable$_$path_regex());
   }
 
   @Modified
@@ -98,7 +102,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
   @Override
   public Collection<ResourceInfo> getRelatedResources(String resourcePath) {
     LOG.debug("Getting related resources for '{}'", resourcePath);
-    if (!ResourceFilter.isAcceptableResourcePath(resourcePath, config.get())) {
+    if (!ResourceFilter.isAcceptableResourcePath(resourcePath, resourceRequiredPathRegex)) {
       return Collections.emptyList();
     }
 
@@ -111,7 +115,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
   }
 
   private List<ResourceInfo> getRelatedResources(String resourcePath, ResourceResolver resourceResolver) {
-    if (!ResourceFilter.isAcceptablePrimaryNodeType(resourcePath, resourceResolver, config.get())) {
+    if (!ResourceFilter.isAcceptablePrimaryNodeType(resourcePath, resourceResolver, resourceRequiredPrimaryNodeTypeRegex)) {
       return Collections.emptyList();
     }
 

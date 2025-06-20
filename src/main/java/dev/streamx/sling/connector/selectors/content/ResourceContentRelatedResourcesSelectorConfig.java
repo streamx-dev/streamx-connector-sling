@@ -25,7 +25,6 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
  * candidate paths, which can subsequently be excluded or accepted based on the provided
  * filtering regexes.
  */
-@SuppressWarnings("NewClassNamingConvention")
 @ObjectClassDefinition
 public @interface ResourceContentRelatedResourcesSelectorConfig {
 
@@ -92,6 +91,21 @@ public @interface ResourceContentRelatedResourcesSelectorConfig {
   String resource_required$_$path_regex() default ".*";
 
   /**
+   * A regex pattern that the {@link Resource}'s primary {@link NodeType} must match for the
+   * {@link Resource} to be considered acceptable.
+   *
+   * @return regex pattern that the {@link Resource}'s primary {@link NodeType} must match for the
+   * {@link Resource} to be considered acceptable.
+   */
+  @AttributeDefinition(
+      name = "Resource Node Primary Type Regex",
+      description = "Regex pattern that the Resource's primary Node Type must match for the Resource to be considered acceptable.",
+      type = AttributeType.STRING,
+      defaultValue = ".*"
+  )
+  String resource_required$_$primary$_$node$_$type_regex() default ".*";
+
+  /**
    * Regex pattern that a referenced {@link Resource} path must match
    * to have its content processed in search for referenced resources.
    *
@@ -101,23 +115,7 @@ public @interface ResourceContentRelatedResourcesSelectorConfig {
       name = "Related Resource Processable Path Regex",
       description = "Regex pattern that a referenced Resource path must match to have its content processed in search for referenced resources.",
       type = AttributeType.STRING,
-      defaultValue = ".*\\.(html|css|js)$"
+      defaultValue = ".*\\.(css|js)$"
   )
-  String related_resource_processable_path_regex() default ".*\\.(html|css|js)$";
-
-  /**
-   * A regex pattern that the {@link Resource}'s primary {@link NodeType} must match for the
-   * {@link Resource} to be considered acceptable.
-   *
-   * @return regex pattern that the {@link Resource}'s primary {@link NodeType} must match for the
-   * {@link Resource} to be considered acceptable.
-   */
-  @SuppressWarnings("NewMethodNamingConvention")
-  @AttributeDefinition(
-      name = "Resource Node Primary Type Regex",
-      description = "Regex pattern that the Resource's primary Node Type must match for the Resource to be considered acceptable.",
-      type = AttributeType.STRING,
-      defaultValue = ".*"
-  )
-  String resource_required$_$primary$_$node$_$type_regex() default ".*";
+  String related$_$resource_processable$_$path_regex() default ".*\\.(css|js)$";
 }

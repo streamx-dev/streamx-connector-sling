@@ -9,8 +9,8 @@ public class ResourceContentRelatedResourcesSelectorConfigImpl implements Resour
   private String references_exclude$_$from$_$result_regex = "";
   private String resource$_$path_postfix$_$to$_$append = "";
   private String resource_required$_$path_regex = "";
-  private String related_resource_processable_path_regex = "";
   private String resource_required$_$primary$_$node$_$type_regex = "";
+  private String related$_$resource_processable$_$path_regex = "";
 
   public ResourceContentRelatedResourcesSelectorConfigImpl withReferencesSearchRegexes(String... values) {
     this.references_search$_$regexes = values;
@@ -32,13 +32,13 @@ public class ResourceContentRelatedResourcesSelectorConfigImpl implements Resour
     return this;
   }
 
-  public ResourceContentRelatedResourcesSelectorConfigImpl withRelatedResourceProcessablePathRegex(String value) {
-    this.related_resource_processable_path_regex = value;
+  public ResourceContentRelatedResourcesSelectorConfigImpl withResourceRequiredPrimaryNodeTypeRegex(String value) {
+    this.resource_required$_$primary$_$node$_$type_regex = value;
     return this;
   }
 
-  public ResourceContentRelatedResourcesSelectorConfigImpl withResourceRequiredPrimaryNodeTypeRegex(String value) {
-    this.resource_required$_$primary$_$node$_$type_regex = value;
+  public ResourceContentRelatedResourcesSelectorConfigImpl withRelatedResourceProcessablePathRegex(String value) {
+    this.related$_$resource_processable$_$path_regex = value;
     return this;
   }
 
@@ -63,13 +63,13 @@ public class ResourceContentRelatedResourcesSelectorConfigImpl implements Resour
   }
 
   @Override
-  public String related_resource_processable_path_regex() {
-    return related_resource_processable_path_regex;
+  public String resource_required$_$primary$_$node$_$type_regex() {
+    return resource_required$_$primary$_$node$_$type_regex;
   }
 
   @Override
-  public String resource_required$_$primary$_$node$_$type_regex() {
-    return resource_required$_$primary$_$node$_$type_regex;
+  public String related$_$resource_processable$_$path_regex() {
+    return related$_$resource_processable$_$path_regex;
   }
 
   @Override

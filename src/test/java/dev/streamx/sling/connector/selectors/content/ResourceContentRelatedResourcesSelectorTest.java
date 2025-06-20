@@ -78,8 +78,8 @@ class ResourceContentRelatedResourcesSelectorTest {
             .withReferencesExcludeFromResultRegex(".*\\{\\.width\\}.*")
             .withResourcePathPostfixToAppend(".html")
             .withResourceRequiredPathRegex("^/content/.*")
-            .withRelatedResourceProcessablePathRegex(".*\\.(html|css|js)$")
-            .withResourceRequiredPrimaryNodeTypeRegex(JcrResourceConstants.NT_SLING_FOLDER),
+            .withResourceRequiredPrimaryNodeTypeRegex(JcrResourceConstants.NT_SLING_FOLDER)
+            .withRelatedResourceProcessablePathRegex(".*\\.(html|css|js)$"),
         basicRequestProcessor,
         resourceResolverFactoryMock
     );

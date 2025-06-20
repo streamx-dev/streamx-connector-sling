@@ -114,8 +114,8 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
       .withReferencesSearchRegexes("(/content/.+coreimg.+\\.jpg)", "(/etc.clientlibs/.+\\.(css|js))")
       .withResourcePathPostfixToAppend(".html")
       .withResourceRequiredPathRegex(".*")
-      .withRelatedResourceProcessablePathRegex(".*\\.html$")
-      .withResourceRequiredPrimaryNodeTypeRegex(".*");
+      .withResourceRequiredPrimaryNodeTypeRegex(".*")
+      .withRelatedResourceProcessablePathRegex(".*\\.html$");
 
   private final AssetResourcePathPublicationHandlerConfig assetResourcePathPublicationHandlerConfig = new AssetResourcePathPublicationHandlerConfig() {
 
