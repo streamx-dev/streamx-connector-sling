@@ -410,16 +410,14 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   }
 
   @Test
-  void unpublishingPageShouldNotRemoveDataAboutOtherPublishedPage() throws Exception {
+  void unpublishingPageShouldNotRemoveDataForOtherPublishedPages() throws Exception {
     // given
     String page1 = registerPage("/content/my-site/a/b/c", generateHtmlPageContent(GLOBAL_JS_CLIENTLIB));
     String page2 = registerPage("/content/my-site/a/b", generateHtmlPageContent(GLOBAL_JS_CLIENTLIB));
     String page3 = registerPage("/content/my-site/a", generateHtmlPageContent(GLOBAL_JS_CLIENTLIB));
 
     // when 1
-    publishPage(page1);
-    publishPage(page2);
-    publishPage(page3);
+    publishPages(page1, page2, page3);
 
     // then
     assertResourcesCurrentlyOnStreamX(page1, page2, page3, GLOBAL_JS_CLIENTLIB);
@@ -448,6 +446,50 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
         ),
         List.of(
             GLOBAL_JS_CLIENTLIB
+        )
+    );
+  }
+
+  @Test
+  void unpublishingPageShouldNotRemoveDataForRelatedResourcesPublishedWithOtherPage() throws Exception {
+    // given
+    String image1 = "/content/my-site/a/b/c/image.coreimg.1.jpg";
+    String image2 = "/content/my-site/a/b/image.coreimg.1.jpg";
+    String image3 = "/content/my-site/a/image.coreimg.1.jpg";
+    String page1 = registerPage("/content/my-site/a/b/c", generateHtmlPageContent(image1, image2, image3));
+    String page2 = registerPage("/content/my-site/a/b", generateHtmlPageContent(image2, image3));
+    String page3 = registerPage("/content/my-site/a", generateHtmlPageContent(image3));
+
+    // when 1
+    publishPages(page1, page2, page3);
+
+    // then
+    assertResourcesCurrentlyOnStreamX(page1, page2, page3, image1, image2, image3);
+
+    verifyStateOfPublishedResourcesData(
+        Map.of(
+            page1, List.of(image1, image2, image3),
+            page2, List.of(image2, image3),
+            page3, List.of(image3)
+        ),
+        List.of(
+            image1, image2, image3
+        )
+    );
+
+    // when 2:
+    unpublishPage(page3);
+
+    // then
+    assertResourcesCurrentlyOnStreamX(page1, page2, image1, image2);
+
+    verifyStateOfPublishedResourcesData(
+        Map.of(
+            page1, List.of(image1, image2, image3),
+            page2, List.of(image2, image3)
+        ),
+        List.of(
+            image1, image2
         )
     );
   }
@@ -649,6 +691,10 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
   private void publishPage(String resourcePath) throws Exception {
     publishPages(List.of(resourcePath));
+  }
+
+  private void publishPages(String... resourcePaths) throws Exception {
+    publishPages(Arrays.asList(resourcePaths));
   }
 
   private void publishPages(Collection<String> resourcePaths) throws Exception {
