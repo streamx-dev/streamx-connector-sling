@@ -26,7 +26,8 @@ public class AssetPublicationHandler implements PublicationHandler<Asset> {
 
   @Override
   public boolean canHandle(ResourceInfo resource) {
-    return "dam:Asset".equals(resource.getPrimaryNodeType());
+    return "dam:Asset".equals(resource.getPrimaryNodeType())
+           && !resource.getPath().contains("/related/");
   }
 
   @Override

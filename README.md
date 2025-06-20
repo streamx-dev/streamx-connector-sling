@@ -124,9 +124,12 @@ action to be taken when a particular resource is published.
 The connector includes a built-in implementation of [RelatedResourcesSelector](./src/main/java/dev/streamx/sling/connector/RelatedResourcesSelector.java),
 called [ResourceContentRelatedResourcesSelector](./src/main/java/dev/streamx/sling/connector/selectors/content/ResourceContentRelatedResourcesSelector.java).
 
-The `getRelatedResources(String resourcePath)` method makes an internal Sling request to retrieve the content of the specified resource.
+The `getRelatedResources(String resourcePath)` method of `ResourceContentRelatedResourcesSelector` makes an internal Sling request to retrieve the content of the specified resource.
 It scans that content to identify and collect related resources referenced within it.
-A typical example is extracting links from HTML elements like `<a href=...>`, `<img src=...>`, or `<script src=...>`.
+A typical example is extracting links from HTML elements like `<img src=...>`, `<script src=...>` and similar.
+
+This service is primarily intended for use cases where you need to gather and publish paths (such as images, scripts, etc.) that are referenced within a page but are not published to StreamX in regular way.
+It is not intended for finding and publishing HTML pages linked within the page content. All pages should be published explicitly using a generic Page Publication Handler.
 
 Example configuration for finding referenced clientlibs and core images in a page content:
 ```json
@@ -143,7 +146,7 @@ Example configuration for finding referenced clientlibs and core images in a pag
 }
 ```
 
-This service is primarily intended for use cases where you need to gather and publish paths (such as images, scripts, etc.) that are referenced within a page but are not published to StreamX in regular way.
+Refer to the [@AttributeDefinition of the fields in ](./src/main/java/dev/streamx/sling/connector/selectors/content/ResourceContentRelatedResourcesSelectorConfig.java) for more information on their usage.
 
 To use `ResourceContentRelatedResourcesSelector`, you must also provide an implementation of [ResourcePathPublicationHandler](./src/main/java/dev/streamx/sling/connector/handlers/resourcepath/ResourcePathPublicationHandler.java).
 This handler is responsible for actually publishing or unpublishing the related resources identified by the selector.

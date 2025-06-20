@@ -11,7 +11,6 @@ import dev.streamx.sling.connector.PublicationHandler;
 import dev.streamx.sling.connector.StreamxPublicationException;
 import dev.streamx.sling.connector.StreamxPublicationService;
 import dev.streamx.sling.connector.impl.StreamxPublicationServiceImpl.Config;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -131,12 +130,13 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
 
   private Map<String, Set<ResourceInfo>> findRelatedResources(List<ResourceInfo> parentResources) {
     LOG.trace("Searching for related resources for {}", parentResources);
+    Set<String> parentResourcesPaths = SetUtils.mapToLinkedHashSet(parentResources, ResourceInfo::getPath);
 
     Map<String, Set<ResourceInfo>> result = new LinkedHashMap<>();
     for (ResourceInfo parentResource : parentResources) {
       Set<ResourceInfo> relatedResources = relatedResourcesSelectorRegistry.getSelectors().stream()
           .flatMap(selector -> selector.getRelatedResources(parentResource.getPath()).stream())
-          .filter(relatedResource -> !parentResources.contains(relatedResource))
+          .filter(relatedResource -> !parentResourcesPaths.contains(relatedResource.getPath()))
           .collect(Collectors.toCollection(LinkedHashSet::new));
       result.put(parentResource.getPath(), relatedResources);
     }
@@ -156,9 +156,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
       throws JobCreationException {
     Map<String, Set<ResourceInfo>> relatedResourcesMap = findRelatedResources(parentResources);
 
-    LinkedHashSet<ResourceInfo> distinctRelatedResources = relatedResourcesMap.values().stream()
-        .flatMap(Collection::stream)
-        .collect(Collectors.toCollection(LinkedHashSet::new));
+    Set<ResourceInfo> distinctRelatedResources = SetUtils.flattenToLinkedHashSet(relatedResourcesMap.values());
 
     if (action == PublicationAction.PUBLISH) {
       publishRelatedResources(distinctRelatedResources, resourceResolver);
