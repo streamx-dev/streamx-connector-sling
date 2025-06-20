@@ -4,7 +4,6 @@ import javax.jcr.Node;
 import javax.jcr.RepositoryException;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,8 +25,7 @@ class ResourceFilter {
     return actualPrimaryNodeType.matches(config.resource_required$_$primary$_$node$_$type_regex());
   }
 
-  @Nullable
-  public static String extractPrimaryNodeType(String resourcePath, ResourceResolver resourceResolver) {
+  private static String extractPrimaryNodeType(String resourcePath, ResourceResolver resourceResolver) {
     try {
       Resource resource = resourceResolver.resolve(resourcePath);
       Node node = resource.adaptTo(Node.class);

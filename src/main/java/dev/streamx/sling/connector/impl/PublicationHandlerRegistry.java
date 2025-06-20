@@ -1,9 +1,11 @@
 package dev.streamx.sling.connector.impl;
 
 import dev.streamx.sling.connector.PublicationHandler;
+import dev.streamx.sling.connector.ResourceInfo;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Collectors;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -46,6 +48,12 @@ public class PublicationHandlerRegistry {
 
   List<PublicationHandler<?>> getHandlers() {
     return Collections.unmodifiableList(handlers);
+  }
+
+  List<PublicationHandler<?>> getForResource(ResourceInfo resource) {
+    return handlers.stream()
+        .filter(handler -> handler.canHandle(resource))
+        .collect(Collectors.toList());
   }
 
 }

@@ -1,10 +1,12 @@
 package dev.streamx.sling.connector;
 
+import org.apache.commons.lang3.StringUtils;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Specifies path and JCR primary node type of a resource to be published or unpublished
@@ -19,19 +21,31 @@ public class ResourceInfo {
   private final String path;
 
   /**
-   * Primary node type of the resource
+   * Primary node type of the resource. Null for non-JCR resources
    */
+  @Nullable
   private final String primaryNodeType;
+
+  /**
+   * Creates an instance of {@link ResourceInfo} with null value for primaryNodeType
+   * @param path path of the resource
+   */
+  public ResourceInfo(String path) {
+    this(path, null);
+  }
 
   /**
    * Creates an instance of {@link ResourceInfo}
    * @param path path of the resource
-   * @param primaryNodeType primary node type of the resource
+   * @param primaryNodeType primary node type of the resource. Null for non-JCR resources
    */
   @JsonCreator
   public ResourceInfo(
       @JsonProperty("path") String path,
-      @JsonProperty("primaryNodeType") String primaryNodeType) {
+      @JsonProperty("primaryNodeType") @Nullable String primaryNodeType) {
+    if (StringUtils.isBlank(path)) {
+      throw new IllegalArgumentException("path cannot be blank");
+    }
     this.path = path;
     this.primaryNodeType = primaryNodeType;
   }
@@ -48,6 +62,7 @@ public class ResourceInfo {
    * Returns primary node type of the resource
    * @return primary node type of the resource
    */
+  @Nullable
   public String getPrimaryNodeType() {
     return primaryNodeType;
   }
@@ -105,6 +120,6 @@ public class ResourceInfo {
 
   @Override
   public String toString() {
-    return "Path: " + path + ", Primary Node Type: " + primaryNodeType;
+    return serialize();
   }
 }
