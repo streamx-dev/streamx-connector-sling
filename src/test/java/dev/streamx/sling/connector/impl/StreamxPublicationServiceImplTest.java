@@ -14,6 +14,7 @@ import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJob;
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJobExecutionContext;
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJobManager;
 import dev.streamx.sling.connector.testing.streamx.clients.ingestion.FakeStreamxClient;
+import dev.streamx.sling.connector.testing.streamx.clients.ingestion.Publication;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.stream.Collectors;
@@ -32,7 +33,6 @@ import org.apache.sling.event.jobs.consumer.JobExecutor;
 import org.apache.sling.testing.mock.sling.ResourceResolverType;
 import org.apache.sling.testing.mock.sling.junit5.SlingContext;
 import org.apache.sling.testing.mock.sling.junit5.SlingContextExtension;
-import org.assertj.core.groups.Tuple;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -43,7 +43,6 @@ import java.util.function.Consumer;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssumptions.given;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -714,34 +713,34 @@ class StreamxPublicationServiceImplTest {
     assertThat(fakeJobManager.getProcessedJobsCount()).isEqualTo(count);
   }
 
-  private void thenPublicationsContainsExactly(Tuple... tuples) {
+  private void thenPublicationsContainsExactly(Publication... publications) {
     assertThat(fakeStreamxClient.getPublications())
-        .extracting("action", "key", "channel", "data")
-        .containsExactly(tuples);
+        .usingRecursiveFieldByFieldElementComparator()
+        .containsExactly(publications);
   }
 
-  private void thenInstancePublicationsContainsExactly(String streamxInstanceUrl, Tuple... tuples) {
+  private void thenInstancePublicationsContainsExactly(String streamxInstanceUrl, Publication... publications) {
     FakeStreamxClient streamxClient = fakeStreamxClientFactory.getFakeClient(streamxInstanceUrl);
     assertThat(streamxClient.getPublications())
-        .extracting("action", "key", "channel", "data")
-        .containsExactly(tuples);
+        .usingRecursiveFieldByFieldElementComparator()
+        .containsExactly(publications);
   }
 
   private void thenNoPublicationsWereMade() {
     assertThat(fakeStreamxClient.getPublications()).isEmpty();
   }
 
-  private Tuple publishPage(String key) {
+  private Publication publishPage(String key) {
     return publish(key, PAGES_CHANNEL, "Page: ");
   }
 
-  private Tuple publishAsset(String key) {
+  private Publication publishAsset(String key) {
     return publish(key, ASSETS_CHANNEL, "Asset: ");
   }
 
-  private Tuple publish(String key, String channel, String dataPrefix) {
+  private Publication publish(String key, String channel, String dataPrefix) {
     String data = dataPrefix + extractPageNameWithoutExtension(key);
-    return tuple("Publish", key, channel, data);
+    return new Publication("Publish", key, channel, data);
   }
 
   private static String extractPageNameWithoutExtension(String pagePath) {
@@ -749,16 +748,16 @@ class StreamxPublicationServiceImplTest {
     return StringUtils.removeEnd(pageName, ".html");
   }
 
-  private Tuple unpublishPage(String key) {
+  private Publication unpublishPage(String key) {
     return unpublish(key, PAGES_CHANNEL);
   }
 
-  private Tuple unpublishAsset(String key) {
+  private Publication unpublishAsset(String key) {
     return unpublish(key, ASSETS_CHANNEL);
   }
 
-  private Tuple unpublish(String key, String channel) {
-    return tuple("Unpublish", key, channel, null);
+  private Publication unpublish(String key, String channel) {
+    return new Publication("Unpublish", key, channel, null);
   }
 
   private static FakeStreamxClientConfig getOtherSiteFakeStreamxClientConfig() {
