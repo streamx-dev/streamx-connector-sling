@@ -1,7 +1,6 @@
 package dev.streamx.sling.connector.selectors.content;
 
 import dev.streamx.sling.connector.RelatedResourcesSelector;
-import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.util.SimpleInternalRequest;
 import java.util.Collection;
 import java.util.Collections;
@@ -76,11 +75,10 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
    * Retrieves a collection of related resources based on the specified resource path.
    *
    * @param resourcePath the path of the resource for which related resources are to be selected
-   * @return a collection of {@code ResourceInfo} objects that are related to the specified resource.
-   *  Every returned {@code ResourceInfo} object has null value for its primaryNodeType field.
+   * @return a collection of resource paths that are related to the specified resource.
    */
   @Override
-  public Collection<ResourceInfo> getRelatedResources(String resourcePath) {
+  public Collection<String> getRelatedResources(String resourcePath) {
     LOG.debug("Getting related resources for '{}'", resourcePath);
     if (!ResourceFilter.isAcceptableResourcePath(resourcePath, config.get())) {
       return Collections.emptyList();
@@ -94,15 +92,12 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
     }
   }
 
-  private List<ResourceInfo> getRelatedResources(String resourcePath, ResourceResolver resourceResolver) {
+  private List<String> getRelatedResources(String resourcePath, ResourceResolver resourceResolver) {
     if (!ResourceFilter.isAcceptablePrimaryNodeType(resourcePath, resourceResolver, config.get())) {
       return Collections.emptyList();
     }
 
-    return extract(resourcePath, resourceResolver)
-        .stream()
-        .map(ResourceInfo::new)
-        .collect(Collectors.toUnmodifiableList());
+    return extract(resourcePath, resourceResolver);
   }
 
   /**
@@ -111,14 +106,14 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
    * is used to identify a candidate path.
    * <p>
    * All extracted path strings are then de-duplicated
-   * and sorted. If no matches are found, an empty {@link Collection} is returned.
+   * and sorted. If no matches are found, an empty {@link List} is returned.
    * </p>
    *
    * @param resourcePath path to text resource from which to extract paths
-   * @return {@link Collection} of unique resource paths; may be empty if no matches
+   * @return {@link List} of unique resource paths; may be empty if no matches
    * are found
    */
-  private Set<String> extract(String resourcePath, ResourceResolver resourceResolver) {
+  private List<String> extract(String resourcePath, ResourceResolver resourceResolver) {
     String[] includeRegexes = config.get().references_search$_$regexes();
     String excludeRegex = config.get().references_exclude$_$from$_$result_regex();
 
@@ -138,7 +133,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
     }
 
     LOG.info("Recognized paths for '{}': {}", resourcePath, resultPaths);
-    return resultPaths;
+    return List.copyOf(resultPaths);
   }
 
   private String readResourceAsString(String resourcePath, ResourceResolver resourceResolver) {
@@ -151,5 +146,14 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
     return new SimpleInternalRequest(
         slingUri, slingRequestProcessor, resourceResolver
     ).getResponseAsString();
+  }
+
+  @Override
+  public void removeParentResources(Collection<String> relatedResourcePaths, Collection<String> parentResourcePaths) {
+    String resourcePathPostfixToAppend = Optional.ofNullable(config.get().resource$_$path_postfix$_$to$_$append()).orElse("");
+    Set<String> pathsToRemove = parentResourcePaths.stream()
+        .map(path -> path + resourcePathPostfixToAppend)
+        .collect(Collectors.toSet());
+    relatedResourcePaths.removeAll(pathsToRemove);
   }
 }

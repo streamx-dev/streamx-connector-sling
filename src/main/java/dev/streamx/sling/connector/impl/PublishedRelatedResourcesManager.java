@@ -8,7 +8,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 import javax.jcr.Node;
 import javax.jcr.Property;
 import javax.jcr.RepositoryException;
@@ -67,7 +66,7 @@ final class PublishedRelatedResourcesManager {
       relatedResourcesInJcr = new LinkedHashSet<>();
     }
 
-    Set<String> relatedResourcesToProcess = relatedResources.stream().map(ResourceInfo::getPath).collect(Collectors.toCollection(LinkedHashSet::new));
+    Set<String> relatedResourcesToProcess = SetUtils.mapToLinkedHashSet(relatedResources, ResourceInfo::getPath);
 
     Set<String> relatedResourcesToAddToJcr = itemsOnlyInFirstSet(relatedResourcesToProcess, relatedResourcesInJcr);
     relatedResourcesInJcr.addAll(relatedResourcesToAddToJcr);
@@ -83,7 +82,7 @@ final class PublishedRelatedResourcesManager {
     if (!relatedResourcesToDeleteFromJcr.isEmpty()) {
       disappearedRelatedResources.put(
           parentResourcePath,
-          relatedResourcesToDeleteFromJcr.stream().map(ResourceInfo::new).collect(Collectors.toCollection(LinkedHashSet::new))
+          SetUtils.mapToLinkedHashSet(relatedResourcesToDeleteFromJcr, ResourceInfo::new)
       );
     }
   }

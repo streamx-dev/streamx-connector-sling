@@ -1,20 +1,26 @@
 package dev.streamx.sling.connector.impl;
 
 import dev.streamx.sling.connector.*;
+import dev.streamx.sling.connector.handlers.resourcepath.ResourcePathPublicationHandler;
+import dev.streamx.sling.connector.handlers.resourcepath.ResourcePathPublicationHandlerConfig;
 import dev.streamx.sling.connector.test.util.AssetResourceInfo;
 import dev.streamx.sling.connector.test.util.PageResourceInfo;
-import dev.streamx.sling.connector.test.util.RandomBytesWriter;
 import dev.streamx.sling.connector.testing.handlers.AssetPublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.ImpostorPublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.OtherPagePublicationHandler;
+import dev.streamx.sling.connector.testing.handlers.Page;
 import dev.streamx.sling.connector.testing.handlers.PagePublicationHandler;
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJob;
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJobExecutionContext;
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJobManager;
 import dev.streamx.sling.connector.testing.streamx.clients.ingestion.FakeStreamxClient;
+import dev.streamx.sling.connector.testing.streamx.clients.ingestion.Publication;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.sling.api.resource.PersistenceException;
 import org.apache.sling.api.resource.Resource;
@@ -27,7 +33,6 @@ import org.apache.sling.event.jobs.consumer.JobExecutor;
 import org.apache.sling.testing.mock.sling.ResourceResolverType;
 import org.apache.sling.testing.mock.sling.junit5.SlingContext;
 import org.apache.sling.testing.mock.sling.junit5.SlingContextExtension;
-import org.assertj.core.groups.Tuple;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,9 +40,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import java.util.*;
 import java.util.function.Consumer;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssumptions.given;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -72,14 +77,74 @@ class StreamxPublicationServiceImplTest {
   private FakeStreamxClient fakeStreamxClient;
   private FakeStreamxClientFactory fakeStreamxClientFactory;
 
-  private final SlingRequestProcessor dummyRequestProcessor = (HttpServletRequest request, HttpServletResponse response, ResourceResolver resolver) ->
-      RandomBytesWriter.writeRandomBytes(response, 100);
+  private final SlingRequestProcessor dummyRequestProcessor = (HttpServletRequest request, HttpServletResponse response, ResourceResolver resolver) -> {
+    String requestUri = request.getRequestURI();
+    String pageName = extractPageNameWithoutExtension(requestUri);
+    response.setContentType("text/html");
+    response.getWriter().write(pageName);
+  };
 
-  private final RelatedResourcesSelector relatedPagesSelector = resourcePath ->
-       Arrays.asList(
-          new PageResourceInfo(RELATED_PAGE_TO_PUBLISH),
-          new PageResourceInfo(OTHER_RELATED_PAGE_TO_PUBLISH)
+  private final RelatedResourcesSelector relatedPagesSelector = new RelatedResourcesSelector() {
+    @Override
+    public Collection<String> getRelatedResources(String resourcePath) {
+      return Arrays.asList(
+          RELATED_PAGE_TO_PUBLISH,
+          OTHER_RELATED_PAGE_TO_PUBLISH
       );
+    }
+
+    @Override
+    public void removeParentResources(Collection<String> relatedResourcePaths, Collection<String> parentResourcePaths) {
+      relatedResourcePaths.removeAll(parentResourcePaths);
+    }
+  };
+
+  private final ResourcePathPublicationHandler<Page> pageResourcePathPublicationHandler = new ResourcePathPublicationHandler<>(resourceResolverFactory, dummyRequestProcessor) {
+
+    @Override
+    public PublishData<Page> getPublishData(String resourcePath) throws StreamxPublicationException {
+      return super.getPublishData(resourcePath + ".html");
+    }
+
+    @Override
+    public ResourcePathPublicationHandlerConfig configuration() {
+      return new ResourcePathPublicationHandlerConfig() {
+        @Override
+        public String resourcePathRegex() {
+          return "(" + RELATED_PAGE_TO_PUBLISH + "|" + OTHER_RELATED_PAGE_TO_PUBLISH + ")";
+        }
+
+        @Override
+        public String channel() {
+          return "pages";
+        }
+
+        @Override
+        public boolean isEnabled() {
+          return true;
+        }
+      };
+    }
+
+    @Override
+    public Class<Page> modelClass() {
+      return Page.class;
+    }
+
+    @Override
+    public Page model(InputStream inputStream) {
+      try {
+        return new Page(IOUtils.toString(inputStream, UTF_8));
+      } catch (IOException ex) {
+        throw new RuntimeException(ex);
+      }
+    }
+
+    @Override
+    public String getId() {
+      return "pageResourcePathPublicationHandler";
+    }
+  };
 
   @BeforeEach
   void setUp() {
@@ -592,6 +657,7 @@ class StreamxPublicationServiceImplTest {
   private void givenRelatedResourcesSelectors(RelatedResourcesSelector... selectors) {
     this.relatedResourcesSelectors.clear();
     this.relatedResourcesSelectors.addAll(Arrays.asList(selectors));
+    this.handlers.add(pageResourcePathPublicationHandler);
   }
 
   private void givenHandlers(PublicationHandler<?>... handlers) {
@@ -647,47 +713,51 @@ class StreamxPublicationServiceImplTest {
     assertThat(fakeJobManager.getProcessedJobsCount()).isEqualTo(count);
   }
 
-  private void thenPublicationsContainsExactly(Tuple... tuples) {
+  private void thenPublicationsContainsExactly(Publication... publications) {
     assertThat(fakeStreamxClient.getPublications())
-        .extracting("action", "key", "channel", "data")
-        .containsExactly(tuples);
+        .usingRecursiveFieldByFieldElementComparator()
+        .containsExactly(publications);
   }
 
-  private void thenInstancePublicationsContainsExactly(String streamxInstanceUrl, Tuple... tuples) {
+  private void thenInstancePublicationsContainsExactly(String streamxInstanceUrl, Publication... publications) {
     FakeStreamxClient streamxClient = fakeStreamxClientFactory.getFakeClient(streamxInstanceUrl);
     assertThat(streamxClient.getPublications())
-        .extracting("action", "key", "channel", "data")
-        .containsExactly(tuples);
+        .usingRecursiveFieldByFieldElementComparator()
+        .containsExactly(publications);
   }
 
   private void thenNoPublicationsWereMade() {
     assertThat(fakeStreamxClient.getPublications()).isEmpty();
   }
 
-  private Tuple publishPage(String key) {
+  private Publication publishPage(String key) {
     return publish(key, PAGES_CHANNEL, "Page: ");
   }
 
-  private Tuple publishAsset(String key) {
+  private Publication publishAsset(String key) {
     return publish(key, ASSETS_CHANNEL, "Asset: ");
   }
 
-  private Tuple publish(String key, String channel, String dataPrefix) {
-    String pageName = StringUtils.substringAfterLast(key, "/");
-    String data = dataPrefix + pageName.replace(".html", "");
-    return tuple("Publish", key, channel, data);
+  private Publication publish(String key, String channel, String dataPrefix) {
+    String data = dataPrefix + extractPageNameWithoutExtension(key);
+    return new Publication("Publish", key, channel, data);
   }
 
-  private Tuple unpublishPage(String key) {
+  private static String extractPageNameWithoutExtension(String pagePath) {
+    String pageName = StringUtils.substringAfterLast(pagePath, "/");
+    return StringUtils.removeEnd(pageName, ".html");
+  }
+
+  private Publication unpublishPage(String key) {
     return unpublish(key, PAGES_CHANNEL);
   }
 
-  private Tuple unpublishAsset(String key) {
+  private Publication unpublishAsset(String key) {
     return unpublish(key, ASSETS_CHANNEL);
   }
 
-  private Tuple unpublish(String key, String channel) {
-    return tuple("Unpublish", key, channel, null);
+  private Publication unpublish(String key, String channel) {
+    return new Publication("Unpublish", key, channel, null);
   }
 
   private static FakeStreamxClientConfig getOtherSiteFakeStreamxClientConfig() {

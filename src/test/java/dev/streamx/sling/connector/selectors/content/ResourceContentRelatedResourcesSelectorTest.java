@@ -8,8 +8,6 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 
-import dev.streamx.sling.connector.ResourceInfo;
-import dev.streamx.sling.connector.test.util.AssetResourceInfo;
 import dev.streamx.sling.connector.test.util.ResourceMocks;
 import java.io.File;
 import java.lang.annotation.Annotation;
@@ -109,7 +107,7 @@ class ResourceContentRelatedResourcesSelectorTest {
     );
 
     // and
-    List<ResourceInfo> expectedRelatedResources = Stream.of(
+    List<String> expectedRelatedResources = Stream.of(
             "/content/firsthops/us/en/_jcr_content/root/container/container/image.coreimg.85.1024.jpeg/1740144613537/mountain-range.jpeg",
             "/content/firsthops/us/en/_jcr_content/root/container/container/image.coreimg.85.1200.jpeg/1740144613537/mountain-range.jpeg",
             "/content/firsthops/us/en/_jcr_content/root/container/container/image.coreimg.85.1600.jpeg/1740144613537/mountain-range.jpeg",
@@ -136,11 +134,10 @@ class ResourceContentRelatedResourcesSelectorTest {
             "/etc.clientlibs/firsthops/clientlibs/clientlib-dependencies.lc-d41d8cd98f00b204e9800998ecf8427e-lc.min.js",
             "/etc.clientlibs/firsthops/clientlibs/clientlib-site.lc-99a5ff922700a9bff656c1db08c6bc22-lc.min.css",
             "/etc.clientlibs/firsthops/clientlibs/clientlib-site.lc-d91e521f6b4cc63fe57186d1b172e7e9-lc.min.js"
-        ).map(ResourceInfo::new)
-        .collect(Collectors.toUnmodifiableList());
+        ).collect(Collectors.toUnmodifiableList());
 
     // when
-    Collection<ResourceInfo> actualRelatedResources = resourceContentRelatedResourcesSelector.getRelatedResources(
+    Collection<String> actualRelatedResources = resourceContentRelatedResourcesSelector.getRelatedResources(
         MAIN_FOLDER_RESOURCE
     );
 
