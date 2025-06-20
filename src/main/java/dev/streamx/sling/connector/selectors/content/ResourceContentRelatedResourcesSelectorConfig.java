@@ -25,7 +25,6 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
  * candidate paths, which can subsequently be excluded or accepted based on the provided
  * filtering regexes.
  */
-@SuppressWarnings("NewClassNamingConvention")
 @ObjectClassDefinition
 public @interface ResourceContentRelatedResourcesSelectorConfig {
 
@@ -98,7 +97,6 @@ public @interface ResourceContentRelatedResourcesSelectorConfig {
    * @return regex pattern that the {@link Resource}'s primary {@link NodeType} must match for the
    * {@link Resource} to be considered acceptable.
    */
-  @SuppressWarnings("NewMethodNamingConvention")
   @AttributeDefinition(
       name = "Resource Node Primary Type Regex",
       description = "Regex pattern that the Resource's primary Node Type must match for the Resource to be considered acceptable.",
@@ -106,4 +104,18 @@ public @interface ResourceContentRelatedResourcesSelectorConfig {
       defaultValue = ".*"
   )
   String resource_required$_$primary$_$node$_$type_regex() default ".*";
+
+  /**
+   * Regex pattern that a referenced {@link Resource} path must match
+   * to have its content processed in search for referenced resources.
+   *
+   * @return a regex pattern that a referenced {@link Resource} path must match.
+   */
+  @AttributeDefinition(
+      name = "Related Resource Processable Path Regex",
+      description = "Regex pattern that a referenced Resource path must match to have its content processed in search for referenced resources.",
+      type = AttributeType.STRING,
+      defaultValue = ".*\\.(css|js)$"
+  )
+  String related$_$resource_processable$_$path_regex() default ".*\\.(css|js)$";
 }

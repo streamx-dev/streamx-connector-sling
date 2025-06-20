@@ -1,0 +1,6 @@
+@import url('/etc.clientlibs/my-site/clientlibs/theme/colors-1.css');
+
+body {
+  background-image: url('/content/dam/images/bg-1.png');
+  font-family: 'MyCustomFont';
+}

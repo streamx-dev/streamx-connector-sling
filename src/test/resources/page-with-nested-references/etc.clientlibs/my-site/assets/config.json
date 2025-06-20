@@ -1,0 +1,4 @@
+{
+  "foo": "bar",
+  "include": "/etc.clientlibs/my-site/assets/included-config.json"
+}
