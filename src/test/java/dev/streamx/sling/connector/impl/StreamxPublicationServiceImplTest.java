@@ -588,7 +588,7 @@ class StreamxPublicationServiceImplTest {
 
     whenAllJobsAreProcessed();
 
-//    thenProcessedJobsCountIs(3);
+    thenProcessedJobsCountIs(3);
 
     thenPublicationsContainsExactly(
         publishPage("/content/my-site/page-1.html"),
