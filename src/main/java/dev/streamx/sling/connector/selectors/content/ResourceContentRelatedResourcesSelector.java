@@ -111,11 +111,11 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
    * is used to identify a candidate path.
    * <p>
    * All extracted path strings are then de-duplicated
-   * and sorted. If no matches are found, an empty {@link Collection} is returned.
+   * and sorted. If no matches are found, an empty {@link Set} is returned.
    * </p>
    *
    * @param resourcePath path to text resource from which to extract paths
-   * @return {@link Collection} of unique resource paths; may be empty if no matches
+   * @return {@link Set} of unique resource paths; may be empty if no matches
    * are found
    */
   private Set<String> extract(String resourcePath, ResourceResolver resourceResolver) {

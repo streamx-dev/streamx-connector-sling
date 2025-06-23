@@ -3,7 +3,8 @@ package dev.streamx.sling.connector.impl;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.streamx.sling.connector.RelatedResourcesSelector;
-import dev.streamx.sling.connector.ResourceInfo;
+import dev.streamx.sling.connector.test.util.AssetResourceInfo;
+import dev.streamx.sling.connector.test.util.PageResourceInfo;
 import java.util.List;
 import org.apache.sling.testing.mock.sling.ResourceResolverType;
 import org.apache.sling.testing.mock.sling.junit5.SlingContext;
@@ -22,12 +23,13 @@ class RelatedResourcesSelectorRegistryTest {
   void shouldBindAndUnbindSelectors() {
     // given
     RelatedResourcesSelector selector1 = resourcePath -> List.of(
-        new ResourceInfo("/content/pages/page.html", "cq:Page"),
-        new ResourceInfo("/content/dam/image.jpg", "dam:Asset")
+        new PageResourceInfo("/content/pages/page.html"),
+        new AssetResourceInfo("/content/dam/image.jpg")
     );
+
     RelatedResourcesSelector selector2 = resourcePath -> List.of(
-        new ResourceInfo("/content/pages/other-page.html", "cq:Page"),
-        new ResourceInfo("/content/dam/other-image.jpg", "dam:Asset")
+        new PageResourceInfo("/content/pages/other-page.html"),
+        new AssetResourceInfo("/content/dam/other-image.jpg")
     );
 
     BundleContext bundleContext = slingContext.bundleContext();
