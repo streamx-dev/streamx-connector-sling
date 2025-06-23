@@ -37,9 +37,7 @@ public abstract class PublicationData<T> {
    * @param modelClass the class type of the model to be published
    * @param properties value for {@link Message#getProperties()}
    */
-  protected PublicationData(
-      String key, String channel, Class<T> modelClass, Map<String, String> properties
-  ) {
+  protected PublicationData(String key, String channel, Class<T> modelClass, Map<String, String> properties) {
     this.key = key;
     this.channel = channel;
     this.modelClass = modelClass;
