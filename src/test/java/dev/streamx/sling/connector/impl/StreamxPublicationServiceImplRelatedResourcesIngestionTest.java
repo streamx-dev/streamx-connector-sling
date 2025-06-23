@@ -456,8 +456,8 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     String image1 = "/content/my-site/a/b/c/image.coreimg.1.jpg";
     String image2 = "/content/my-site/a/b/image.coreimg.1.jpg";
     String image3 = "/content/my-site/a/image.coreimg.1.jpg";
-    String page1 = registerPage("/content/my-site/a/b/c", generateHtmlPageContent(image1, image2, image3));
-    String page2 = registerPage("/content/my-site/a/b", generateHtmlPageContent(image2, image3));
+    String page1 = registerPage("/content/my-site/a/b/c", generateHtmlPageContent(image1));
+    String page2 = registerPage("/content/my-site/a/b", generateHtmlPageContent(image2));
     String page3 = registerPage("/content/my-site/a", generateHtmlPageContent(image3));
 
     // when 1
@@ -468,8 +468,8 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
     verifyStateOfPublishedResourcesData(
         Map.of(
-            page1, List.of(image1, image2, image3),
-            page2, List.of(image2, image3),
+            page1, List.of(image1),
+            page2, List.of(image2),
             page3, List.of(image3)
         ),
         List.of(
@@ -485,8 +485,8 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
     verifyStateOfPublishedResourcesData(
         Map.of(
-            page1, List.of(image1, image2, image3),
-            page2, List.of(image2, image3)
+            page1, List.of(image1),
+            page2, List.of(image2)
         ),
         List.of(
             image1, image2
