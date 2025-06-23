@@ -25,6 +25,11 @@ final class PublishedRelatedResourcesInversedTreeManager {
     }
   }
 
+  /**
+   * Removes the paths of the specified related resources from the tree, but only if they are internal to the given parent resource.
+   * Assuming each related resource extracted from the parent’s content has a unique, extension-based path,
+   * the method should never remove any nested nodes.
+   */
   static void removeData(Set<String> relatedResources, String parentResourcePath, Session session) throws RepositoryException {
     for (String relatedResource : relatedResources) {
       if (InternalResourceDetector.isInternalResource(relatedResource, parentResourcePath)) {
