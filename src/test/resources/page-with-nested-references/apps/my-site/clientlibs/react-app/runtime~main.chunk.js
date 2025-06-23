@@ -1,0 +1,1 @@
+import('/apps/my-site/clientlibs/react-app/main.chunk.js');

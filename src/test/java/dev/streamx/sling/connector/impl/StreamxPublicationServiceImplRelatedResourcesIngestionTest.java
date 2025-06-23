@@ -24,6 +24,7 @@ import dev.streamx.sling.connector.handlers.resourcepath.AssetResourcePathPublic
 import dev.streamx.sling.connector.selectors.content.ResourceContentRelatedResourcesSelector;
 import dev.streamx.sling.connector.selectors.content.ResourceContentRelatedResourcesSelectorConfig;
 import dev.streamx.sling.connector.test.util.PageResourceInfo;
+import dev.streamx.sling.connector.test.util.ResourceContentRelatedResourcesSelectorConfigImpl;
 import dev.streamx.sling.connector.test.util.ResourceMocks;
 import dev.streamx.sling.connector.testing.handlers.PagePublicationHandler;
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJobManager;
@@ -109,41 +110,12 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     }
   };
 
-  private final ResourceContentRelatedResourcesSelectorConfig relatedResourcesConfig = new ResourceContentRelatedResourcesSelectorConfig() {
-
-    @Override
-    public Class<? extends Annotation> annotationType() {
-      return ResourceContentRelatedResourcesSelectorConfig.class;
-    }
-
-    @Override
-    public String[] references_search$_$regexes() {
-      return new String[]{
-          "(/content/.+coreimg.+\\.jpg)",
-          "(/etc.clientlibs/.+\\.(css|js))",
-      };
-    }
-
-    @Override
-    public String references_exclude$_$from$_$result_regex() {
-      return "";
-    }
-
-    @Override
-    public String resource$_$path_postfix$_$to$_$append() {
-      return ".html";
-    }
-
-    @Override
-    public String resource_required$_$path_regex() {
-      return ".*";
-    }
-
-    @Override
-    public String resource_required$_$primary$_$node$_$type_regex() {
-      return ".*";
-    }
-  };
+  private final ResourceContentRelatedResourcesSelectorConfig relatedResourcesConfig = new ResourceContentRelatedResourcesSelectorConfigImpl()
+      .withReferencesSearchRegexes("(/content/.+coreimg.+\\.jpg)", "(/etc.clientlibs/.+\\.(css|js))")
+      .withResourcePathPostfixToAppend(".html")
+      .withResourceRequiredPathRegex(".*")
+      .withResourceRequiredPrimaryNodeTypeRegex(".*")
+      .withRelatedResourceProcessablePathRegex(".*\\.html$");
 
   private final AssetResourcePathPublicationHandlerConfig assetResourcePathPublicationHandlerConfig = new AssetResourcePathPublicationHandlerConfig() {
 

@@ -9,16 +9,13 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 
 import dev.streamx.sling.connector.ResourceInfo;
-import dev.streamx.sling.connector.test.util.AssetResourceInfo;
+import dev.streamx.sling.connector.test.util.ResourceContentRelatedResourcesSelectorConfigImpl;
 import dev.streamx.sling.connector.test.util.ResourceMocks;
 import java.io.File;
-import java.lang.annotation.Annotation;
 import java.util.Collection;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.resource.ResourceResolverFactory;
 import org.apache.sling.engine.SlingRequestProcessor;
@@ -44,9 +41,14 @@ class ResourceContentRelatedResourcesSelectorTest {
 
   private final SlingRequestProcessor basicRequestProcessor = (HttpServletRequest request, HttpServletResponse response, ResourceResolver resourceResolver) -> {
     String requestURI = request.getRequestURI();
-    assertThat(requestURI).isEqualTo(MAIN_PAGE_RESOURCE);
     response.setContentType("text/html");
-    response.getWriter().write(samplePageHtml);
+    if (requestURI.equals(MAIN_PAGE_RESOURCE)) {
+      response.getWriter().write(samplePageHtml);
+    } else if (StringUtils.endsWithAny(requestURI, ".js", ".css")) {
+      response.getWriter().write("dummy content of a related resource with no nested related resources");
+    } else {
+      throw new IllegalArgumentException("Not handled for " + requestURI);
+    }
   };
 
   @BeforeEach
@@ -66,50 +68,34 @@ class ResourceContentRelatedResourcesSelectorTest {
   }
 
   @Test
-  void dontHandleUsualAssets() {
+  void shouldFindRelatedResources() {
     // given
-    ResourceContentRelatedResourcesSelector resourceContentRelatedResourcesSelector = new ResourceContentRelatedResourcesSelector(
-        new ResourceContentRelatedResourcesSelectorConfig() {
-
-          @Override
-          public Class<? extends Annotation> annotationType() {
-            return ResourceContentRelatedResourcesSelectorConfig.class;
-          }
-
-          @Override
-          public String[] references_search$_$regexes() {
-            return new String[]{
+    ResourceContentRelatedResourcesSelector relatedResourcesSelector = new ResourceContentRelatedResourcesSelector(
+        new ResourceContentRelatedResourcesSelectorConfigImpl()
+            .withReferencesSearchRegexes(
                 "(/content[^\"'\\s]*\\.coreimg\\.[^\"'\\s]*)",
-                "(/[^\"'\\s]*etc\\.clientlibs[^\"'\\s]*)"
-            };
-          }
-
-          @Override
-          public String references_exclude$_$from$_$result_regex() {
-            return ".*\\{\\.width\\}.*";
-          }
-
-          @Override
-          public String resource$_$path_postfix$_$to$_$append() {
-            return ".html";
-          }
-
-          @Override
-          public String resource_required$_$path_regex() {
-            return "^/content/.*";
-          }
-
-          @Override
-          public String resource_required$_$primary$_$node$_$type_regex() {
-            return JcrResourceConstants.NT_SLING_FOLDER;
-          }
-        },
+                "(/[^\"'\\s]*etc\\.clientlibs[^\"'\\s]*)")
+            .withReferencesExcludeFromResultRegex(".*\\{\\.width\\}.*")
+            .withResourcePathPostfixToAppend(".html")
+            .withResourceRequiredPathRegex("^/content/.*")
+            .withResourceRequiredPrimaryNodeTypeRegex(JcrResourceConstants.NT_SLING_FOLDER)
+            .withRelatedResourceProcessablePathRegex(".*\\.(css|js)$"),
         basicRequestProcessor,
         resourceResolverFactoryMock
     );
 
-    // and
-    List<ResourceInfo> expectedRelatedResources = Stream.of(
+    // when
+    Collection<ResourceInfo> actualRelatedResources = relatedResourcesSelector.getRelatedResources(
+        MAIN_FOLDER_RESOURCE);
+
+    // then
+    assertThat(actualRelatedResources)
+        .extracting(ResourceInfo::getPrimaryNodeType)
+        .containsOnlyNulls();
+
+    assertThat(actualRelatedResources)
+        .extracting(ResourceInfo::getPath)
+        .containsExactly(
             "/content/firsthops/us/en/_jcr_content/root/container/container/image.coreimg.85.1024.jpeg/1740144613537/mountain-range.jpeg",
             "/content/firsthops/us/en/_jcr_content/root/container/container/image.coreimg.85.1200.jpeg/1740144613537/mountain-range.jpeg",
             "/content/firsthops/us/en/_jcr_content/root/container/container/image.coreimg.85.1600.jpeg/1740144613537/mountain-range.jpeg",
@@ -136,17 +122,6 @@ class ResourceContentRelatedResourcesSelectorTest {
             "/etc.clientlibs/firsthops/clientlibs/clientlib-dependencies.lc-d41d8cd98f00b204e9800998ecf8427e-lc.min.js",
             "/etc.clientlibs/firsthops/clientlibs/clientlib-site.lc-99a5ff922700a9bff656c1db08c6bc22-lc.min.css",
             "/etc.clientlibs/firsthops/clientlibs/clientlib-site.lc-d91e521f6b4cc63fe57186d1b172e7e9-lc.min.js"
-        ).map(ResourceInfo::new)
-        .collect(Collectors.toUnmodifiableList());
-
-    // when
-    Collection<ResourceInfo> actualRelatedResources = resourceContentRelatedResourcesSelector.getRelatedResources(
-        MAIN_FOLDER_RESOURCE
-    );
-
-    // then
-    assertThat(actualRelatedResources)
-        .hasSameSizeAs(expectedRelatedResources)
-        .containsExactlyInAnyOrderElementsOf(expectedRelatedResources);
+        );
   }
 }

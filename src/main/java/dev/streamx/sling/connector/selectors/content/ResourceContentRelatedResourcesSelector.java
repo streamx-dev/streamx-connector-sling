@@ -3,12 +3,13 @@ package dev.streamx.sling.connector.selectors.content;
 import dev.streamx.sling.connector.RelatedResourcesSelector;
 import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.util.SimpleInternalRequest;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -48,6 +49,12 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
   private final SlingRequestProcessor slingRequestProcessor;
   private final ResourceResolverFactory resourceResolverFactory;
 
+  private List<Pattern> relatedResourcePathIncludePatterns;
+  private Pattern relatedResourcePathExcludePattern;
+  private Pattern resourceRequiredPathRegex;
+  private Pattern resourceRequiredPrimaryNodeTypeRegex;
+  private Pattern relatedResourceProcessablePathPattern;
+
   /**
    * Constructs an instance of this class.
    *
@@ -65,11 +72,24 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
     this.config = new AtomicReference<>(config);
     this.slingRequestProcessor = slingRequestProcessor;
     this.resourceResolverFactory = resourceResolverFactory;
+    loadPatterns();
+  }
+
+  private void loadPatterns() {
+    ResourceContentRelatedResourcesSelectorConfig currentConfig = config.get();
+    relatedResourcePathIncludePatterns = Arrays.stream(currentConfig.references_search$_$regexes())
+        .map(Pattern::compile)
+        .collect(Collectors.toUnmodifiableList());
+    relatedResourcePathExcludePattern = Pattern.compile(currentConfig.references_exclude$_$from$_$result_regex());
+    resourceRequiredPathRegex = Pattern.compile(currentConfig.resource_required$_$path_regex());
+    resourceRequiredPrimaryNodeTypeRegex = Pattern.compile(currentConfig.resource_required$_$primary$_$node$_$type_regex());
+    relatedResourceProcessablePathPattern = Pattern.compile(currentConfig.related$_$resource_processable$_$path_regex());
   }
 
   @Modified
   void configure(ResourceContentRelatedResourcesSelectorConfig config) {
     this.config.set(config);
+    loadPatterns();
   }
 
   /**
@@ -82,7 +102,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
   @Override
   public Collection<ResourceInfo> getRelatedResources(String resourcePath) {
     LOG.debug("Getting related resources for '{}'", resourcePath);
-    if (!ResourceFilter.isAcceptableResourcePath(resourcePath, config.get())) {
+    if (!ResourceFilter.isAcceptableResourcePath(resourcePath, resourceRequiredPathRegex)) {
       return Collections.emptyList();
     }
 
@@ -95,12 +115,18 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
   }
 
   private List<ResourceInfo> getRelatedResources(String resourcePath, ResourceResolver resourceResolver) {
-    if (!ResourceFilter.isAcceptablePrimaryNodeType(resourcePath, resourceResolver, config.get())) {
+    if (!ResourceFilter.isAcceptablePrimaryNodeType(resourcePath, resourceResolver, resourceRequiredPrimaryNodeTypeRegex)) {
       return Collections.emptyList();
     }
 
-    return extract(resourcePath, resourceResolver)
-        .stream()
+    Set<String> extractedPaths = extractPathsOfRelatedResources(resourcePath, resourceResolver);
+    for (String extractedPath : Set.copyOf(extractedPaths)) {
+      extractPathsFromNestedRelatedResource(extractedPath, resourceResolver, extractedPaths);
+    }
+
+    LOG.info("Recognized paths for '{}': {}", resourcePath, extractedPaths);
+
+    return extractedPaths.stream()
         .map(ResourceInfo::new)
         .collect(Collectors.toUnmodifiableList());
   }
@@ -118,38 +144,50 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
    * @return {@link Set} of unique resource paths; may be empty if no matches
    * are found
    */
-  private Set<String> extract(String resourcePath, ResourceResolver resourceResolver) {
-    String[] includeRegexes = config.get().references_search$_$regexes();
-    String excludeRegex = config.get().references_exclude$_$from$_$result_regex();
+  private Set<String> extractPathsOfRelatedResources(String resourcePath, ResourceResolver resourceResolver) {
+    String resourceAsString = readResourceAsString(resourcePath + getResourcePathPostfixToAppend(), resourceResolver);
+    return extractMatchingRelatedResourcePaths(resourceAsString);
+  }
 
+  private void extractPathsFromNestedRelatedResource(String resourcePath, ResourceResolver resourceResolver, Set<String> extractedPaths) {
+    if (!relatedResourceProcessablePathPattern.matcher(resourcePath).matches()) {
+      return;
+    }
     String resourceAsString = readResourceAsString(resourcePath, resourceResolver);
-    Set<String> resultPaths = new LinkedHashSet<>();
+    Set<String> nestedRelatedResourcePaths = extractMatchingRelatedResourcePaths(resourceAsString);
+    for (String nestedRelatedResourcePath : nestedRelatedResourcePaths) {
+      if (!extractedPaths.contains(nestedRelatedResourcePath)) { // avoid circular references
+        extractedPaths.add(nestedRelatedResourcePath);
+        extractPathsFromNestedRelatedResource(nestedRelatedResourcePath, resourceResolver, extractedPaths);
+      }
+    }
+  }
 
-    for (String regex : includeRegexes) {
-      Matcher matcher = Pattern.compile(regex).matcher(resourceAsString);
+
+  private Set<String> extractMatchingRelatedResourcePaths(String mainResourceContent) {
+    Set<String> matchingPaths = new TreeSet<>();
+    for (Pattern includePattern : relatedResourcePathIncludePatterns) {
+      Matcher matcher = includePattern.matcher(mainResourceContent);
       while (matcher.find()) {
         if (matcher.groupCount() > 0) {
-          String path = matcher.group(1);
-          if (!path.matches(excludeRegex)) {
-            resultPaths.add(path);
+          String relatedResourcePath = matcher.group(1);
+          if (!relatedResourcePathExcludePattern.matcher(relatedResourcePath).matches()) {
+            matchingPaths.add(relatedResourcePath);
           }
         }
       }
     }
-
-    LOG.info("Recognized paths for '{}': {}", resourcePath, resultPaths);
-    return resultPaths;
+    return matchingPaths;
   }
 
   private String readResourceAsString(String resourcePath, ResourceResolver resourceResolver) {
-    String rawUri = String.format(
-        "%s%s", resourcePath,
-        Optional.ofNullable(config.get().resource$_$path_postfix$_$to$_$append())
-            .orElse(StringUtils.EMPTY)
-    );
-    SlingUri slingUri = SlingUriBuilder.parse(rawUri, resourceResolver).build();
-    return new SimpleInternalRequest(
-        slingUri, slingRequestProcessor, resourceResolver
-    ).getResponseAsString();
+    SlingUri slingUri = SlingUriBuilder.parse(resourcePath, resourceResolver).build();
+    return new SimpleInternalRequest(slingUri, slingRequestProcessor, resourceResolver).getResponseAsString();
+  }
+
+  private String getResourcePathPostfixToAppend() {
+    return Optional
+        .ofNullable(config.get().resource$_$path_postfix$_$to$_$append())
+        .orElse(StringUtils.EMPTY);
   }
 }

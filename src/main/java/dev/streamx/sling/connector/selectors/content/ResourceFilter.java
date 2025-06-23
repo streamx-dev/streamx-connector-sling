@@ -1,5 +1,6 @@
 package dev.streamx.sling.connector.selectors.content;
 
+import java.util.regex.Pattern;
 import javax.jcr.Node;
 import javax.jcr.RepositoryException;
 import org.apache.sling.api.resource.Resource;
@@ -11,18 +12,17 @@ class ResourceFilter {
 
   private static final Logger LOG = LoggerFactory.getLogger(ResourceFilter.class);
 
-  public static boolean isAcceptableResourcePath(String resourcePath,
-                                    ResourceContentRelatedResourcesSelectorConfig config) {
-    return resourcePath.matches(config.resource_required$_$path_regex());
+  public static boolean isAcceptableResourcePath(String resourcePath, Pattern resourceRequiredPathRegex) {
+    return resourceRequiredPathRegex.matcher(resourcePath).matches();
   }
 
   public static boolean isAcceptablePrimaryNodeType(String resourcePath, ResourceResolver resourceResolver,
-                                     ResourceContentRelatedResourcesSelectorConfig config) {
+                                     Pattern resourceRequiredPrimaryNodeTypeRegex) {
     String actualPrimaryNodeType = extractPrimaryNodeType(resourcePath, resourceResolver);
     if (actualPrimaryNodeType == null) {
       return false;
     }
-    return actualPrimaryNodeType.matches(config.resource_required$_$primary$_$node$_$type_regex());
+    return resourceRequiredPrimaryNodeTypeRegex.matcher(actualPrimaryNodeType).matches();
   }
 
   private static String extractPrimaryNodeType(String resourcePath, ResourceResolver resourceResolver) {
