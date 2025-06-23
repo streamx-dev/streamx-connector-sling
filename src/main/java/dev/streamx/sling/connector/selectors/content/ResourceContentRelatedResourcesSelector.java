@@ -123,7 +123,6 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
     for (String extractedPath : Set.copyOf(extractedPaths)) {
       extractPathsFromNestedRelatedResource(extractedPath, resourceResolver, extractedPaths);
     }
-    extractedPaths.remove(resourcePath + getResourcePathPostfixToAppend()); // some related resources may reference the main resource
 
     LOG.info("Recognized paths for '{}': {}", resourcePath, extractedPaths);
 

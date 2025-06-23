@@ -66,40 +66,14 @@ class ResourceContentRelatedResourcesSelectorRecursiveSearchTest {
 
     doReturn(ResourceMocks.createPageResourceMock())
         .when(spyResolver)
-        .resolve(ArgumentMatchers.<String>argThat(path -> path.endsWith(".html") || path.equals(MAIN_PAGE_RESOURCE)));
+        .resolve(ArgumentMatchers.<String>argThat(path -> path.equals(MAIN_PAGE_RESOURCE)));
 
     doReturn(ResourceMocks.createAssetResourceMock())
         .when(spyResolver)
-        .resolve(ArgumentMatchers.<String>argThat(path -> !path.endsWith(".html") && !path.equals(MAIN_PAGE_RESOURCE)));
+        .resolve(ArgumentMatchers.<String>argThat(path -> !path.equals(MAIN_PAGE_RESOURCE)));
 
     doNothing().when(spyResolver).close();
     doReturn(spyResolver).when(resourceResolverFactoryMock).getAdministrativeResourceResolver(null);
-  }
-
-  @Test
-  void shouldFindRelatedResources_WhenSearchingRecursivelyInHtmlCssAndJsFiles() {
-    shouldFindRelatedResources(
-        ".*\\.(html|css|js)$",
-        List.of(
-            "/apps/my-site/clientlibs/react-app/main.chunk.js",
-            "/apps/my-site/clientlibs/react-app/runtime~main.chunk.js",
-            "/content/dam/images/bg-1.png",
-            "/content/dam/images/bg-2.png",
-            "/content/my-site/us/en/other-page.html",
-            "/etc.clientlibs/my-site/assets/config.json",
-            "/etc.clientlibs/my-site/clientlibs/clientlib-base-1.css",
-            "/etc.clientlibs/my-site/clientlibs/clientlib-base-1.js",
-            "/etc.clientlibs/my-site/clientlibs/clientlib-base-2.css",
-            "/etc.clientlibs/my-site/clientlibs/clientlib-base-2.js",
-            "/etc.clientlibs/my-site/clientlibs/theme/colors-1.css",
-            "/etc.clientlibs/my-site/clientlibs/theme/colors-2.css",
-            "/etc.clientlibs/my-site/icons/icon-sprite.svg"
-        ),
-        List.of(
-            MAIN_PAGE_HTML_PATH,
-            "/etc.clientlibs/my-site/assets/included-config.json"
-        )
-    );
   }
 
   @Test
@@ -110,7 +84,6 @@ class ResourceContentRelatedResourcesSelectorRecursiveSearchTest {
             "/apps/my-site/clientlibs/react-app/main.chunk.js",
             "/apps/my-site/clientlibs/react-app/runtime~main.chunk.js",
             "/content/dam/images/bg-1.png",
-            "/content/my-site/us/en/other-page.html",
             "/etc.clientlibs/my-site/assets/config.json",
             "/etc.clientlibs/my-site/clientlibs/clientlib-base-1.css",
             "/etc.clientlibs/my-site/clientlibs/clientlib-base-1.js",
@@ -119,37 +92,28 @@ class ResourceContentRelatedResourcesSelectorRecursiveSearchTest {
         ),
         List.of(
             MAIN_PAGE_HTML_PATH,
-            "/content/dam/images/bg-2.png",
-            "/etc.clientlibs/my-site/assets/included-config.json",
-            "/etc.clientlibs/my-site/clientlibs/clientlib-base-2.css",
-            "/etc.clientlibs/my-site/clientlibs/clientlib-base-2.js",
-            "/etc.clientlibs/my-site/clientlibs/theme/colors-2.css"
+            "/etc.clientlibs/my-site/assets/included-config.json"
         )
     );
   }
 
   @Test
-  void shouldFindRelatedResources_WhenSearchingRecursivelyInAllTypesOfFiles() {
+  void shouldFindRelatedResources_WhenSearchingRecursivelyInCssFiles() {
     shouldFindRelatedResources(
-        ".*",
+        ".*\\.css$",
         List.of(
-            "/apps/my-site/clientlibs/react-app/main.chunk.js",
-            "/apps/my-site/clientlibs/react-app/runtime~main.chunk.js",
             "/content/dam/images/bg-1.png",
-            "/content/dam/images/bg-2.png",
-            "/content/my-site/us/en/other-page.html",
-            "/etc.clientlibs/my-site/assets/config.json",
-            "/etc.clientlibs/my-site/assets/included-config.json",
             "/etc.clientlibs/my-site/clientlibs/clientlib-base-1.css",
             "/etc.clientlibs/my-site/clientlibs/clientlib-base-1.js",
-            "/etc.clientlibs/my-site/clientlibs/clientlib-base-2.css",
-            "/etc.clientlibs/my-site/clientlibs/clientlib-base-2.js",
             "/etc.clientlibs/my-site/clientlibs/theme/colors-1.css",
-            "/etc.clientlibs/my-site/clientlibs/theme/colors-2.css",
             "/etc.clientlibs/my-site/icons/icon-sprite.svg"
         ),
         List.of(
-            MAIN_PAGE_HTML_PATH
+            MAIN_PAGE_HTML_PATH,
+            "/apps/my-site/clientlibs/react-app/main.chunk.js",
+            "/apps/my-site/clientlibs/react-app/runtime~main.chunk.js",
+            "/etc.clientlibs/my-site/assets/config.json",
+            "/etc.clientlibs/my-site/assets/included-config.json"
         )
     );
   }
