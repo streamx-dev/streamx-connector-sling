@@ -5,10 +5,10 @@ import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.util.SimpleInternalRequest;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -30,7 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Extracts {@link ResourceInfo}s from the content of a resource.
+ * Extracts paths of related resources from the content of a resource.
  */
 @Component(
     service = {ResourceContentRelatedResourcesSelector.class, RelatedResourcesSelector.class},
@@ -72,6 +72,13 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
     this.config.set(config);
   }
 
+  /**
+   * Retrieves a collection of related resources based on the specified resource path.
+   *
+   * @param resourcePath the path of the resource for which related resources are to be selected
+   * @return a collection of {@code ResourceInfo} objects that are related to the specified resource.
+   *  Every returned {@code ResourceInfo} object has null value for its primaryNodeType field.
+   */
   @Override
   public Collection<ResourceInfo> getRelatedResources(String resourcePath) {
     LOG.debug("Getting related resources for '{}'", resourcePath);
@@ -92,14 +99,9 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
       return Collections.emptyList();
     }
 
-    Set<String> extractedPaths = extract(resourcePath, resourceResolver);
-    LOG.info("Recognized paths for '{}': {}", resourcePath, extractedPaths);
-
-    return extractedPaths.stream()
-        .map(recognizedPath -> new ResourceInfo(
-            recognizedPath,
-            ResourceFilter.extractPrimaryNodeType(recognizedPath, resourceResolver)
-        ))
+    return extract(resourcePath, resourceResolver)
+        .stream()
+        .map(ResourceInfo::new)
         .collect(Collectors.toUnmodifiableList());
   }
 
@@ -109,11 +111,11 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
    * is used to identify a candidate path.
    * <p>
    * All extracted path strings are then de-duplicated
-   * and sorted. If no matches are found, an empty {@link Collection} is returned.
+   * and sorted. If no matches are found, an empty {@link Set} is returned.
    * </p>
    *
    * @param resourcePath path to text resource from which to extract paths
-   * @return {@link Collection} of unique resource paths; may be empty if no matches
+   * @return {@link Set} of unique resource paths; may be empty if no matches
    * are found
    */
   private Set<String> extract(String resourcePath, ResourceResolver resourceResolver) {
@@ -121,7 +123,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
     String excludeRegex = config.get().references_exclude$_$from$_$result_regex();
 
     String resourceAsString = readResourceAsString(resourcePath, resourceResolver);
-    Set<String> resultPaths = new TreeSet<>();
+    Set<String> resultPaths = new LinkedHashSet<>();
 
     for (String regex : includeRegexes) {
       Matcher matcher = Pattern.compile(regex).matcher(resourceAsString);
@@ -135,6 +137,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
       }
     }
 
+    LOG.info("Recognized paths for '{}': {}", resourcePath, resultPaths);
     return resultPaths;
   }
 

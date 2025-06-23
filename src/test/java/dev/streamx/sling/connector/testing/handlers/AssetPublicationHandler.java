@@ -4,6 +4,7 @@ import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.PublicationHandler;
 import dev.streamx.sling.connector.PublishData;
 import dev.streamx.sling.connector.UnpublishData;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
@@ -25,7 +26,8 @@ public class AssetPublicationHandler implements PublicationHandler<Asset> {
 
   @Override
   public boolean canHandle(ResourceInfo resource) {
-    return resource.getPrimaryNodeType().equals("dam:Asset");
+    return "dam:Asset".equals(resource.getPrimaryNodeType())
+           && !resource.getPath().contains("/related/");
   }
 
   @Override
@@ -33,7 +35,7 @@ public class AssetPublicationHandler implements PublicationHandler<Asset> {
     Resource resource = resourceResolver.getResource(resourcePath);
     Objects.requireNonNull(resource);
     return new PublishData<>(resourcePath, CHANNEL, Asset.class,
-        new Asset(resource.getName()));
+        new Asset(resource.getName().getBytes(StandardCharsets.UTF_8)));
   }
 
   @Override

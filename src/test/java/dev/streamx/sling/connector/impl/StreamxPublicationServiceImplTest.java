@@ -1,8 +1,11 @@
 package dev.streamx.sling.connector.impl;
 
 import dev.streamx.sling.connector.*;
+import dev.streamx.sling.connector.handlers.resourcepath.ResourcePathPublicationHandler;
+import dev.streamx.sling.connector.handlers.resourcepath.ResourcePathPublicationHandlerConfig;
 import dev.streamx.sling.connector.test.util.AssetResourceInfo;
 import dev.streamx.sling.connector.test.util.PageResourceInfo;
+import dev.streamx.sling.connector.testing.handlers.Asset;
 import dev.streamx.sling.connector.testing.handlers.AssetPublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.ImpostorPublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.OtherPagePublicationHandler;
@@ -11,17 +14,25 @@ import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJob;
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJobExecutionContext;
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJobManager;
 import dev.streamx.sling.connector.testing.streamx.clients.ingestion.FakeStreamxClient;
+import dev.streamx.sling.connector.testing.streamx.clients.ingestion.Publication;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.stream.Collectors;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.sling.api.resource.PersistenceException;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
+import org.apache.sling.api.resource.ResourceResolverFactory;
+import org.apache.sling.engine.SlingRequestProcessor;
 import org.apache.sling.event.jobs.Job;
 import org.apache.sling.event.jobs.JobManager;
 import org.apache.sling.event.jobs.consumer.JobExecutor;
+import org.apache.sling.testing.mock.sling.ResourceResolverType;
 import org.apache.sling.testing.mock.sling.junit5.SlingContext;
 import org.apache.sling.testing.mock.sling.junit5.SlingContextExtension;
-import org.assertj.core.groups.Tuple;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,7 +41,7 @@ import java.util.*;
 import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.tuple;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssumptions.given;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -38,6 +49,7 @@ import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -48,11 +60,12 @@ class StreamxPublicationServiceImplTest {
 
   private static final String PAGES_CHANNEL = "pages";
   private static final String ASSETS_CHANNEL = "assets";
-  private static final String RELATED_PAGE_TO_PUBLISH = "/content/my-site/related-page-to-publish";
-  private static final String OTHER_RELATED_PAGE_TO_PUBLISH = "/content/my-site/other-related-page-to-publish";
+  private static final String RELATED_ASSET_TO_PUBLISH = "/content/dam/assets/my-site/related/image1.jpg";
+  private static final String OTHER_RELATED_ASSET_TO_PUBLISH = "/content/dam/assets/my-site/related/script1.js";
 
-  private final SlingContext slingContext = new SlingContext();
-  private final ResourceResolver resourceResolver = slingContext.resourceResolver();
+  private final SlingContext slingContext = new SlingContext(ResourceResolverType.JCR_OAK);
+  private final ResourceResolver resourceResolver = spy(slingContext.resourceResolver());
+  private final ResourceResolverFactory resourceResolverFactory = mock(ResourceResolverFactory.class);
   private final Map<String, Object> publicationServiceConfig = new HashMap<>();
   private final List<PublicationHandler<?>> handlers = new ArrayList<>();
   private final List<RelatedResourcesSelector> relatedResourcesSelectors = new ArrayList<>();
@@ -63,16 +76,60 @@ class StreamxPublicationServiceImplTest {
   private FakeStreamxClient fakeStreamxClient;
   private FakeStreamxClientFactory fakeStreamxClientFactory;
 
-  private static class RelatedPagesSelector implements RelatedResourcesSelector {
+  private final SlingRequestProcessor dummyRequestProcessor = (HttpServletRequest request, HttpServletResponse response, ResourceResolver resolver) -> {
+    String requestUri = request.getRequestURI();
+    String pageName = extractPageNameWithoutExtension(requestUri);
+    response.setContentType("text/html");
+    response.getWriter().write(pageName);
+  };
+
+  private final RelatedResourcesSelector relatedAssetsSelector = resourcePath ->
+       Arrays.asList(
+          new AssetResourceInfo(RELATED_ASSET_TO_PUBLISH),
+          new AssetResourceInfo(OTHER_RELATED_ASSET_TO_PUBLISH)
+      );
+
+  private final ResourcePathPublicationHandler<Asset> assetResourcePathPublicationHandler = new ResourcePathPublicationHandler<>(resourceResolverFactory, dummyRequestProcessor) {
 
     @Override
-    public Collection<ResourceInfo> getRelatedResources(String resourcePath) {
-      return Arrays.asList(
-          new PageResourceInfo(RELATED_PAGE_TO_PUBLISH),
-          new PageResourceInfo(OTHER_RELATED_PAGE_TO_PUBLISH)
-      );
+    public ResourcePathPublicationHandlerConfig configuration() {
+      return new ResourcePathPublicationHandlerConfig() {
+        @Override
+        public String resourcePathRegex() {
+          return "(" + RELATED_ASSET_TO_PUBLISH + "|" + OTHER_RELATED_ASSET_TO_PUBLISH + ")";
+        }
+
+        @Override
+        public String channel() {
+          return ASSETS_CHANNEL;
+        }
+
+        @Override
+        public boolean isEnabled() {
+          return true;
+        }
+      };
     }
-  }
+
+    @Override
+    public Class<Asset> modelClass() {
+      return Asset.class;
+    }
+
+    @Override
+    public Asset model(InputStream inputStream) {
+      try {
+        return new Asset(IOUtils.toByteArray(inputStream));
+      } catch (IOException ex) {
+        throw new RuntimeException(ex);
+      }
+    }
+
+    @Override
+    public String getId() {
+      return "assetResourcePathPublicationHandler";
+    }
+  };
 
   @BeforeEach
   void setUp() {
@@ -82,7 +139,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @SuppressWarnings("ReturnOfNull")
-  private void initializeComponentsIfNotInitialized() throws StreamxPublicationException {
+  private void initializeComponentsIfNotInitialized() throws Exception {
     if (publicationService != null) {
       return;
     }
@@ -124,6 +181,10 @@ class StreamxPublicationServiceImplTest {
 
     slingContext.registerInjectActivateService(new RelatedResourcesSelectorRegistry());
 
+    doReturn(resourceResolver).when(resourceResolverFactory).getAdministrativeResourceResolver(null);
+    doNothing().when(resourceResolver).close();
+
+    slingContext.registerService(SlingRequestProcessor.class, dummyRequestProcessor);
     slingContext.registerInjectActivateService(publicationService, publicationServiceConfig);
     slingContext.registerInjectActivateService(publicationJobExecutor);
 
@@ -151,7 +212,7 @@ class StreamxPublicationServiceImplTest {
 
     thenProcessedJobsCountIs(1);
     thenPublicationsContainsExactly(
-        publishPage("/content/my-site/page-1.html")
+        publishedPage("/content/my-site/page-1.html")
     );
   }
 
@@ -164,8 +225,24 @@ class StreamxPublicationServiceImplTest {
 
     thenProcessedJobsCountIs(2);
     thenPublicationsContainsExactly(
-        publishPage("/content/my-site/page-1.html"),
-        publishPage("/content/my-site/page-1/page-2.html")
+        publishedPage("/content/my-site/page-1.html"),
+        publishedPage("/content/my-site/page-1/page-2.html")
+    );
+  }
+
+  @Test
+  void shouldPublishAndUnpublishSinglePage() throws Exception {
+    givenPageHierarchy("/content/my-site/page-1/page-2");
+
+    whenPathIsPublished("/content/my-site/page-1");
+    whenPathIsUnpublished("/content/my-site/page-1");
+
+    whenAllJobsAreProcessed();
+
+    thenProcessedJobsCountIs(2);
+    thenPublicationsContainsExactly(
+        publishedPage("/content/my-site/page-1.html"),
+        unpublishPage("/content/my-site/page-1.html")
     );
   }
 
@@ -197,7 +274,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldUnpublishEvenIfResourceDoesNotExist() throws StreamxPublicationException {
+  void shouldUnpublishEvenIfResourceDoesNotExist() throws Exception {
     given(resourceResolver.getResource("/content/my-site/page-1.html")).isNull();
     given(resourceResolver.getResource("/content/dam/asset-1.jpeg")).isNull();
 
@@ -255,24 +332,27 @@ class StreamxPublicationServiceImplTest {
 
     thenProcessedJobsCountIs(4);
     thenPublicationsContainsExactly(
-        publishPage("/content/my-site/page-1.html"),
+        publishedPage("/content/my-site/page-1.html"),
         unpublishPage("/content/my-site/page-1.html")
     );
   }
 
   @Test
-  void shouldNotPublishIfPathsAreEmpty() throws Exception {
+  void shouldNotPublishIfAnyPathIsEmpty() throws Exception {
     givenPageHierarchy("/content/my-site/page-1");
 
-    whenPathsArePublished("", "/content/my-site/page-1", null);
-    whenPathsAreUnpublished(null, "/content/my-site/page-1", "");
+    assertThatThrownBy(() -> whenPathsArePublished("/content/my-site/page-1", null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("path cannot be blank");
+
+    assertThatThrownBy(() -> whenPathsAreUnpublished("/content/my-site/page-1", ""))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("path cannot be blank");
+
     whenAllJobsAreProcessed();
 
-    thenProcessedJobsCountIs(2);
-    thenPublicationsContainsExactly(
-        publishPage("/content/my-site/page-1.html"),
-        unpublishPage("/content/my-site/page-1.html")
-    );
+    thenProcessedJobsCountIs(0);
+    thenNoPublicationsWereMade();
   }
 
   @Test
@@ -312,9 +392,9 @@ class StreamxPublicationServiceImplTest {
 
     thenProcessedJobsCountIs(3);
     thenPublicationsContainsExactly(
-        publishPage("/content/my-site/page-1.html"),
-        publishAsset("/content/dam/asset-1.jpeg"),
-        publishPage("/content/my-site/page-1/page-2.html")
+        publishedPage("/content/my-site/page-1.html"),
+        publishedAsset("/content/dam/asset-1.jpeg"),
+        publishedPage("/content/my-site/page-1/page-2.html")
     );
   }
 
@@ -379,21 +459,21 @@ class StreamxPublicationServiceImplTest {
     thenProcessedJobsCountIs(7);
 
     thenPublicationsContainsExactly(
-        publishPage("/content/my-site/page-1.html"),
-        publishPage("/content/other-site/page-1.html"),
-        publishAsset("/content/dam/asset-1.jpeg")
+        publishedPage("/content/my-site/page-1.html"),
+        publishedPage("/content/other-site/page-1.html"),
+        publishedAsset("/content/dam/asset-1.jpeg")
     );
 
     thenInstancePublicationsContainsExactly(
         "/fake/my-site/instance",
-        publishPage("/content/my-site/page-1.html"),
-        publishAsset("/content/dam/asset-1.jpeg")
+        publishedPage("/content/my-site/page-1.html"),
+        publishedAsset("/content/dam/asset-1.jpeg")
     );
 
     thenInstancePublicationsContainsExactly(
         "/fake/other-site/instance",
-        publishPage("/content/other-site/page-1.html"),
-        publishAsset("/content/dam/asset-1.jpeg")
+        publishedPage("/content/other-site/page-1.html"),
+        publishedAsset("/content/dam/asset-1.jpeg")
     );
   }
 
@@ -401,11 +481,11 @@ class StreamxPublicationServiceImplTest {
   void shouldUpdateContentOnStreamxForRelatedResources() throws Exception {
     givenPageHierarchy(
         "/content/my-site/page-1",
-        RELATED_PAGE_TO_PUBLISH,
-        OTHER_RELATED_PAGE_TO_PUBLISH
+        RELATED_ASSET_TO_PUBLISH,
+        OTHER_RELATED_ASSET_TO_PUBLISH
     );
 
-    givenRelatedResourcesSelectors(new RelatedPagesSelector());
+    givenRelatedResourcesSelectors(relatedAssetsSelector);
 
     whenPathsArePublished(
         "/content/my-site/page-1"
@@ -416,9 +496,9 @@ class StreamxPublicationServiceImplTest {
     thenProcessedJobsCountIs(3);
 
     thenPublicationsContainsExactly(
-        publishPage("/content/my-site/page-1.html"),
-        publishPage(RELATED_PAGE_TO_PUBLISH + ".html"),
-        publishPage(OTHER_RELATED_PAGE_TO_PUBLISH + ".html")
+        publishedPage("/content/my-site/page-1.html"),
+        publishedAsset(RELATED_ASSET_TO_PUBLISH),
+        publishedAsset(OTHER_RELATED_ASSET_TO_PUBLISH)
     );
   }
 
@@ -426,12 +506,11 @@ class StreamxPublicationServiceImplTest {
   void shouldUpdateRelatedResourcesJustOnceEvenIfWillBeReturnedByMultipleSelectors() throws Exception {
     givenPageHierarchy(
         "/content/my-site/page-1",
-        RELATED_PAGE_TO_PUBLISH,
-        OTHER_RELATED_PAGE_TO_PUBLISH
+        RELATED_ASSET_TO_PUBLISH,
+        OTHER_RELATED_ASSET_TO_PUBLISH
     );
 
-    givenRelatedResourcesSelectors(new RelatedPagesSelector(), new RelatedPagesSelector(),
-        new RelatedPagesSelector());
+    givenRelatedResourcesSelectors(relatedAssetsSelector, relatedAssetsSelector, relatedAssetsSelector);
 
     whenPathsArePublished(
         "/content/my-site/page-1"
@@ -442,9 +521,9 @@ class StreamxPublicationServiceImplTest {
     thenProcessedJobsCountIs(3);
 
     thenPublicationsContainsExactly(
-        publishPage("/content/my-site/page-1.html"),
-        publishPage(RELATED_PAGE_TO_PUBLISH + ".html"),
-        publishPage(OTHER_RELATED_PAGE_TO_PUBLISH + ".html")
+        publishedPage("/content/my-site/page-1.html"),
+        publishedAsset(RELATED_ASSET_TO_PUBLISH),
+        publishedAsset(OTHER_RELATED_ASSET_TO_PUBLISH)
     );
   }
 
@@ -453,11 +532,11 @@ class StreamxPublicationServiceImplTest {
     givenPageHierarchy(
         "/content/my-site/page-1",
         "/content/my-site/page-2",
-        RELATED_PAGE_TO_PUBLISH,
-        OTHER_RELATED_PAGE_TO_PUBLISH
+        RELATED_ASSET_TO_PUBLISH,
+        OTHER_RELATED_ASSET_TO_PUBLISH
     );
 
-    givenRelatedResourcesSelectors(new RelatedPagesSelector());
+    givenRelatedResourcesSelectors(relatedAssetsSelector);
 
     whenPathsArePublished(
         "/content/my-site/page-1",
@@ -469,10 +548,10 @@ class StreamxPublicationServiceImplTest {
     thenProcessedJobsCountIs(4);
 
     thenPublicationsContainsExactly(
-        publishPage("/content/my-site/page-1.html"),
-        publishPage("/content/my-site/page-2.html"),
-        publishPage(RELATED_PAGE_TO_PUBLISH + ".html"),
-        publishPage(OTHER_RELATED_PAGE_TO_PUBLISH + ".html")
+        publishedPage("/content/my-site/page-1.html"),
+        publishedPage("/content/my-site/page-2.html"),
+        publishedAsset(RELATED_ASSET_TO_PUBLISH),
+        publishedAsset(OTHER_RELATED_ASSET_TO_PUBLISH)
     );
   }
 
@@ -480,15 +559,15 @@ class StreamxPublicationServiceImplTest {
   void shouldNotSendExtraUpdateToRelatedResourcesIfItIsPublishedExplicitly() throws Exception {
     givenPageHierarchy(
         "/content/my-site/page-1",
-        RELATED_PAGE_TO_PUBLISH,
-        OTHER_RELATED_PAGE_TO_PUBLISH
+        RELATED_ASSET_TO_PUBLISH,
+        OTHER_RELATED_ASSET_TO_PUBLISH
     );
 
-    givenRelatedResourcesSelectors(new RelatedPagesSelector());
+    givenRelatedResourcesSelectors(relatedAssetsSelector);
 
     whenPathsArePublished(
         "/content/my-site/page-1",
-        RELATED_PAGE_TO_PUBLISH
+        RELATED_ASSET_TO_PUBLISH
     );
 
     whenAllJobsAreProcessed();
@@ -496,9 +575,9 @@ class StreamxPublicationServiceImplTest {
     thenProcessedJobsCountIs(3);
 
     thenPublicationsContainsExactly(
-        publishPage("/content/my-site/page-1.html"),
-        publishPage(RELATED_PAGE_TO_PUBLISH + ".html"),
-        publishPage(OTHER_RELATED_PAGE_TO_PUBLISH + ".html")
+        publishedPage("/content/my-site/page-1.html"),
+        publishedAsset(RELATED_ASSET_TO_PUBLISH),
+        publishedAsset(OTHER_RELATED_ASSET_TO_PUBLISH)
     );
   }
 
@@ -563,6 +642,7 @@ class StreamxPublicationServiceImplTest {
   private void givenRelatedResourcesSelectors(RelatedResourcesSelector... selectors) {
     this.relatedResourcesSelectors.clear();
     this.relatedResourcesSelectors.addAll(Arrays.asList(selectors));
+    this.handlers.add(assetResourcePathPublicationHandler);
   }
 
   private void givenHandlers(PublicationHandler<?>... handlers) {
@@ -575,22 +655,22 @@ class StreamxPublicationServiceImplTest {
     this.fakeStreamxClientConfigs.addAll(Arrays.asList(configs));
   }
 
-  private void whenPathIsPublished(String path) throws StreamxPublicationException {
+  private void whenPathIsPublished(String path) throws Exception {
     initializeComponentsIfNotInitialized();
     publicationService.publish(toResourceInfoList(path));
   }
 
-  private void whenPathsArePublished(String... paths) throws StreamxPublicationException {
+  private void whenPathsArePublished(String... paths) throws Exception {
     initializeComponentsIfNotInitialized();
     publicationService.publish(toResourceInfoList(paths));
   }
 
-  private void whenPathIsUnpublished(String path) throws StreamxPublicationException {
+  private void whenPathIsUnpublished(String path) throws Exception {
     initializeComponentsIfNotInitialized();
     publicationService.unpublish(toResourceInfoList(path));
   }
 
-  private void whenPathsAreUnpublished(String... paths) throws StreamxPublicationException {
+  private void whenPathsAreUnpublished(String... paths) throws Exception {
     initializeComponentsIfNotInitialized();
     publicationService.unpublish(toResourceInfoList(paths));
   }
@@ -618,47 +698,51 @@ class StreamxPublicationServiceImplTest {
     assertThat(fakeJobManager.getProcessedJobsCount()).isEqualTo(count);
   }
 
-  private void thenPublicationsContainsExactly(Tuple... tuples) {
+  private void thenPublicationsContainsExactly(Publication... publications) {
     assertThat(fakeStreamxClient.getPublications())
-        .extracting("action", "key", "channel", "data")
-        .containsExactly(tuples);
+        .usingRecursiveFieldByFieldElementComparator()
+        .containsExactly(publications);
   }
 
-  private void thenInstancePublicationsContainsExactly(String streamxInstanceUrl, Tuple... tuples) {
+  private void thenInstancePublicationsContainsExactly(String streamxInstanceUrl, Publication... publications) {
     FakeStreamxClient streamxClient = fakeStreamxClientFactory.getFakeClient(streamxInstanceUrl);
     assertThat(streamxClient.getPublications())
-        .extracting("action", "key", "channel", "data")
-        .containsExactly(tuples);
+        .usingRecursiveFieldByFieldElementComparator()
+        .containsExactly(publications);
   }
 
   private void thenNoPublicationsWereMade() {
     assertThat(fakeStreamxClient.getPublications()).isEmpty();
   }
 
-  private Tuple publishPage(String key) {
-    return publish(key, PAGES_CHANNEL, "Page: ");
+  private Publication publishedPage(String key) {
+    return publishedResource(key, PAGES_CHANNEL, "Page: ");
   }
 
-  private Tuple publishAsset(String key) {
-    return publish(key, ASSETS_CHANNEL, "Asset: ");
+  private Publication publishedAsset(String key) {
+    return publishedResource(key, ASSETS_CHANNEL, "Asset: ");
   }
 
-  private Tuple publish(String key, String channel, String dataPrefix) {
-    String pageName = StringUtils.substringAfterLast(key, "/");
-    String data = dataPrefix + pageName.replace(".html", "");
-    return tuple("Publish", key, channel, data);
+  private Publication publishedResource(String key, String channel, String dataPrefix) {
+    String data = dataPrefix + extractPageNameWithoutExtension(key);
+    return new Publication("Publish", key, channel, data);
   }
 
-  private Tuple unpublishPage(String key) {
+  private static String extractPageNameWithoutExtension(String pagePath) {
+    String pageName = StringUtils.substringAfterLast(pagePath, "/");
+    return StringUtils.removeEnd(pageName, ".html");
+  }
+
+  private Publication unpublishPage(String key) {
     return unpublish(key, PAGES_CHANNEL);
   }
 
-  private Tuple unpublishAsset(String key) {
+  private Publication unpublishAsset(String key) {
     return unpublish(key, ASSETS_CHANNEL);
   }
 
-  private Tuple unpublish(String key, String channel) {
-    return tuple("Unpublish", key, channel, null);
+  private Publication unpublish(String key, String channel) {
+    return new Publication("Unpublish", key, channel, null);
   }
 
   private static FakeStreamxClientConfig getOtherSiteFakeStreamxClientConfig() {

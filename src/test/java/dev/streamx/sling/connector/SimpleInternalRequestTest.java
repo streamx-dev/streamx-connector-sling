@@ -1,5 +1,6 @@
 package dev.streamx.sling.connector;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.streamx.sling.connector.test.util.RandomBytesWriter;
@@ -76,6 +77,7 @@ class SimpleInternalRequestTest {
     // then
     assertThat(plainMarsRequest.getResponseAsString()).isEqualTo(PLAIN_MARS_HTML);
     assertThat(bytesOf(plainMarsRequest.getResponseAsInputStream())).hasSize(PLAIN_MARS_HTML.length());
+    assertThat(plainMarsRequest.getResponseAsBytes()).hasValue(PLAIN_MARS_HTML.getBytes(UTF_8));
   }
 
   @Test
@@ -89,6 +91,7 @@ class SimpleInternalRequestTest {
     // then
     assertThat(usualMarsRequest.getResponseAsString()).isEqualTo(USUAL_MARS_HTML);
     assertThat(bytesOf(usualMarsRequest.getResponseAsInputStream())).hasSize(USUAL_MARS_HTML.length());
+    assertThat(usualMarsRequest.getResponseAsBytes()).contains(USUAL_MARS_HTML.getBytes(UTF_8));
   }
 
   @Test
@@ -102,6 +105,7 @@ class SimpleInternalRequestTest {
     // then
     assertThat(unknownRequest.getResponseAsString()).isEqualTo(NOT_FOUND_HTML);
     assertThat(bytesOf(unknownRequest.getResponseAsInputStream())).hasSize(NOT_FOUND_HTML.length());
+    assertThat(unknownRequest.getResponseAsBytes()).contains(NOT_FOUND_HTML.getBytes(UTF_8));
   }
 
   @Test
@@ -114,6 +118,8 @@ class SimpleInternalRequestTest {
 
     // then
     assertThat(bytesOf(binaryRequest.getResponseAsInputStream())).hasSize(BINARY_PAGE_LENGTH);
+    assertThat(binaryRequest.getResponseAsBytes()).isPresent();
+    assertThat(binaryRequest.getResponseAsBytes().get()).hasSize(BINARY_PAGE_LENGTH);
   }
 
   @Test

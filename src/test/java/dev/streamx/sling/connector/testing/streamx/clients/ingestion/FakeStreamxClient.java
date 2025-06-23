@@ -32,34 +32,4 @@ public class FakeStreamxClient implements StreamxClient {
     return new UnmodifiableList<>(publications);
   }
 
-  public static class Publication {
-
-    private final String action;
-    private final String key;
-    private final String channel;
-    private final String data;
-
-    public Publication(String action, String key, String channel, Object data) {
-      this.action = action;
-      this.key = key;
-      this.channel = channel;
-      this.data = data != null ? data.toString() : null;
-    }
-
-    public String getAction() {
-      return action;
-    }
-
-    public String getKey() {
-      return key;
-    }
-
-    public String getChannel() {
-      return channel;
-    }
-
-    public String getData() {
-      return data;
-    }
-  }
 }

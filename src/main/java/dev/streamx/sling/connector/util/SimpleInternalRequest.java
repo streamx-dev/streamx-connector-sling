@@ -66,14 +66,21 @@ public class SimpleInternalRequest {
     this.additionalProperties = Collections.unmodifiableMap(additionalProperties);
   }
 
-  private Optional<SlingHttpServletResponse> extractResponse(InternalRequest internalRequest) {
+  /**
+   * Returns the body of the HTTP response represented as {@link String}.
+   *
+   * @return body of the HTTP response represented as {@link String}; {@link StringUtils#EMPTY} is
+   * returned if the response body cannot be retrieved
+   */
+  public String getResponseAsString() {
+    InternalRequest internalRequest = createInternalRequest();
     try {
-      SlingHttpServletResponse response = internalRequest.getResponse();
-      return Optional.of(response);
+      return internalRequest.execute().getResponseAsString();
     } catch (IOException exception) {
-      LOG.error("Failed to extract response for '{}' from '{}'", slingUri, internalRequest, exception);
-      return Optional.empty();
+      LOG.error("Failed to get response as string for '{}'", slingUri, exception);
     }
+
+    return StringUtils.EMPTY;
   }
 
   /**
@@ -83,56 +90,41 @@ public class SimpleInternalRequest {
    * returned if the response body cannot be retrieved
    */
   public Optional<InputStream> getResponseAsInputStream() {
-    return executedInternalRequest(slingUri)
-        .flatMap(this::extractResponse)
-        .filter(MockSlingHttpServletResponse.class::isInstance)
-        .map(MockSlingHttpServletResponse.class::cast)
-        .map(MockSlingHttpServletResponse::getOutput)
-        .map(
-            output -> {
-              LOG.debug("Generated output of {} bytes for '{}'", output.length, slingUri);
-              return new ByteArrayInputStream(output);
-            }
-        );
+    return getResponseAsBytes().map(ByteArrayInputStream::new);
   }
 
-  private Optional<InternalRequest> executedInternalRequest(SlingUri slingUri) {
-    Map<String, Object> pathParameters = createPathParametersMap(slingUri);
-    LOG.trace("Creating internal request for '{}' with path parameters {}", slingUri, pathParameters);
+  /**
+   * Returns {@code byte[]} containing the content of the resource under the {@code slingUri} given via constructor.
+   *
+   * @return {@code byte[]} containing the resource bytes; empty {@link Optional} is
+   * returned if the response body cannot be retrieved
+   */
+  public Optional<byte[]> getResponseAsBytes() {
+    InternalRequest internalRequest = createInternalRequest();
     try {
-      InternalRequest executedInternalRequest = new SlingInternalRequest(
-          resourceResolver, slingRequestProcessor, slingUri.toString()
-      ).withParameters(pathParameters).execute();
-      return Optional.of(executedInternalRequest);
+      SlingHttpServletResponse response = internalRequest.execute().getResponse();
+      if (response instanceof MockSlingHttpServletResponse) {
+        byte[] output = ((MockSlingHttpServletResponse) response).getOutput();
+        return Optional.of(output);
+      }
     } catch (IOException exception) {
-      LOG.error("Failed to execute internal request for '{}'", slingUri, exception);
-      return Optional.empty();
+      LOG.error("Failed to get response as bytes for '{}'", slingUri, exception);
     }
+
+    return Optional.empty();
   }
 
-  private Map<String, Object> createPathParametersMap(SlingUri slingUri) {
+  private InternalRequest createInternalRequest() {
+    Map<String, Object> pathParameters = createPathParametersMap();
+    LOG.trace("Creating internal request for '{}' with path parameters {}", slingUri, pathParameters);
+    return new SlingInternalRequest(resourceResolver, slingRequestProcessor, slingUri.toString())
+        .withParameters(pathParameters);
+  }
+
+  private Map<String, Object> createPathParametersMap() {
     Map<String, Object> pathParameters = new LinkedHashMap<>(slingUri.getPathParameters());
     pathParameters.put("wcmmode", "disabled");
     pathParameters.putAll(additionalProperties);
     return pathParameters;
-  }
-
-  /**
-   * Returns the body of the HTTP response represented as {@link String}.
-   *
-   * @return body of the HTTP response represented as {@link String}; {@link StringUtils#EMPTY} is
-   * returned if the response body cannot be retrieved
-   */
-  public String getResponseAsString() {
-    Optional<InternalRequest> executedRequest = executedInternalRequest(slingUri);
-    if (executedRequest.isPresent()) {
-      try {
-        return executedRequest.get().getResponseAsString();
-      } catch (IOException exception) {
-        LOG.error("Failed to get response as string for '{}'", slingUri, exception);
-      }
-    }
-
-    return StringUtils.EMPTY;
   }
 }

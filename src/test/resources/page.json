@@ -1,0 +1,7 @@
+{
+  "jcr:primaryType": "nt:file",
+  "jcr:content": {
+    "cq:template": "/conf/firsthops/settings/wcm/templates/page-content",
+    "sling:resourceType": "firsthops/components/page"
+  }
+}

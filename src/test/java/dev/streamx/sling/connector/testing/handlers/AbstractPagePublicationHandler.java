@@ -25,7 +25,7 @@ abstract class AbstractPagePublicationHandler implements PublicationHandler<Page
 
   @Override
   public boolean canHandle(ResourceInfo resource) {
-    return resource.getPrimaryNodeType().equals("cq:Page")
+    return "cq:Page".equals(resource.getPrimaryNodeType())
            && resource.getPath().startsWith(handledPagePathPrefix());
   }
 
