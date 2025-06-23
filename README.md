@@ -128,8 +128,7 @@ The `getRelatedResources(String resourcePath)` method of `ResourceContentRelated
 It scans that content to identify and collect related resources referenced within it.
 A typical example is extracting links from HTML elements like `<img src=...>`, `<script src=...>` and similar.
 
-This service is primarily intended for use cases where you need to gather and publish paths (such as images, scripts, etc.) that are referenced within a page but are not published to StreamX in regular way.
-It is not intended for finding and publishing HTML pages linked within the page content. All pages should be published explicitly using a generic Page Publication Handler.
+This service is intended for scenarios where you need to collect and publish resource paths—such as images, scripts, etc.—that are referenced within a page but aren't published to StreamX separately. For example, if a page references other pages and those pages are already being published individually by content authors, you should not use this mechanism to publish the page links.
 
 Example configuration for finding referenced clientlibs and core images in a page content:
 ```json
