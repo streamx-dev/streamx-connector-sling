@@ -79,7 +79,7 @@ class ResourceContentRelatedResourcesSelectorTest {
             .withResourcePathPostfixToAppend(".html")
             .withResourceRequiredPathRegex("^/content/.*")
             .withResourceRequiredPrimaryNodeTypeRegex(JcrResourceConstants.NT_SLING_FOLDER)
-            .withRelatedResourceProcessablePathRegex(".*\\.(html|css|js)$"),
+            .withRelatedResourceProcessablePathRegex(".*\\.(css|js)$"),
         basicRequestProcessor,
         resourceResolverFactoryMock
     );

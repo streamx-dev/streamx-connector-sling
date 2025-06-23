@@ -19,14 +19,6 @@ final class SetUtils {
         .collect(Collectors.toCollection(LinkedHashSet::new));
   }
 
-  static <T, U> Set<U> flattenToLinkedHashSet(Collection<T> collection, Function<T, Collection<U>> flatter) {
-    return collection
-        .stream()
-        .map(flatter)
-        .flatMap(Collection::stream)
-        .collect(Collectors.toCollection(LinkedHashSet::new));
-  }
-
   static <T> Set<T> flattenToLinkedHashSet(Collection<Set<T>> collection) {
     return collection
         .stream()

@@ -66,10 +66,7 @@ public abstract class ResourcePathPublicationHandler<T> implements PublicationHa
   @SuppressWarnings({"squid:S1874", "deprecation"})
   public PublishData<T> getPublishData(String resourcePath) throws StreamxPublicationException {
     LOG.trace("Getting publish data for '{}'", resourcePath);
-    try (
-        ResourceResolver resourceResolver
-            = resourceResolverFactory.getAdministrativeResourceResolver(null)
-    ) {
+    try (ResourceResolver resourceResolver = resourceResolverFactory.getAdministrativeResourceResolver(null)) {
       return generatePublishData(resourcePath, resourceResolver);
     } catch (LoginException | IOException exception) {
       throw new StreamxPublicationException(
@@ -87,10 +84,10 @@ public abstract class ResourcePathPublicationHandler<T> implements PublicationHa
     );
     try (InputStream inputStream = simpleInternalRequest.getResponseAsInputStream().orElseThrow()) {
       String channel = configuration().channel();
-      Class<T> modelCLass = modelClass();
+      Class<T> modelClass = modelClass();
       T model = model(inputStream);
       PublishData<T> publishData = new PublishData<>(
-          resourcePath, channel, modelCLass, model
+          resourcePath, channel, modelClass, model
       );
       LOG.trace("Generated {} for {}", publishData, resourcePath);
       return publishData;
