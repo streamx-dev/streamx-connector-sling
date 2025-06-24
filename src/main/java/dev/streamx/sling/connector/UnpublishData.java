@@ -29,9 +29,7 @@ public class UnpublishData<T> extends PublicationData<T> {
    * @param dataClass  the class type of the model to be unpublished
    * @param properties value for {@link Message#getProperties()}
    */
-  public UnpublishData(
-      String key, String channel, Class<T> dataClass, Map<String, String> properties
-  ) {
+  public UnpublishData(String key, String channel, Class<T> dataClass, Map<String, String> properties) {
     super(key, channel, dataClass, properties);
   }
 }

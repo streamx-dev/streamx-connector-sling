@@ -1,16 +1,17 @@
 package dev.streamx.sling.connector.testing.streamx.clients.ingestion;
 
+import dev.streamx.sling.connector.PublicationAction;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 
 public class Publication {
 
-  private final String action;
+  private final PublicationAction action;
   private final String key;
   private final String channel;
   private final String data;
 
-  public Publication(String action, String key, String channel, Object data) {
+  public Publication(PublicationAction action, String key, String channel, Object data) {
     this.action = action;
     this.key = key;
     this.channel = channel;

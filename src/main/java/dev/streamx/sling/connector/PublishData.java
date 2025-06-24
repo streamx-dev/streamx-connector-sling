@@ -34,10 +34,7 @@ public class PublishData<T> extends PublicationData<T> {
    * @param model      the instance of the model to be published
    * @param properties value for {@link Message#getProperties()}
    */
-  @SuppressWarnings({"unused", "ConstructorWithTooManyParameters"})
-  public PublishData(
-      String key, String channel, Class<T> modelClass, T model, Map<String, String> properties
-  ) {
+  public PublishData(String key, String channel, Class<T> modelClass, T model, Map<String, String> properties) {
     super(key, channel, modelClass, properties);
     this.model = model;
   }

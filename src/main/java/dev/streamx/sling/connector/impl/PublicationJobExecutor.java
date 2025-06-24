@@ -119,48 +119,36 @@ public class PublicationJobExecutor implements JobExecutor {
         .orElse(null);
   }
 
-  private void handlePublish(PublicationHandler<?> publicationHandler,
+  private <T> void handlePublish(PublicationHandler<T> publicationHandler,
       StreamxInstanceClient streamxInstanceClient, String resourcePath)
       throws StreamxPublicationException, StreamxClientException {
-    PublishData<?> publishData = publicationHandler.getPublishData(resourcePath);
+    PublishData<T> publishData = publicationHandler.getPublishData(resourcePath);
     if (publishData == null) {
       LOG.debug("Publish data returned by [{}] is null", publicationHandler.getClass().getName());
       return;
     }
-    handlePublish(publishData, streamxInstanceClient);
-  }
-
-  private <T> void handlePublish(PublishData<T> publishData,
-      StreamxInstanceClient streamxInstanceClient)
-      throws StreamxClientException {
     Publisher<T> publisher = streamxInstanceClient.getPublisher(publishData);
-    Message<T> messageToSend = Message.<T>newMessage(publishData.getKey())
+    Message<T> messageToSend = Message.newPublishMessage(publishData.getKey(), publishData.getModel())
             .withProperties(publishData.getProperties())
-            .withPublishAction()
-            .withPayload(publishData.getModel())
             .build();
     publisher.send(messageToSend);
     LOG.info("Published resource: [{}] to [{}: {}]", publishData.getKey(),
         streamxInstanceClient.getName(), publishData.getChannel());
   }
 
-  private void handleUnpublish(PublicationHandler<?> publicationHandler,
+  private <T> void handleUnpublish(PublicationHandler<T> publicationHandler,
       StreamxInstanceClient streamxInstanceClient, String resourcePath)
       throws StreamxPublicationException, StreamxClientException {
-    UnpublishData<?> unpublishData = publicationHandler.getUnpublishData(resourcePath);
+    UnpublishData<T> unpublishData = publicationHandler.getUnpublishData(resourcePath);
     if (unpublishData == null) {
-      LOG.debug("Unpublish data returned by [{}] is null",
-          publicationHandler.getClass().getName());
+      LOG.debug("Unpublish data returned by [{}] is null", publicationHandler.getClass().getName());
       return;
     }
-    handleUnpublish(unpublishData, streamxInstanceClient);
-  }
-
-  private <T> void handleUnpublish(UnpublishData<T> unpublishData,
-      StreamxInstanceClient streamxInstanceClient)
-      throws StreamxClientException {
     Publisher<T> publisher = streamxInstanceClient.getPublisher(unpublishData);
-    publisher.unpublish(unpublishData.getKey());
+    Message<T> messageToSend = Message.<T>newUnpublishMessage(unpublishData.getKey())
+        .withProperties(unpublishData.getProperties())
+        .build();
+    publisher.send(messageToSend);
     LOG.info("Unpublished resource: [{}] from [{}: {}]", unpublishData.getKey(),
         streamxInstanceClient.getName(), unpublishData.getChannel());
   }

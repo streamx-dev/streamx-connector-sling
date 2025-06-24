@@ -3,6 +3,7 @@ package dev.streamx.sling.connector.testing.streamx.clients.ingestion;
 import dev.streamx.clients.ingestion.publisher.Message;
 import dev.streamx.clients.ingestion.publisher.Publisher;
 import dev.streamx.clients.ingestion.publisher.SuccessResult;
+import dev.streamx.sling.connector.PublicationAction;
 
 public class FakePublisher<T> implements Publisher<T> {
 
@@ -28,7 +29,11 @@ public class FakePublisher<T> implements Publisher<T> {
 
   @Override
   public SuccessResult send(Message<T> message) {
-    fakeStreamxClient.recordPublish(message.getKey(), channel, message.getPayload());
+    if (message.getAction().equals(Message.PUBLISH_ACTION)) {
+      fakeStreamxClient.recordPublish(message.getKey(), channel, message.getPayload());
+    } else if (message.getAction().equals(Message.UNPUBLISH_ACTION)) {
+      fakeStreamxClient.recordUnpublish(message.getKey(), channel);
+    }
     return null;
   }
 

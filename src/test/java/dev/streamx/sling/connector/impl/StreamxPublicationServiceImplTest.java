@@ -725,7 +725,7 @@ class StreamxPublicationServiceImplTest {
 
   private Publication publishedResource(String key, String channel, String dataPrefix) {
     String data = dataPrefix + extractPageNameWithoutExtension(key);
-    return new Publication("Publish", key, channel, data);
+    return new Publication(PublicationAction.PUBLISH, key, channel, data);
   }
 
   private static String extractPageNameWithoutExtension(String pagePath) {
@@ -742,7 +742,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   private Publication unpublish(String key, String channel) {
-    return new Publication("Unpublish", key, channel, null);
+    return new Publication(PublicationAction.UNPUBLISH, key, channel, null);
   }
 
   private static FakeStreamxClientConfig getOtherSiteFakeStreamxClientConfig() {
