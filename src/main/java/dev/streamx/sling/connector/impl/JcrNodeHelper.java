@@ -22,14 +22,16 @@ final class JcrNodeHelper {
    * even if it becomes empty.
    */
   static void removeNodeAlongWithOrphanedParents(Node nodeToRemove, String basePath) throws RepositoryException {
+    nodeToRemove = removeNodeAndReturnParent(nodeToRemove);
+
+    while (nodeToRemove.getPath().startsWith(basePath + "/") && !nodeToRemove.hasNodes()) {
+      nodeToRemove = removeNodeAndReturnParent(nodeToRemove);
+    }
+  }
+
+  private static Node removeNodeAndReturnParent(Node nodeToRemove) throws RepositoryException {
     Node parentNode = nodeToRemove.getParent();
     nodeToRemove.remove();
-
-    nodeToRemove = parentNode;
-    while (nodeToRemove.getPath().startsWith(basePath + "/") && !nodeToRemove.hasNodes()) {
-      parentNode = nodeToRemove.getParent();
-      nodeToRemove.remove();
-      nodeToRemove = parentNode;
-    }
+    return parentNode;
   }
 }
