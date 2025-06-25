@@ -62,7 +62,7 @@ final class PublishedRelatedResourcesManager {
       parentResourceJcrNode = session.getNode(parentResourceJcrPath);
       relatedResourcesInJcr = collectRelatedResources(parentResourceJcrNode);
     } else {
-      parentResourceJcrNode = JcrUtils.getOrCreateByPath(parentResourceJcrPath, "sling:Folder", "nt:unstructured", session, false);
+      parentResourceJcrNode = JcrUtils.getOrCreateByPath(parentResourceJcrPath, "nt:unstructured", session);
       relatedResourcesInJcr = new LinkedHashSet<>();
     }
 
@@ -76,8 +76,12 @@ final class PublishedRelatedResourcesManager {
     relatedResourcesInJcr.removeAll(relatedResourcesToDeleteFromJcr);
     PublishedRelatedResourcesInversedTreeManager.removeData(relatedResourcesToDeleteFromJcr, parentResourcePath, session);
 
-    String[] relatedResourcesArray = relatedResourcesInJcr.toArray(String[]::new);
-    parentResourceJcrNode.setProperty(PN_RELATED_RESOURCES, relatedResourcesArray);
+    if (relatedResourcesInJcr.isEmpty()) {
+      parentResourceJcrNode.setProperty(PN_RELATED_RESOURCES, (String[]) null);
+    } else {
+      String[] relatedResourcesArray = relatedResourcesInJcr.toArray(String[]::new);
+      parentResourceJcrNode.setProperty(PN_RELATED_RESOURCES, relatedResourcesArray);
+    }
 
     if (!relatedResourcesToDeleteFromJcr.isEmpty()) {
       disappearedRelatedResources.put(

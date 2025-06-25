@@ -21,7 +21,7 @@ final class PublishedRelatedResourcesInversedTreeManager {
   static void addData(Set<String> relatedResources, Session session) throws RepositoryException {
     for (String relatedResource : relatedResources) {
       String relatedResourceJcrPath = BASE_NODE_PATH + relatedResource;
-      JcrUtils.getOrCreateByPath(relatedResourceJcrPath, "sling:Folder", "nt:unstructured", session, false);
+      JcrUtils.getOrCreateByPath(relatedResourceJcrPath, "nt:unstructured", session);
     }
   }
 
