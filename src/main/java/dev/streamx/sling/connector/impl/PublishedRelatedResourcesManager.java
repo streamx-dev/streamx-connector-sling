@@ -13,7 +13,6 @@ import javax.jcr.Property;
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 import javax.jcr.Value;
-import org.apache.jackrabbit.commons.JcrUtils;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,7 +61,7 @@ final class PublishedRelatedResourcesManager {
       parentResourceJcrNode = session.getNode(parentResourceJcrPath);
       relatedResourcesInJcr = collectRelatedResources(parentResourceJcrNode);
     } else {
-      parentResourceJcrNode = JcrUtils.getOrCreateByPath(parentResourceJcrPath, "sling:Folder", "nt:unstructured", session, false);
+      parentResourceJcrNode = JcrNodeHelper.createNode(parentResourceJcrPath, session);
       relatedResourcesInJcr = new LinkedHashSet<>();
     }
 
@@ -76,8 +75,11 @@ final class PublishedRelatedResourcesManager {
     relatedResourcesInJcr.removeAll(relatedResourcesToDeleteFromJcr);
     PublishedRelatedResourcesInversedTreeManager.removeData(relatedResourcesToDeleteFromJcr, parentResourcePath, session);
 
-    String[] relatedResourcesArray = relatedResourcesInJcr.toArray(String[]::new);
-    parentResourceJcrNode.setProperty(PN_RELATED_RESOURCES, relatedResourcesArray);
+    if (relatedResourcesInJcr.isEmpty()) {
+      unsetRelatedResourcesProperty(parentResourceJcrNode);
+    } else {
+      setRelatedResourcesProperty(parentResourceJcrNode, relatedResourcesInJcr);
+    }
 
     if (!relatedResourcesToDeleteFromJcr.isEmpty()) {
       disappearedRelatedResources.put(
@@ -110,9 +112,9 @@ final class PublishedRelatedResourcesManager {
           PublishedRelatedResourcesInversedTreeManager.removeData(relatedResources, parentResourcePath, session);
           if (parentResourceJcrNode.hasProperty(PN_RELATED_RESOURCES)) {
             if (parentResourceJcrNode.hasNodes()) {
-              parentResourceJcrNode.setProperty(PN_RELATED_RESOURCES, (String[]) null);
+              unsetRelatedResourcesProperty(parentResourceJcrNode);
             } else {
-              parentResourceJcrNode.remove();
+              JcrNodeHelper.removeNodeAlongWithOrphanedParents(parentResourceJcrNode, BASE_NODE_PATH);
             }
           }
         }
@@ -121,6 +123,15 @@ final class PublishedRelatedResourcesManager {
     } catch (Exception ex) {
       LOG.error("Error updating JCR state for parent resources {}", parentResources, ex);
     }
+  }
+
+  private static void setRelatedResourcesProperty(Node parentResourceJcrNode, Set<String> relatedResources) throws RepositoryException {
+    String[] relatedResourcesArray = relatedResources.toArray(String[]::new);
+    parentResourceJcrNode.setProperty(PN_RELATED_RESOURCES, relatedResourcesArray);
+  }
+
+  private static void unsetRelatedResourcesProperty(Node parentResourceJcrNode) throws RepositoryException {
+    parentResourceJcrNode.setProperty(PN_RELATED_RESOURCES, (String[]) null);
   }
 
   static boolean wasPublished(ResourceInfo relatedResource, ResourceResolver resourceResolver) {
