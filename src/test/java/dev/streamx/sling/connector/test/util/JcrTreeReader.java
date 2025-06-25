@@ -23,7 +23,7 @@ public class JcrTreeReader {
   }
 
   /**
-   * Returns map of all nodes under the given parent node, in the order of iterating the tree.
+   * Returns map of all nodes under the given parent node (and the parent node itself), in the order of iterating the tree.
    * Every map entry contains the node path as the key, and map of its properties as value
    */
   public static Map<String, Map<String, Set<String>>> getNestedNodes(String parentNodePath, ResourceResolver resourceResolver) throws RepositoryException {
@@ -31,10 +31,7 @@ public class JcrTreeReader {
 
     Session session = requireNonNull(resourceResolver.adaptTo(Session.class));
     Node parentNode = session.getNode(parentNodePath);
-    NodeIterator childNodes = parentNode.getNodes();
-    while (childNodes.hasNext()) {
-      readNode(childNodes.nextNode(), result);
-    }
+    readNode(parentNode, result);
 
     return result;
   }

@@ -1,9 +1,9 @@
 package dev.streamx.sling.connector.impl;
 
 import java.util.Set;
+import javax.jcr.Node;
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
-import org.apache.jackrabbit.commons.JcrUtils;
 
 /**
  * This class serves as a manager of inversed tree that PublishedRelatedResourcesManager produces.
@@ -21,7 +21,7 @@ final class PublishedRelatedResourcesInversedTreeManager {
   static void addData(Set<String> relatedResources, Session session) throws RepositoryException {
     for (String relatedResource : relatedResources) {
       String relatedResourceJcrPath = BASE_NODE_PATH + relatedResource;
-      JcrUtils.getOrCreateByPath(relatedResourceJcrPath, "nt:unstructured", session);
+      JcrNodeHelper.createNode(relatedResourceJcrPath, session);
     }
   }
 
@@ -35,7 +35,8 @@ final class PublishedRelatedResourcesInversedTreeManager {
       if (InternalResourceDetector.isInternalResource(relatedResource, parentResourcePath)) {
         String relatedResourceJcrPath = BASE_NODE_PATH + relatedResource;
         if (session.nodeExists(relatedResourceJcrPath)) {
-          session.removeItem(relatedResourceJcrPath);
+          Node nodeToRemove = session.getNode(relatedResourceJcrPath);
+          JcrNodeHelper.removeNodeAlongWithOrphanedParents(nodeToRemove, BASE_NODE_PATH);
         }
       }
     }

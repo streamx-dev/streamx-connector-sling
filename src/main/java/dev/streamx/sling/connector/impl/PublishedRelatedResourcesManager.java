@@ -13,7 +13,6 @@ import javax.jcr.Property;
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 import javax.jcr.Value;
-import org.apache.jackrabbit.commons.JcrUtils;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,7 +61,7 @@ final class PublishedRelatedResourcesManager {
       parentResourceJcrNode = session.getNode(parentResourceJcrPath);
       relatedResourcesInJcr = collectRelatedResources(parentResourceJcrNode);
     } else {
-      parentResourceJcrNode = JcrUtils.getOrCreateByPath(parentResourceJcrPath, "nt:unstructured", session);
+      parentResourceJcrNode = JcrNodeHelper.createNode(parentResourceJcrPath, session);
       relatedResourcesInJcr = new LinkedHashSet<>();
     }
 
@@ -116,7 +115,7 @@ final class PublishedRelatedResourcesManager {
             if (parentResourceJcrNode.hasNodes()) {
               parentResourceJcrNode.setProperty(PN_RELATED_RESOURCES, (String[]) null);
             } else {
-              parentResourceJcrNode.remove();
+              JcrNodeHelper.removeNodeAlongWithOrphanedParents(parentResourceJcrNode, BASE_NODE_PATH);
             }
           }
         }

@@ -216,6 +216,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
     verifyStateOfPublishedResourcesData(
         Map.of(
+            "/var/streamx/connector/sling/referenced-related-resources", NONE,
             "/var/streamx/connector/sling/referenced-related-resources/content", NONE,
             "/var/streamx/connector/sling/referenced-related-resources/content/my-site", NONE,
             "/var/streamx/connector/sling/referenced-related-resources/content/my-site/en", NONE,
@@ -224,6 +225,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
             "/var/streamx/connector/sling/referenced-related-resources/content/my-site/en/us/page-2", Set.of(CORE_IMG_FOR_PAGE_2, GLOBAL_JS_CLIENTLIB)
         ),
         Set.of(
+            "/var/streamx/connector/sling/related-resources",
             "/var/streamx/connector/sling/related-resources/content",
             "/var/streamx/connector/sling/related-resources/content/my-site",
             "/var/streamx/connector/sling/related-resources/content/my-site/en",
@@ -269,6 +271,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
     verifyStateOfPublishedResourcesData(
         Map.of(
+            "/var/streamx/connector/sling/referenced-related-resources", NONE,
             "/var/streamx/connector/sling/referenced-related-resources/content", NONE,
             "/var/streamx/connector/sling/referenced-related-resources/content/my-site", NONE,
             "/var/streamx/connector/sling/referenced-related-resources/content/my-site/en", NONE,
@@ -276,14 +279,11 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
             "/var/streamx/connector/sling/referenced-related-resources/content/my-site/en/us/page-2", Set.of(CORE_IMG_FOR_PAGE_2, GLOBAL_JS_CLIENTLIB)
         ),
         Set.of(
+            "/var/streamx/connector/sling/related-resources",
             "/var/streamx/connector/sling/related-resources/content",
             "/var/streamx/connector/sling/related-resources/content/my-site",
             "/var/streamx/connector/sling/related-resources/content/my-site/en",
             "/var/streamx/connector/sling/related-resources/content/my-site/en/us",
-            "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-1",
-            "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-1/images",
-            "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-1/images/image.coreimg.jpg",
-            "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-1/images/image.coreimg.jpg/11111",
             "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-2",
             "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-2/images",
             "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-2/images/image.coreimg.jpg",
@@ -320,24 +320,10 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
     verifyStateOfPublishedResourcesData(
         Map.of(
-            "/var/streamx/connector/sling/referenced-related-resources/content", NONE,
-            "/var/streamx/connector/sling/referenced-related-resources/content/my-site", NONE,
-            "/var/streamx/connector/sling/referenced-related-resources/content/my-site/en", NONE,
-            "/var/streamx/connector/sling/referenced-related-resources/content/my-site/en/us", NONE
+            "/var/streamx/connector/sling/referenced-related-resources", NONE
         ),
         Set.of(
-            "/var/streamx/connector/sling/related-resources/content",
-            "/var/streamx/connector/sling/related-resources/content/my-site",
-            "/var/streamx/connector/sling/related-resources/content/my-site/en",
-            "/var/streamx/connector/sling/related-resources/content/my-site/en/us",
-            "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-1",
-            "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-1/images",
-            "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-1/images/image.coreimg.jpg",
-            "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-1/images/image.coreimg.jpg/11111",
-            "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-2",
-            "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-2/images",
-            "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-2/images/image.coreimg.jpg",
-            "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-2/images/image.coreimg.jpg/22222",
+            "/var/streamx/connector/sling/related-resources",
             "/var/streamx/connector/sling/related-resources/etc.clientlibs",
             "/var/streamx/connector/sling/related-resources/etc.clientlibs/clientlib-1.css",
             "/var/streamx/connector/sling/related-resources/etc.clientlibs/clientlib-1.js"
@@ -369,6 +355,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
     verifyStateOfPublishedResourcesData(
         Map.of(
+            "/var/streamx/connector/sling/referenced-related-resources", NONE,
             "/var/streamx/connector/sling/referenced-related-resources/content", NONE,
             "/var/streamx/connector/sling/referenced-related-resources/content/my-site", NONE,
             "/var/streamx/connector/sling/referenced-related-resources/content/my-site/en", NONE,
@@ -376,14 +363,11 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
             "/var/streamx/connector/sling/referenced-related-resources/content/my-site/en/us/page-2", Set.of(CORE_IMG_FOR_PAGE_2, GLOBAL_JS_CLIENTLIB)
         ),
         Set.of(
+            "/var/streamx/connector/sling/related-resources",
             "/var/streamx/connector/sling/related-resources/content",
             "/var/streamx/connector/sling/related-resources/content/my-site",
             "/var/streamx/connector/sling/related-resources/content/my-site/en",
             "/var/streamx/connector/sling/related-resources/content/my-site/en/us",
-            "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-1",
-            "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-1/images",
-            "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-1/images/image.coreimg.jpg",
-            "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-1/images/image.coreimg.jpg/11111",
             "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-2",
             "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-2/images",
             "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-2/images/image.coreimg.jpg",
@@ -427,6 +411,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
     verifyStateOfPublishedResourcesData(
         Map.of(
+            "/var/streamx/connector/sling/referenced-related-resources", NONE,
             "/var/streamx/connector/sling/referenced-related-resources/content", NONE,
             "/var/streamx/connector/sling/referenced-related-resources/content/my-site", NONE,
             "/var/streamx/connector/sling/referenced-related-resources/content/my-site/en", NONE,
@@ -435,6 +420,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
             "/var/streamx/connector/sling/referenced-related-resources/content/my-site/en/us/page-2", Set.of(CORE_IMG_FOR_PAGE_2, GLOBAL_JS_CLIENTLIB)
         ),
         Set.of(
+            "/var/streamx/connector/sling/related-resources",
             "/var/streamx/connector/sling/related-resources/content",
             "/var/streamx/connector/sling/related-resources/content/my-site",
             "/var/streamx/connector/sling/related-resources/content/my-site/en",
@@ -481,6 +467,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
     verifyStateOfPublishedResourcesData(
         Map.of(
+            "/var/streamx/connector/sling/referenced-related-resources", NONE,
             "/var/streamx/connector/sling/referenced-related-resources/content", NONE,
             "/var/streamx/connector/sling/referenced-related-resources/content/my-site", NONE,
             "/var/streamx/connector/sling/referenced-related-resources/content/my-site/en", NONE,
@@ -489,14 +476,11 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
             "/var/streamx/connector/sling/referenced-related-resources/content/my-site/en/us/page-2", Set.of(CORE_IMG_FOR_PAGE_2, GLOBAL_JS_CLIENTLIB)
         ),
         Set.of(
+            "/var/streamx/connector/sling/related-resources",
             "/var/streamx/connector/sling/related-resources/content",
             "/var/streamx/connector/sling/related-resources/content/my-site",
             "/var/streamx/connector/sling/related-resources/content/my-site/en",
             "/var/streamx/connector/sling/related-resources/content/my-site/en/us",
-            "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-1",
-            "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-1/images",
-            "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-1/images/image.coreimg.jpg",
-            "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-1/images/image.coreimg.jpg/11111",
             "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-2",
             "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-2/images",
             "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-2/images/image.coreimg.jpg",
@@ -524,6 +508,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
     verifyStateOfPublishedResourcesData(
         Map.of(
+            "/var/streamx/connector/sling/referenced-related-resources", NONE,
             "/var/streamx/connector/sling/referenced-related-resources/content", NONE,
             "/var/streamx/connector/sling/referenced-related-resources/content/my-site", NONE,
             "/var/streamx/connector/sling/referenced-related-resources/content/my-site/a", Set.of(GLOBAL_JS_CLIENTLIB),
@@ -531,6 +516,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
             "/var/streamx/connector/sling/referenced-related-resources/content/my-site/a/b/c", Set.of(GLOBAL_JS_CLIENTLIB)
         ),
         Set.of(
+            "/var/streamx/connector/sling/related-resources",
             "/var/streamx/connector/sling/related-resources/etc.clientlibs",
             "/var/streamx/connector/sling/related-resources/etc.clientlibs/clientlib-1.css"
         )
@@ -544,6 +530,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
     verifyStateOfPublishedResourcesData(
         Map.of(
+            "/var/streamx/connector/sling/referenced-related-resources", NONE,
             "/var/streamx/connector/sling/referenced-related-resources/content", NONE,
             "/var/streamx/connector/sling/referenced-related-resources/content/my-site", NONE,
             "/var/streamx/connector/sling/referenced-related-resources/content/my-site/a", NONE,
@@ -551,6 +538,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
             "/var/streamx/connector/sling/referenced-related-resources/content/my-site/a/b/c", Set.of(GLOBAL_JS_CLIENTLIB)
         ),
         Set.of(
+            "/var/streamx/connector/sling/related-resources",
             "/var/streamx/connector/sling/related-resources/etc.clientlibs",
             "/var/streamx/connector/sling/related-resources/etc.clientlibs/clientlib-1.css"
         )
@@ -565,11 +553,10 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
     verifyStateOfPublishedResourcesData(
         Map.of(
-            "/var/streamx/connector/sling/referenced-related-resources/content", NONE,
-            "/var/streamx/connector/sling/referenced-related-resources/content/my-site", NONE,
-            "/var/streamx/connector/sling/referenced-related-resources/content/my-site/a", NONE
+            "/var/streamx/connector/sling/referenced-related-resources", NONE
         ),
         Set.of(
+            "/var/streamx/connector/sling/related-resources",
             "/var/streamx/connector/sling/related-resources/etc.clientlibs",
             "/var/streamx/connector/sling/related-resources/etc.clientlibs/clientlib-1.css"
         )
@@ -594,6 +581,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
     verifyStateOfPublishedResourcesData(
         Map.of(
+            "/var/streamx/connector/sling/referenced-related-resources", NONE,
             "/var/streamx/connector/sling/referenced-related-resources/content", NONE,
             "/var/streamx/connector/sling/referenced-related-resources/content/my-site", NONE,
             "/var/streamx/connector/sling/referenced-related-resources/content/my-site/a", Set.of(image3),
@@ -601,6 +589,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
             "/var/streamx/connector/sling/referenced-related-resources/content/my-site/a/b/c", Set.of(image1)
         ),
         Set.of(
+            "/var/streamx/connector/sling/related-resources",
             "/var/streamx/connector/sling/related-resources/content",
             "/var/streamx/connector/sling/related-resources/content/my-site",
             "/var/streamx/connector/sling/related-resources/content/my-site/a",
@@ -620,6 +609,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
     verifyStateOfPublishedResourcesData(
         Map.of(
+            "/var/streamx/connector/sling/referenced-related-resources", NONE,
             "/var/streamx/connector/sling/referenced-related-resources/content", NONE,
             "/var/streamx/connector/sling/referenced-related-resources/content/my-site", NONE,
             "/var/streamx/connector/sling/referenced-related-resources/content/my-site/a", NONE,
@@ -627,6 +617,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
             "/var/streamx/connector/sling/referenced-related-resources/content/my-site/a/b/c", Set.of(image1)
         ),
         Set.of(
+            "/var/streamx/connector/sling/related-resources",
             "/var/streamx/connector/sling/related-resources/content",
             "/var/streamx/connector/sling/related-resources/content/my-site",
             "/var/streamx/connector/sling/related-resources/content/my-site/a",
