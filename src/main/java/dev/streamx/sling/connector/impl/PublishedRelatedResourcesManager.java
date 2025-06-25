@@ -76,10 +76,9 @@ final class PublishedRelatedResourcesManager {
     PublishedRelatedResourcesInversedTreeManager.removeData(relatedResourcesToDeleteFromJcr, parentResourcePath, session);
 
     if (relatedResourcesInJcr.isEmpty()) {
-      parentResourceJcrNode.setProperty(PN_RELATED_RESOURCES, (String[]) null);
+      unsetRelatedResourcesProperty(parentResourceJcrNode);
     } else {
-      String[] relatedResourcesArray = relatedResourcesInJcr.toArray(String[]::new);
-      parentResourceJcrNode.setProperty(PN_RELATED_RESOURCES, relatedResourcesArray);
+      setRelatedResourcesProperty(parentResourceJcrNode, relatedResourcesInJcr);
     }
 
     if (!relatedResourcesToDeleteFromJcr.isEmpty()) {
@@ -113,7 +112,7 @@ final class PublishedRelatedResourcesManager {
           PublishedRelatedResourcesInversedTreeManager.removeData(relatedResources, parentResourcePath, session);
           if (parentResourceJcrNode.hasProperty(PN_RELATED_RESOURCES)) {
             if (parentResourceJcrNode.hasNodes()) {
-              parentResourceJcrNode.setProperty(PN_RELATED_RESOURCES, (String[]) null);
+              unsetRelatedResourcesProperty(parentResourceJcrNode);
             } else {
               JcrNodeHelper.removeNodeAlongWithOrphanedParents(parentResourceJcrNode, BASE_NODE_PATH);
             }
@@ -124,6 +123,15 @@ final class PublishedRelatedResourcesManager {
     } catch (Exception ex) {
       LOG.error("Error updating JCR state for parent resources {}", parentResources, ex);
     }
+  }
+
+  private static void setRelatedResourcesProperty(Node parentResourceJcrNode, Set<String> relatedResources) throws RepositoryException {
+    String[] relatedResourcesArray = relatedResources.toArray(String[]::new);
+    parentResourceJcrNode.setProperty(PN_RELATED_RESOURCES, relatedResourcesArray);
+  }
+
+  private static void unsetRelatedResourcesProperty(Node parentResourceJcrNode) throws RepositoryException {
+    parentResourceJcrNode.setProperty(PN_RELATED_RESOURCES, (String[]) null);
   }
 
   static boolean wasPublished(ResourceInfo relatedResource, ResourceResolver resourceResolver) {
