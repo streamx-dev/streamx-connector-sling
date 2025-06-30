@@ -70,6 +70,8 @@ public class ResourceInfo {
    */
   @Nullable
   public String getPrimaryNodeType() {
+    // TODO: can we use this property name?
+    //  For ResourceInfo objects coming from different sources - the method will return null, maybe it's enough?
     return properties.get(JcrConstants.JCR_PRIMARYTYPE);
   }
 
