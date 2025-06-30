@@ -9,8 +9,10 @@ import dev.streamx.sling.connector.PublicationAction;
 import dev.streamx.sling.connector.PublicationHandler;
 import dev.streamx.sling.connector.PublicationRetryPolicy;
 import dev.streamx.sling.connector.PublishData;
+import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.StreamxPublicationException;
 import dev.streamx.sling.connector.UnpublishData;
+import java.util.Map;
 import java.util.Optional;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.sling.event.jobs.Job;
@@ -34,10 +36,11 @@ public class PublicationJobExecutor implements JobExecutor {
   private static final Logger LOG = LoggerFactory.getLogger(PublicationJobExecutor.class);
 
   static final String JOB_TOPIC = "dev/streamx/publications";
-  static final String PN_STREAMX_HANDLER_ID = "streamx.handler.id";
-  static final String PN_STREAMX_CLIENT_NAME = "streamx.client.name";
-  static final String PN_STREAMX_ACTION = "streamx.action";
-  static final String PN_STREAMX_PATH = "streamx.path";
+  static final String PN_STREAMX_PUBLICATION_HANDLER_ID = "streamx.publication.handler.id";
+  static final String PN_STREAMX_PUBLICATION_CLIENT_NAME = "streamx.publication.client.name";
+  static final String PN_STREAMX_PUBLICATION_ACTION = "streamx.publication.action";
+  static final String PN_STREAMX_PUBLICATION_PATH = "streamx.publication.path";
+  static final String PN_STREAMX_PUBLICATION_PROPERTIES = "streamx.publication.properties";
 
   @Reference
   private StreamxClientStore streamxClientStore;
@@ -57,22 +60,26 @@ public class PublicationJobExecutor implements JobExecutor {
   @Override
   public JobExecutionResult process(Job job, JobExecutionContext context) {
     LOG.trace("Processing {}", job);
-    String handlerId = job.getProperty(PN_STREAMX_HANDLER_ID, String.class);
-    String clientName = job.getProperty(PN_STREAMX_CLIENT_NAME, String.class);
-    Optional<PublicationAction> actionNullable = PublicationAction.of(job.getProperty(PN_STREAMX_ACTION, String.class));
+    String handlerId = job.getProperty(PN_STREAMX_PUBLICATION_HANDLER_ID, String.class);
+    String clientName = job.getProperty(PN_STREAMX_PUBLICATION_CLIENT_NAME, String.class);
+    Optional<PublicationAction> actionNullable = PublicationAction.of(job.getProperty(
+        PN_STREAMX_PUBLICATION_ACTION, String.class));
     if (actionNullable.isEmpty()) {
       LOG.warn("Publication action is not set, job will be cancelled: {}", job);
       return context.result().cancelled();
     }
     PublicationAction action = actionNullable.orElseThrow();
-    String path = job.getProperty(PN_STREAMX_PATH, String.class);
+    String path = job.getProperty(PN_STREAMX_PUBLICATION_PATH, String.class);
     if (StringUtils.isEmpty(path)) {
       LOG.warn("This publication job has no path: {}", job);
       return context.result().cancelled();
     }
+    String serializedProperties = job.getProperty(PN_STREAMX_PUBLICATION_PROPERTIES, String.class);
+    Map<String, String> properties = ResourceInfo.deserializeProperties(serializedProperties);
+    ResourceInfo resource = new ResourceInfo(path, properties);
     LOG.debug("Processing action: [{} - {}]", action, path);
     try {
-      return processPublication(handlerId, action, path, clientName, context);
+      return processPublication(handlerId, action, resource, clientName, context);
     } catch (StreamxPublicationException | StreamxClientException e) {
       LOG.error("Error while processing publication, job will be retried. {}", e.getMessage());
       LOG.debug("Publication error details: ", e);
@@ -84,7 +91,7 @@ public class PublicationJobExecutor implements JobExecutor {
     }
   }
 
-  private JobExecutionResult processPublication(String handlerId, PublicationAction action, String path,
+  private JobExecutionResult processPublication(String handlerId, PublicationAction action, ResourceInfo resource,
       String clientName, JobExecutionContext context)
       throws StreamxPublicationException, StreamxClientException {
     PublicationHandler<?> publicationHandler = findHandler(handlerId);
@@ -100,10 +107,10 @@ public class PublicationJobExecutor implements JobExecutor {
 
     switch (action) {
       case PUBLISH:
-        handlePublish(publicationHandler, streamxInstanceClient, path);
+        handlePublish(publicationHandler, streamxInstanceClient, resource);
         break;
       case UNPUBLISH:
-        handleUnpublish(publicationHandler, streamxInstanceClient, path);
+        handleUnpublish(publicationHandler, streamxInstanceClient, resource);
         break;
       default:
         LOG.debug("Unsupported publication action: [{}]", action);
@@ -120,9 +127,9 @@ public class PublicationJobExecutor implements JobExecutor {
   }
 
   private <T> void handlePublish(PublicationHandler<T> publicationHandler,
-      StreamxInstanceClient streamxInstanceClient, String resourcePath)
+      StreamxInstanceClient streamxInstanceClient, ResourceInfo resource)
       throws StreamxPublicationException, StreamxClientException {
-    PublishData<T> publishData = publicationHandler.getPublishData(resourcePath);
+    PublishData<T> publishData = publicationHandler.getPublishData(resource);
     if (publishData == null) {
       LOG.debug("Publish data returned by [{}] is null", publicationHandler.getClass().getName());
       return;
@@ -137,9 +144,9 @@ public class PublicationJobExecutor implements JobExecutor {
   }
 
   private <T> void handleUnpublish(PublicationHandler<T> publicationHandler,
-      StreamxInstanceClient streamxInstanceClient, String resourcePath)
+      StreamxInstanceClient streamxInstanceClient, ResourceInfo resource)
       throws StreamxPublicationException, StreamxClientException {
-    UnpublishData<T> unpublishData = publicationHandler.getUnpublishData(resourcePath);
+    UnpublishData<T> unpublishData = publicationHandler.getUnpublishData(resource);
     if (unpublishData == null) {
       LOG.debug("Unpublish data returned by [{}] is null", publicationHandler.getClass().getName());
       return;

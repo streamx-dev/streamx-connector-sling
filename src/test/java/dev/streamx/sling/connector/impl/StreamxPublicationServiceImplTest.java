@@ -5,6 +5,7 @@ import dev.streamx.sling.connector.handlers.resourcepath.ResourcePathPublication
 import dev.streamx.sling.connector.handlers.resourcepath.ResourcePathPublicationHandlerConfig;
 import dev.streamx.sling.connector.test.util.AssetResourceInfo;
 import dev.streamx.sling.connector.test.util.PageResourceInfo;
+import dev.streamx.sling.connector.test.util.ResourceResolverMocks;
 import dev.streamx.sling.connector.testing.handlers.Asset;
 import dev.streamx.sling.connector.testing.handlers.AssetPublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.ImpostorPublicationHandler;
@@ -49,7 +50,6 @@ import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doCallRealMethod;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -83,7 +83,7 @@ class StreamxPublicationServiceImplTest {
     response.getWriter().write(pageName);
   };
 
-  private final RelatedResourcesSelector relatedAssetsSelector = resourcePath ->
+  private final RelatedResourcesSelector relatedAssetsSelector = resource ->
        Arrays.asList(
           new AssetResourceInfo(RELATED_ASSET_TO_PUBLISH),
           new AssetResourceInfo(OTHER_RELATED_ASSET_TO_PUBLISH)
@@ -181,8 +181,7 @@ class StreamxPublicationServiceImplTest {
 
     slingContext.registerInjectActivateService(new RelatedResourcesSelectorRegistry());
 
-    doReturn(resourceResolver).when(resourceResolverFactory).getAdministrativeResourceResolver(null);
-    doNothing().when(resourceResolver).close();
+    ResourceResolverMocks.configure(resourceResolver, resourceResolverFactory);
 
     slingContext.registerService(SlingRequestProcessor.class, dummyRequestProcessor);
     slingContext.registerInjectActivateService(publicationService, publicationServiceConfig);
@@ -198,7 +197,7 @@ class StreamxPublicationServiceImplTest {
         .toArray(String[]::new);
 
     Job job = mock(Job.class);
-    when(job.getProperty(IngestionTriggerJobHelper.PN_STREAMX_RESOURCES_INFO, String[].class)).thenReturn(serializedResources);
+    when(job.getProperty(IngestionTriggerJobHelper.PN_STREAMX_INGESTION_RESOURCES, String[].class)).thenReturn(serializedResources);
     when(job.getProperty(IngestionTriggerJobHelper.PN_STREAMX_INGESTION_ACTION, String.class)).thenReturn(action);
     publicationService.process(job, new FakeJobExecutionContext());
   }
@@ -613,14 +612,14 @@ class StreamxPublicationServiceImplTest {
     FakeJob publishJob = queuedJobs.get(0);
     assertThat(publishJob.getProperty(IngestionTriggerJobHelper.PN_STREAMX_INGESTION_ACTION, String.class))
         .isEqualTo("PUBLISH");
-    assertThat(publishJob.getProperty(IngestionTriggerJobHelper.PN_STREAMX_RESOURCES_INFO, String[].class))
-        .containsExactly("{\"path\":\"path-1\",\"primaryNodeType\":\"cq:Page\"}");
+    assertThat(publishJob.getProperty(IngestionTriggerJobHelper.PN_STREAMX_INGESTION_RESOURCES, String[].class))
+        .containsExactly("{\"path\":\"path-1\",\"properties\":{\"jcr:primaryType\":\"cq:Page\"}}");
 
     FakeJob unpublishJob = queuedJobs.get(1);
     assertThat(unpublishJob.getProperty(IngestionTriggerJobHelper.PN_STREAMX_INGESTION_ACTION, String.class))
         .isEqualTo("UNPUBLISH");
-    assertThat(unpublishJob.getProperty(IngestionTriggerJobHelper.PN_STREAMX_RESOURCES_INFO, String[].class))
-        .containsExactly("{\"path\":\"path-2\",\"primaryNodeType\":\"dam:Asset\"}");
+    assertThat(unpublishJob.getProperty(IngestionTriggerJobHelper.PN_STREAMX_INGESTION_RESOURCES, String[].class))
+        .containsExactly("{\"path\":\"path-2\",\"properties\":{\"jcr:primaryType\":\"dam:Asset\"}}");
   }
 
   private void givenPageHierarchy(String... paths) throws PersistenceException {

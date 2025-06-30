@@ -26,10 +26,10 @@ public class FakeThrowablePublicationHandler implements PublicationHandler<Strin
   }
 
   @Override
-  public PublishData<String> getPublishData(String resourcePath) throws StreamxPublicationException {
+  public PublishData<String> getPublishData(ResourceInfo resourceInfo) throws StreamxPublicationException {
     process();
     return new PublishData<>(
-        resourcePath,
+        resourceInfo.getPath(),
         CHANNEL,
         String.class,
         "Success",
@@ -38,10 +38,10 @@ public class FakeThrowablePublicationHandler implements PublicationHandler<Strin
   }
 
   @Override
-  public UnpublishData<String> getUnpublishData(String resourcePath) throws StreamxPublicationException {
+  public UnpublishData<String> getUnpublishData(ResourceInfo resourceInfo) throws StreamxPublicationException {
     process();
     return new UnpublishData<>(
-        resourcePath,
+        resourceInfo.getPath(),
         CHANNEL,
         String.class,
         PUBLICATION_PROPERTIES

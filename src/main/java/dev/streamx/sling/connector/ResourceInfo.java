@@ -1,53 +1,59 @@
 package dev.streamx.sling.connector;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
+import com.fasterxml.jackson.core.type.TypeReference;
+import java.util.Collections;
+import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.jackrabbit.JcrConstants;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Specifies path and JCR primary node type of a resource to be published or unpublished
+ * Specifies path and selected JCR properties of a resource to be published or unpublished
  */
+@JsonAutoDetect(fieldVisibility = Visibility.ANY, getterVisibility = Visibility.NONE)
 public class ResourceInfo {
 
   private static ObjectMapper objectMapper;
+
+  private static final TypeReference<Map<String, String>> propertiesMapReference = new TypeReference<>() {
+  };
 
   /**
    * Path of the resource
    */
   private final String path;
 
-  /**
-   * Primary node type of the resource. Null for non-JCR resources
-   */
-  @Nullable
-  private final String primaryNodeType;
+  private final Map<String, String> properties;
 
   /**
-   * Creates an instance of {@link ResourceInfo} with null value for primaryNodeType
+   * Creates an instance of {@link ResourceInfo} with empty properties map
    * @param path path of the resource
    */
   public ResourceInfo(String path) {
-    this(path, null);
+    this(path, Collections.emptyMap());
   }
 
   /**
    * Creates an instance of {@link ResourceInfo}
    * @param path path of the resource
-   * @param primaryNodeType primary node type of the resource. Null for non-JCR resources
+   * @param properties resource properties
    */
   @JsonCreator
   public ResourceInfo(
       @JsonProperty("path") String path,
-      @JsonProperty("primaryNodeType") @Nullable String primaryNodeType) {
+      @JsonProperty("properties") Map<String, String> properties) {
     if (StringUtils.isBlank(path)) {
       throw new IllegalArgumentException("path cannot be blank");
     }
     this.path = path;
-    this.primaryNodeType = primaryNodeType;
+    this.properties = Collections.unmodifiableMap(properties);
   }
 
   /**
@@ -64,7 +70,40 @@ public class ResourceInfo {
    */
   @Nullable
   public String getPrimaryNodeType() {
-    return primaryNodeType;
+    return properties.get(JcrConstants.JCR_PRIMARYTYPE);
+  }
+
+  /**
+   * Returns properties of the resource
+   * @return properties of the resource
+   */
+  public Map<String, String> getProperties() {
+    return properties;
+  }
+
+  /**
+   * Returns properties serialized to JSON
+   * @return properties serialized to JSON
+   */
+  public String getSerializedProperties() {
+    try {
+      return getOrCreateObjectMapper().writeValueAsString(properties);
+    } catch (JsonProcessingException ex) {
+      throw new IllegalArgumentException("Error serializing properties map", ex);
+    }
+  }
+
+  /**
+   * Returns the JSON string deserialized to a {@code Map<String, String>}
+   * @param serializedProperties a {@code Map<String, String>} serialized to JSON
+   * @return the JSON string deserialized to a {@code Map<String, String>}
+   */
+  public static Map<String, String> deserializeProperties(String serializedProperties) {
+    try {
+      return getOrCreateObjectMapper().readValue(serializedProperties, propertiesMapReference);
+    } catch (JsonProcessingException ex) {
+      throw new IllegalArgumentException("Error deserializing to properties map", ex);
+    }
   }
 
   /**
@@ -112,7 +151,7 @@ public class ResourceInfo {
       ResourceInfo that = (ResourceInfo) o;
       return new EqualsBuilder()
           .append(path, that.path)
-          .append(primaryNodeType, that.primaryNodeType)
+          .append(properties, that.properties)
           .isEquals();
     }
     return false;

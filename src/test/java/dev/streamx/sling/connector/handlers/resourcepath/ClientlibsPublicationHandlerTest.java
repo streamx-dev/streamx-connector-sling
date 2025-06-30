@@ -91,13 +91,13 @@ class ClientlibsPublicationHandlerTest {
       ResourceInfo resource = new AssetResourceInfo(webResourcePath);
       assertThat(handler.canHandle(resource)).isTrue();
 
-      PublishData<WebResource> publishData = handler.getPublishData(webResourcePath);
+      PublishData<WebResource> publishData = handler.getPublishData(resource);
       assertThat(publishData.getModel()).isInstanceOf(WebResource.class);
       assertThat(publishData.getModel().getContent().array()).hasSize(expectedSize);
       assertThat(publishData.getKey()).isEqualTo(webResourcePath);
       assertThat(publishData.getChannel()).isEqualTo("web-resources");
 
-      UnpublishData<WebResource> unpublishData = handler.getUnpublishData(webResourcePath);
+      UnpublishData<WebResource> unpublishData = handler.getUnpublishData(resource);
       assertThat(unpublishData.getKey()).isEqualTo(webResourcePath);
       assertThat(unpublishData.getChannel()).isEqualTo("web-resources");
     }

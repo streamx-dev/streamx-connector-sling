@@ -22,12 +22,12 @@ class RelatedResourcesSelectorRegistryTest {
   @Test
   void shouldBindAndUnbindSelectors() {
     // given
-    RelatedResourcesSelector selector1 = resourcePath -> List.of(
+    RelatedResourcesSelector selector1 = resource -> List.of(
         new PageResourceInfo("/content/pages/page.html"),
         new AssetResourceInfo("/content/dam/image.jpg")
     );
 
-    RelatedResourcesSelector selector2 = resourcePath -> List.of(
+    RelatedResourcesSelector selector2 = resource -> List.of(
         new PageResourceInfo("/content/pages/other-page.html"),
         new AssetResourceInfo("/content/dam/other-image.jpg")
     );

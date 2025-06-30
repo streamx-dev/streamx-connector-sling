@@ -14,8 +14,8 @@ import org.apache.sling.event.jobs.Job;
 final class IngestionTriggerJobHelper {
 
   static final String JOB_TOPIC = "dev/streamx/ingestion-trigger";
-  static final String PN_STREAMX_INGESTION_ACTION = "streamx.ingestionAction";
-  static final String PN_STREAMX_RESOURCES_INFO = "streamx.resourcesInfo";
+  static final String PN_STREAMX_INGESTION_ACTION = "streamx.ingestion.action";
+  static final String PN_STREAMX_INGESTION_RESOURCES = "streamx.ingestion.resources";
 
   private IngestionTriggerJobHelper() {
     // no instances
@@ -27,7 +27,7 @@ final class IngestionTriggerJobHelper {
   }
 
   static List<ResourceInfo> extractResourcesInfo(Job job) {
-    String[] resourcesInfoRaw = job.getProperty(PN_STREAMX_RESOURCES_INFO, String[].class);
+    String[] resourcesInfoRaw = job.getProperty(PN_STREAMX_INGESTION_RESOURCES, String[].class);
     return Stream.of(resourcesInfoRaw)
         .map(ResourceInfo::deserialize)
         .filter(resource -> resource.getPath() != null)
@@ -37,7 +37,7 @@ final class IngestionTriggerJobHelper {
   static Map<String, Object> asJobProps(PublicationAction publicationAction, List<ResourceInfo> resourcesInfo) {
     return Map.of(
         PN_STREAMX_INGESTION_ACTION, publicationAction.toString(),
-        PN_STREAMX_RESOURCES_INFO, resourcesInfo.stream().map(ResourceInfo::serialize).toArray(String[]::new)
+        PN_STREAMX_INGESTION_RESOURCES, resourcesInfo.stream().map(ResourceInfo::serialize).toArray(String[]::new)
     );
   }
 }

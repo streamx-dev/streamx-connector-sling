@@ -1,9 +1,10 @@
 package dev.streamx.sling.connector.impl;
 
-import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_ACTION;
-import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_CLIENT_NAME;
-import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_HANDLER_ID;
-import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PATH;
+import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PUBLICATION_ACTION;
+import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PUBLICATION_CLIENT_NAME;
+import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PUBLICATION_HANDLER_ID;
+import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PUBLICATION_PATH;
+import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PUBLICATION_PROPERTIES;
 
 import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.PublicationAction;
@@ -135,7 +136,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     Map<String, Set<ResourceInfo>> result = new LinkedHashMap<>();
     for (ResourceInfo parentResource : parentResources) {
       Set<ResourceInfo> relatedResources = relatedResourcesSelectorRegistry.getSelectors().stream()
-          .flatMap(selector -> selector.getRelatedResources(parentResource.getPath()).stream())
+          .flatMap(selector -> selector.getRelatedResources(parentResource).stream())
           .filter(relatedResource -> !parentResourcesPaths.contains(relatedResource.getPath()))
           .collect(Collectors.toCollection(LinkedHashSet::new));
       result.put(parentResource.getPath(), relatedResources);
@@ -197,18 +198,22 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     for (PublicationHandler<?> handler : publicationHandlerRegistry.getForResource(resource)) {
       for (StreamxInstanceClient client : streamxClientStore.getForResource(resourcePath)) {
         LOG.debug("Adding publication request for [{}: {}] to queue", handler.getId(), resourcePath);
-        addPublicationToQueue(handler.getId(), action, resourcePath, client.getName());
+        addPublicationToQueue(handler.getId(), action, resource, client.getName());
       }
     }
   }
 
   private void addPublicationToQueue(String handlerId, PublicationAction action,
-      String resourcePath, String clientName) throws JobCreationException {
+      ResourceInfo resource, String clientName) throws JobCreationException {
+    String resourcePath = resource.getPath();
+
     Map<String, Object> jobProperties = new HashMap<>();
-    jobProperties.put(PN_STREAMX_HANDLER_ID, handlerId);
-    jobProperties.put(PN_STREAMX_CLIENT_NAME, clientName);
-    jobProperties.put(PN_STREAMX_ACTION, action.toString());
-    jobProperties.put(PN_STREAMX_PATH, resourcePath);
+    jobProperties.put(PN_STREAMX_PUBLICATION_HANDLER_ID, handlerId);
+    jobProperties.put(PN_STREAMX_PUBLICATION_CLIENT_NAME, clientName);
+    jobProperties.put(PN_STREAMX_PUBLICATION_ACTION, action.toString());
+    jobProperties.put(PN_STREAMX_PUBLICATION_PATH, resourcePath);
+    jobProperties.put(PN_STREAMX_PUBLICATION_PROPERTIES, resource.getSerializedProperties());
+
     Job job = jobManager.addJob(PublicationJobExecutor.JOB_TOPIC, jobProperties);
     if (job == null) {
       throw new JobCreationException("Publication job could not be created by JobManager for " + resourcePath);

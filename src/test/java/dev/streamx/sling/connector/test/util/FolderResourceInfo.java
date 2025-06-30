@@ -4,9 +4,9 @@ import dev.streamx.sling.connector.ResourceInfo;
 import java.util.Map;
 import org.apache.jackrabbit.JcrConstants;
 
-public class PageResourceInfo extends ResourceInfo {
+public class FolderResourceInfo extends ResourceInfo {
 
-  public PageResourceInfo(String path) {
-    super(path, Map.of(JcrConstants.JCR_PRIMARYTYPE, "cq:Page"));
+  public FolderResourceInfo(String path) {
+    super(path, Map.of(JcrConstants.JCR_PRIMARYTYPE, "sling:Folder"));
   }
 }

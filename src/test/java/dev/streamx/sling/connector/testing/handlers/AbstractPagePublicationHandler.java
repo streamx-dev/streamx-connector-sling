@@ -30,7 +30,8 @@ abstract class AbstractPagePublicationHandler implements PublicationHandler<Page
   }
 
   @Override
-  public PublishData<Page> getPublishData(String resourcePath) {
+  public PublishData<Page> getPublishData(ResourceInfo resourceInfo) {
+    String resourcePath = resourceInfo.getPath();
     Resource resource = resourceResolver.getResource(resourcePath);
     Objects.requireNonNull(resource);
     return new PublishData<>(getPagePath(resourcePath), CHANNEL, Page.class,
@@ -38,7 +39,7 @@ abstract class AbstractPagePublicationHandler implements PublicationHandler<Page
   }
 
   @Override
-  public UnpublishData<Page> getUnpublishData(String resourcePath) {
-    return new UnpublishData<>(getPagePath(resourcePath), CHANNEL, Page.class);
+  public UnpublishData<Page> getUnpublishData(ResourceInfo resourceInfo) {
+    return new UnpublishData<>(getPagePath(resourceInfo.getPath()), CHANNEL, Page.class);
   }
 }

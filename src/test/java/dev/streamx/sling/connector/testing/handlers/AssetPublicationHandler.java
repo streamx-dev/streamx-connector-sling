@@ -31,7 +31,8 @@ public class AssetPublicationHandler implements PublicationHandler<Asset> {
   }
 
   @Override
-  public PublishData<Asset> getPublishData(String resourcePath) {
+  public PublishData<Asset> getPublishData(ResourceInfo resourceInfo) {
+    String resourcePath = resourceInfo.getPath();
     Resource resource = resourceResolver.getResource(resourcePath);
     Objects.requireNonNull(resource);
     return new PublishData<>(resourcePath, CHANNEL, Asset.class,
@@ -39,7 +40,7 @@ public class AssetPublicationHandler implements PublicationHandler<Asset> {
   }
 
   @Override
-  public UnpublishData<Asset> getUnpublishData(String resourcePath) {
-    return new UnpublishData<>(resourcePath, CHANNEL, Asset.class);
+  public UnpublishData<Asset> getUnpublishData(ResourceInfo resourceInfo) {
+    return new UnpublishData<>(resourceInfo.getPath(), CHANNEL, Asset.class);
   }
 }

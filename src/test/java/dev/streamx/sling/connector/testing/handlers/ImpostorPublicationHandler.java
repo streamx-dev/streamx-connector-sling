@@ -18,12 +18,12 @@ public class ImpostorPublicationHandler implements PublicationHandler<Page> {
   }
 
   @Override
-  public PublishData<Page> getPublishData(String resourcePath) {
+  public PublishData<Page> getPublishData(ResourceInfo resourceInfo) {
     return null; // ...but return null...
   }
 
   @Override
-  public UnpublishData<Page> getUnpublishData(String resourcePath) {
+  public UnpublishData<Page> getUnpublishData(ResourceInfo resourceInfo) {
     return null; // ...for both types of publications.
   }
 }

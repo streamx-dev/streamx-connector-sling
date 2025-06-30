@@ -21,7 +21,7 @@ class IngestionTriggerJobHelperTest {
     // given
     when(fakeJob.getProperty(IngestionTriggerJobHelper.PN_STREAMX_INGESTION_ACTION, String.class))
         .thenReturn("PUBLISH");
-    when(fakeJob.getProperty(IngestionTriggerJobHelper.PN_STREAMX_RESOURCES_INFO, String[].class))
+    when(fakeJob.getProperty(IngestionTriggerJobHelper.PN_STREAMX_INGESTION_RESOURCES, String[].class))
         .thenReturn(new String[]{
             new PageResourceInfo("http://localhost:4502/content/we-retail/us/en").serialize(),
             new PageResourceInfo("/content/wknd/us/en").serialize()
@@ -51,7 +51,7 @@ class IngestionTriggerJobHelperTest {
 
     // then
     String rawPublicationAction = (String) jobProps.get(IngestionTriggerJobHelper.PN_STREAMX_INGESTION_ACTION);
-    String[] resourcesInfo = (String[]) jobProps.get(IngestionTriggerJobHelper.PN_STREAMX_RESOURCES_INFO);
+    String[] resourcesInfo = (String[]) jobProps.get(IngestionTriggerJobHelper.PN_STREAMX_INGESTION_RESOURCES);
 
     assertThat(rawPublicationAction).isEqualTo(PublicationAction.PUBLISH.toString());
     assertThat(resourcesInfo).hasSize(2);

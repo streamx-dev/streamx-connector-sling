@@ -3,14 +3,13 @@ package dev.streamx.sling.connector.selectors.content;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.contentOf;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 
 import dev.streamx.sling.connector.ResourceInfo;
+import dev.streamx.sling.connector.test.util.PageResourceInfo;
 import dev.streamx.sling.connector.test.util.ResourceContentRelatedResourcesSelectorConfigImpl;
-import dev.streamx.sling.connector.test.util.ResourceMocks;
+import dev.streamx.sling.connector.test.util.ResourceResolverMocks;
 import java.io.File;
 import java.util.Collection;
 import java.util.List;
@@ -31,7 +30,6 @@ import org.apache.sling.testing.mock.sling.junit5.SlingContextExtension;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentMatchers;
 
 @ExtendWith(SlingContextExtension.class)
 class ResourceContentRelatedResourcesSelectorRecursiveSearchTest {
@@ -51,6 +49,7 @@ class ResourceContentRelatedResourcesSelectorRecursiveSearchTest {
       ));
 
   private final SlingContext context = new SlingContext(ResourceResolverType.JCR_OAK);
+  private final ResourceResolver resourceResolverSpy = spy(context.resourceResolver());
   private final ResourceResolverFactory resourceResolverFactoryMock = mock(ResourceResolverFactory.class);
 
   private final SlingRequestProcessor basicRequestProcessor = (HttpServletRequest request, HttpServletResponse response, ResourceResolver resourceResolver) -> {
@@ -62,18 +61,7 @@ class ResourceContentRelatedResourcesSelectorRecursiveSearchTest {
 
   @BeforeEach
   void setupResourceResolver() throws Exception {
-    ResourceResolver spyResolver = spy(context.resourceResolver());
-
-    doReturn(ResourceMocks.createPageResourceMock())
-        .when(spyResolver)
-        .resolve(ArgumentMatchers.<String>argThat(path -> path.equals(MAIN_PAGE_RESOURCE)));
-
-    doReturn(ResourceMocks.createAssetResourceMock())
-        .when(spyResolver)
-        .resolve(ArgumentMatchers.<String>argThat(path -> !path.equals(MAIN_PAGE_RESOURCE)));
-
-    doNothing().when(spyResolver).close();
-    doReturn(spyResolver).when(resourceResolverFactoryMock).getAdministrativeResourceResolver(null);
+    ResourceResolverMocks.configure(resourceResolverSpy, resourceResolverFactoryMock);
   }
 
   @Test
@@ -137,7 +125,8 @@ class ResourceContentRelatedResourcesSelectorRecursiveSearchTest {
     );
 
     // when
-    Collection<ResourceInfo> actualRelatedResources = relatedResourcesSelector.getRelatedResources(MAIN_PAGE_RESOURCE);
+    ResourceInfo mainPageResource = new PageResourceInfo(MAIN_PAGE_RESOURCE);
+    Collection<ResourceInfo> actualRelatedResources = relatedResourcesSelector.getRelatedResources(mainPageResource);
 
     // then
     assertThat(actualRelatedResources)
