@@ -15,6 +15,7 @@ import java.util.Collection;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.jackrabbit.JcrConstants;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.resource.ResourceResolverFactory;
 import org.apache.sling.engine.SlingRequestProcessor;
@@ -78,7 +79,7 @@ class ResourceContentRelatedResourcesSelectorTest {
 
     // then
     assertThat(actualRelatedResources)
-        .extracting(ResourceInfo::getPrimaryNodeType)
+        .extracting(resource -> resource.getProperty(JcrConstants.JCR_PRIMARYTYPE))
         .containsOnlyNulls();
 
     assertThat(actualRelatedResources)

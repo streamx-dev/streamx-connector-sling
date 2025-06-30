@@ -5,6 +5,7 @@ import dev.streamx.sling.connector.PublicationHandler;
 import dev.streamx.sling.connector.PublishData;
 import dev.streamx.sling.connector.UnpublishData;
 import java.util.Objects;
+import org.apache.jackrabbit.JcrConstants;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
 
@@ -25,7 +26,7 @@ abstract class AbstractPagePublicationHandler implements PublicationHandler<Page
 
   @Override
   public boolean canHandle(ResourceInfo resource) {
-    return "cq:Page".equals(resource.getPrimaryNodeType())
+    return "cq:Page".equals(resource.getProperty(JcrConstants.JCR_PRIMARYTYPE))
            && resource.getPath().startsWith(handledPagePathPrefix());
   }
 

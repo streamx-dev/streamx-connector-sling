@@ -6,6 +6,7 @@ import dev.streamx.sling.connector.PublishData;
 import dev.streamx.sling.connector.UnpublishData;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
+import org.apache.jackrabbit.JcrConstants;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
 
@@ -26,7 +27,7 @@ public class AssetPublicationHandler implements PublicationHandler<Asset> {
 
   @Override
   public boolean canHandle(ResourceInfo resource) {
-    return "dam:Asset".equals(resource.getPrimaryNodeType())
+    return "dam:Asset".equals(resource.getProperty(JcrConstants.JCR_PRIMARYTYPE))
            && !resource.getPath().contains("/related/");
   }
 

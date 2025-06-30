@@ -11,7 +11,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.builder.EqualsBuilder;
-import org.apache.jackrabbit.JcrConstants;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -65,22 +64,21 @@ public class ResourceInfo {
   }
 
   /**
-   * Returns primary node type of the resource
-   * @return primary node type of the resource
-   */
-  @Nullable
-  public String getPrimaryNodeType() {
-    // TODO: can we use this property name?
-    //  For ResourceInfo objects coming from different sources - the method will return null, maybe it's enough?
-    return properties.get(JcrConstants.JCR_PRIMARYTYPE);
-  }
-
-  /**
    * Returns properties of the resource
    * @return properties of the resource
    */
   public Map<String, String> getProperties() {
     return properties;
+  }
+
+  /**
+   * Returns resource property by name
+   * @param name name of the property
+   * @return resource property by name
+   */
+  @Nullable
+  public String getProperty(String name) {
+    return properties.get(name);
   }
 
   /**

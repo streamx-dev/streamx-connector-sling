@@ -15,6 +15,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.jackrabbit.JcrConstants;
 import org.apache.sling.api.resource.LoginException;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.resource.ResourceResolverFactory;
@@ -116,7 +117,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
   }
 
   private List<ResourceInfo> getRelatedResources(ResourceInfo resource, ResourceResolver resourceResolver) {
-    String primaryNodeType = resource.getPrimaryNodeType();
+    String primaryNodeType = resource.getProperty(JcrConstants.JCR_PRIMARYTYPE);
     if (primaryNodeType == null || !resourceRequiredPrimaryNodeTypeRegex.matcher(primaryNodeType).matches()) {
       return Collections.emptyList();
     }
