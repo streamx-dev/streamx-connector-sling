@@ -241,7 +241,7 @@ class StreamxPublicationServiceImplTest {
     thenProcessedJobsCountIs(2);
     thenPublicationsContainsExactly(
         publishedPage("/content/my-site/page-1.html"),
-        unpublishPage("/content/my-site/page-1.html")
+        unpublishedPage("/content/my-site/page-1.html")
     );
   }
 
@@ -254,7 +254,7 @@ class StreamxPublicationServiceImplTest {
 
     thenProcessedJobsCountIs(1);
     thenPublicationsContainsExactly(
-        unpublishPage("/content/my-site/page-1.html")
+        unpublishedPage("/content/my-site/page-1.html")
     );
   }
 
@@ -267,8 +267,8 @@ class StreamxPublicationServiceImplTest {
 
     thenProcessedJobsCountIs(2);
     thenPublicationsContainsExactly(
-        unpublishPage("/content/my-site/page-1.html"),
-        unpublishPage("/content/my-site/page-1/page-2.html")
+        unpublishedPage("/content/my-site/page-1.html"),
+        unpublishedPage("/content/my-site/page-1/page-2.html")
     );
   }
 
@@ -282,8 +282,8 @@ class StreamxPublicationServiceImplTest {
 
     thenProcessedJobsCountIs(2);
     thenPublicationsContainsExactly(
-        unpublishPage("/content/my-site/page-1.html"),
-        unpublishAsset("/content/dam/asset-1.jpeg")
+        unpublishedPage("/content/my-site/page-1.html"),
+        unpublishedAsset("/content/dam/asset-1.jpeg")
     );
   }
 
@@ -332,7 +332,7 @@ class StreamxPublicationServiceImplTest {
     thenProcessedJobsCountIs(4);
     thenPublicationsContainsExactly(
         publishedPage("/content/my-site/page-1.html"),
-        unpublishPage("/content/my-site/page-1.html")
+        unpublishedPage("/content/my-site/page-1.html")
     );
   }
 
@@ -732,15 +732,15 @@ class StreamxPublicationServiceImplTest {
     return StringUtils.removeEnd(pageName, ".html");
   }
 
-  private Publication unpublishPage(String key) {
-    return unpublish(key, PAGES_CHANNEL);
+  private Publication unpublishedPage(String key) {
+    return unpublishedResource(key, PAGES_CHANNEL);
   }
 
-  private Publication unpublishAsset(String key) {
-    return unpublish(key, ASSETS_CHANNEL);
+  private Publication unpublishedAsset(String key) {
+    return unpublishedResource(key, ASSETS_CHANNEL);
   }
 
-  private Publication unpublish(String key, String channel) {
+  private Publication unpublishedResource(String key, String channel) {
     return new Publication(PublicationAction.UNPUBLISH, key, channel, null);
   }
 

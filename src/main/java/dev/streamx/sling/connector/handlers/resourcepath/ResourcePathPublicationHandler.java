@@ -87,9 +87,7 @@ public abstract class ResourcePathPublicationHandler<T> implements PublicationHa
       String channel = configuration().channel();
       Class<T> modelClass = modelClass();
       T model = model(inputStream);
-      PublishData<T> publishData = new PublishData<>(
-          resourcePath, channel, modelClass, model // TODO pass also (selected) properties
-      );
+      PublishData<T> publishData = new PublishData<>(resourcePath, channel, modelClass, model);
       LOG.trace("Generated {} for {}", publishData, resourcePath);
       return publishData;
     }
@@ -99,7 +97,7 @@ public abstract class ResourcePathPublicationHandler<T> implements PublicationHa
   public UnpublishData<T> getUnpublishData(ResourceInfo resourceInfo) {
     String channel = configuration().channel();
     Class<T> modelClass = modelClass();
-    return new UnpublishData<>(resourceInfo.getPath(), channel, modelClass); // TODO pass also (selected) properties
+    return new UnpublishData<>(resourceInfo.getPath(), channel, modelClass);
   }
 
   /**
