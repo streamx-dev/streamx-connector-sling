@@ -3,6 +3,7 @@ package dev.streamx.sling.connector.selectors.content;
 import dev.streamx.sling.connector.RelatedResourcesSelector;
 import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.util.SimpleInternalRequest;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -150,7 +151,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
    */
   private Set<String> extractPathsOfRelatedResources(String resourcePath, ResourceResolver resourceResolver) {
     String resourceAsString = readResourceAsString(resourcePath + getResourcePathPostfixToAppend(), resourceResolver);
-    return extractMatchingRelatedResourcePaths(resourceAsString);
+    return extractMatchingRelatedResourcePaths(resourcePath, resourceAsString);
   }
 
   private void extractPathsFromNestedRelatedResource(String resourcePath, ResourceResolver resourceResolver, Set<String> extractedPaths) {
@@ -158,7 +159,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
       return;
     }
     String resourceAsString = readResourceAsString(resourcePath, resourceResolver);
-    Set<String> nestedRelatedResourcePaths = extractMatchingRelatedResourcePaths(resourceAsString);
+    Set<String> nestedRelatedResourcePaths = extractMatchingRelatedResourcePaths(resourcePath, resourceAsString);
     for (String nestedRelatedResourcePath : nestedRelatedResourcePaths) {
       if (!extractedPaths.contains(nestedRelatedResourcePath)) { // avoid circular references
         extractedPaths.add(nestedRelatedResourcePath);
@@ -167,16 +168,16 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
     }
   }
 
-
-  private Set<String> extractMatchingRelatedResourcePaths(String mainResourceContent) {
+  private Set<String> extractMatchingRelatedResourcePaths(String resourcePath, String resourceContent) {
     Set<String> matchingPaths = new TreeSet<>();
     for (Pattern includePattern : relatedResourcePathIncludePatterns) {
-      Matcher matcher = includePattern.matcher(mainResourceContent);
+      Matcher matcher = includePattern.matcher(resourceContent);
       while (matcher.find()) {
         if (matcher.groupCount() > 0) {
           String relatedResourcePath = matcher.group(1);
           if (!relatedResourcePathExcludePattern.matcher(relatedResourcePath).matches()) {
-            matchingPaths.add(relatedResourcePath);
+            String normalizedPath = normalizePath(resourcePath, relatedResourcePath);
+            matchingPaths.add(normalizedPath);
           }
         }
       }
@@ -193,5 +194,16 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
     return Optional
         .ofNullable(config.get().resource$_$path_postfix$_$to$_$append())
         .orElse(StringUtils.EMPTY);
+  }
+
+  private static String normalizePath(String parentPath, String childPath) {
+    if (childPath.startsWith("/")) {
+      return childPath;
+    }
+    return Paths.get(parentPath).getParent()
+        .resolve(childPath)
+        .normalize()
+        .toString()
+        .replace('\\', '/');
   }
 }

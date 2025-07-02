@@ -14,7 +14,6 @@ import java.io.File;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletRequest;
@@ -54,7 +53,8 @@ class ResourceContentRelatedResourcesSelectorRecursiveSearchTest {
 
   private final SlingRequestProcessor basicRequestProcessor = (HttpServletRequest request, HttpServletResponse response, ResourceResolver resourceResolver) -> {
     String requestURI = request.getRequestURI();
-    String content = Objects.requireNonNull(testResourceFiles.get(requestURI), requestURI);
+    assertThat(testResourceFiles.keySet()).contains(requestURI);
+    String content = testResourceFiles.get(requestURI);
     response.setContentType("text/html");
     response.getWriter().write(content);
   };
@@ -118,19 +118,19 @@ class ResourceContentRelatedResourcesSelectorRecursiveSearchTest {
       List<String> expectedFoundResources, List<String> expectedNotFoundResources) {
 
     // given
-    ResourceContentRelatedResourcesSelector relatedResourcesSelector = new ResourceContentRelatedResourcesSelector(
-        new ResourceContentRelatedResourcesSelectorConfigImpl()
-            .withReferencesSearchRegexes(
-                "(/apps/[^\"']+)",
-                "(/content/[^\"']+)",
-                "(/etc\\.clientlibs[^\"']*)")
-            .withResourcePathPostfixToAppend(".html")
-            .withResourceRequiredPathRegex("^/content/my-site/us/en/.*")
-            .withRelatedResourceProcessablePathRegex(relatedResourceProcessablePathRegex)
-            .withResourceRequiredPrimaryNodeTypeRegex("cq:Page"),
-        basicRequestProcessor,
-        resourceResolverFactoryMock
-    );
+    var config = new ResourceContentRelatedResourcesSelectorConfigImpl()
+        .withReferencesSearchRegexes(
+            "(/apps/[^\"']+)",
+            "(/content/[^\"']+)",
+            "(/etc\\.clientlibs[^\"'\\)]+)",
+            "url\\('?([^\\)']+)'?\\)" // find anything that's inside the url() directive, skipping quotes if given
+        )
+        .withResourcePathPostfixToAppend(".html")
+        .withResourceRequiredPathRegex("^/content/my-site/us/en/.*")
+        .withRelatedResourceProcessablePathRegex(relatedResourceProcessablePathRegex)
+        .withResourceRequiredPrimaryNodeTypeRegex("cq:Page");
+
+    var relatedResourcesSelector = new ResourceContentRelatedResourcesSelector(config, basicRequestProcessor, resourceResolverFactoryMock);
 
     // when
     ResourceInfo mainPageResource = new PageResourceInfo(MAIN_PAGE_RESOURCE);
@@ -139,12 +139,8 @@ class ResourceContentRelatedResourcesSelectorRecursiveSearchTest {
     // then
     assertThat(actualRelatedResources)
         .extracting(ResourceInfo::getPath)
-        .containsExactlyElementsOf(expectedFoundResources);
-
-    // and: should collect all test resources, except the ones provided in the expectedNotFoundResources list
-    assertThat(actualRelatedResources)
-        .extracting(ResourceInfo::getPath)
-        .containsExactlyInAnyOrderElementsOf(
+        .containsExactlyElementsOf(expectedFoundResources) // should collect the expected resources
+        .containsExactlyInAnyOrderElementsOf( // should collect all test resources except the ones provided in the expectedNotFoundResources list
             SetUtils.difference(testResourceFiles.keySet(), Set.copyOf(expectedNotFoundResources))
         );
   }

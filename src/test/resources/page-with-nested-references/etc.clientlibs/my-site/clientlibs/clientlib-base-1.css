@@ -1,6 +1,6 @@
-@import url('/etc.clientlibs/my-site/clientlibs/theme/colors-1.css'); /* TODO import as url without quotes */
-@import url('/etc.clientlibs/my-site/clientlibs/theme/colors-2.css'); /* TODO import as neighbour url */
-@import url('/etc.clientlibs/my-site/assets/colors-3.css'); /* TODO import as url using ../ */
+@import url(/etc.clientlibs/my-site/clientlibs/theme/colors-1.css);
+@import url('theme/colors-2.css');
+@import url('../assets/colors-3.css');
 
 body {
   background-image: url('/content/dam/images/bg-1.png');
