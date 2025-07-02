@@ -150,15 +150,15 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
    * are found
    */
   private Set<String> extractPathsOfRelatedResources(String resourcePath, ResourceResolver resourceResolver) {
-    String resourceAsString = readResourceAsString(resourcePath + getResourcePathPostfixToAppend(), resourceResolver);
-    return extractMatchingRelatedResourcePaths(resourcePath, resourceAsString);
+    String resourceContent = readResourceContent(resourcePath + getResourcePathPostfixToAppend(), resourceResolver);
+    return extractMatchingRelatedResourcePaths(resourcePath, resourceContent);
   }
 
   private void extractPathsFromNestedRelatedResource(String resourcePath, ResourceResolver resourceResolver, Set<String> extractedPaths) {
     if (!relatedResourceProcessablePathPattern.matcher(resourcePath).matches()) {
       return;
     }
-    String resourceAsString = readResourceAsString(resourcePath, resourceResolver);
+    String resourceAsString = readResourceContent(resourcePath, resourceResolver);
     Set<String> nestedRelatedResourcePaths = extractMatchingRelatedResourcePaths(resourcePath, resourceAsString);
     for (String nestedRelatedResourcePath : nestedRelatedResourcePaths) {
       if (!extractedPaths.contains(nestedRelatedResourcePath)) { // avoid circular references
@@ -185,7 +185,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
     return matchingPaths;
   }
 
-  private String readResourceAsString(String resourcePath, ResourceResolver resourceResolver) {
+  private String readResourceContent(String resourcePath, ResourceResolver resourceResolver) {
     SlingUri slingUri = SlingUriBuilder.parse(resourcePath, resourceResolver).build();
     return new SimpleInternalRequest(slingUri, slingRequestProcessor, resourceResolver).getResponseAsString();
   }
