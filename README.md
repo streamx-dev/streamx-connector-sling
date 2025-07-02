@@ -135,7 +135,7 @@ Example configuration for finding referenced clientlibs and core images in a pag
 {
   "configurations": {
     "dev.streamx.sling.connector.selectors.content.ResourceContentRelatedResourcesSelector~pages": {
-      "references.search-regexes": "$[env:STREAMX_REFERENCES_SEARCH_REGEXES;type=String[];delimiter=,;default=(/content[^\"'\\s]*\\.coreimg\\.[^\"'\\s]*),(/[^\"'\\s]*etc\\.clientlibs[^\"'\\s]*)]",
+      "references.search-regexes": "$[env:STREAMX_REFERENCES_SEARCH_REGEXES;type=String[];delimiter=,;default=(/content[^\"'\\s]*\\.coreimg\\.[^\"'\\s]*),(/[^\"'\\s]*etc\\.clientlibs[^\"'\\)\\s]*),url\\('?(?!http)([^\\)']+)'?\\)]",
       "references.exclude-from-result.regex": ".*\\{\\.width\\}.*",
       "resource-path.postfix-to-append": ".html",
       "resource.required-path.regex": "^/content/.*",

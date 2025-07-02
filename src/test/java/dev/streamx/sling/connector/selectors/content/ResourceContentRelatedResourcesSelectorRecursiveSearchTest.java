@@ -71,11 +71,11 @@ class ResourceContentRelatedResourcesSelectorRecursiveSearchTest {
         List.of(
             "/apps/my-site/clientlibs/react-app/main.chunk.js",
             "/apps/my-site/clientlibs/react-app/runtime~main.chunk.js",
-            "/content/dam/images/bg-1.png",
+            "/content/dam/images/bg.png",
             "/etc.clientlibs/my-site/assets/colors-3.css",
             "/etc.clientlibs/my-site/assets/config.json",
-            "/etc.clientlibs/my-site/clientlibs/clientlib-base-1.css",
-            "/etc.clientlibs/my-site/clientlibs/clientlib-base-1.js",
+            "/etc.clientlibs/my-site/clientlibs/clientlib-base.css",
+            "/etc.clientlibs/my-site/clientlibs/clientlib-base.js",
             "/etc.clientlibs/my-site/clientlibs/theme/colors-1.css",
             "/etc.clientlibs/my-site/clientlibs/theme/colors-2.css",
             "/etc.clientlibs/my-site/icons/icon-home.svg",
@@ -94,10 +94,10 @@ class ResourceContentRelatedResourcesSelectorRecursiveSearchTest {
     shouldFindRelatedResources(
         ".*\\.css$",
         List.of(
-            "/content/dam/images/bg-1.png",
+            "/content/dam/images/bg.png",
             "/etc.clientlibs/my-site/assets/colors-3.css",
-            "/etc.clientlibs/my-site/clientlibs/clientlib-base-1.css",
-            "/etc.clientlibs/my-site/clientlibs/clientlib-base-1.js",
+            "/etc.clientlibs/my-site/clientlibs/clientlib-base.css",
+            "/etc.clientlibs/my-site/clientlibs/clientlib-base.js",
             "/etc.clientlibs/my-site/clientlibs/theme/colors-1.css",
             "/etc.clientlibs/my-site/clientlibs/theme/colors-2.css",
             "/etc.clientlibs/my-site/icons/icon-home.svg",
@@ -123,7 +123,7 @@ class ResourceContentRelatedResourcesSelectorRecursiveSearchTest {
             "(/apps/[^\"']+)",
             "(/content/[^\"']+)",
             "(/etc\\.clientlibs[^\"'\\)]+)",
-            "url\\('?([^\\)']+)'?\\)" // find anything that's inside the url() directive, skipping quotes if given
+            "url\\('?(?!http)([^\\)']+)'?\\)" // find anything that's inside the url() directive, skipping quotes if given
         )
         .withResourcePathPostfixToAppend(".html")
         .withResourceRequiredPathRegex("^/content/my-site/us/en/.*")
