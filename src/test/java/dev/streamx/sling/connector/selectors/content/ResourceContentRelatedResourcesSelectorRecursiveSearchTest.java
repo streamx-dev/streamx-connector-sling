@@ -72,10 +72,14 @@ class ResourceContentRelatedResourcesSelectorRecursiveSearchTest {
             "/apps/my-site/clientlibs/react-app/main.chunk.js",
             "/apps/my-site/clientlibs/react-app/runtime~main.chunk.js",
             "/content/dam/images/bg-1.png",
+            "/etc.clientlibs/my-site/assets/colors-3.css",
             "/etc.clientlibs/my-site/assets/config.json",
             "/etc.clientlibs/my-site/clientlibs/clientlib-base-1.css",
             "/etc.clientlibs/my-site/clientlibs/clientlib-base-1.js",
             "/etc.clientlibs/my-site/clientlibs/theme/colors-1.css",
+            "/etc.clientlibs/my-site/clientlibs/theme/colors-2.css",
+            "/etc.clientlibs/my-site/icons/icon-home.svg",
+            "/etc.clientlibs/my-site/icons/icon-logo.svg",
             "/etc.clientlibs/my-site/icons/icon-sprite.svg"
         ),
         List.of(
@@ -91,9 +95,13 @@ class ResourceContentRelatedResourcesSelectorRecursiveSearchTest {
         ".*\\.css$",
         List.of(
             "/content/dam/images/bg-1.png",
+            "/etc.clientlibs/my-site/assets/colors-3.css",
             "/etc.clientlibs/my-site/clientlibs/clientlib-base-1.css",
             "/etc.clientlibs/my-site/clientlibs/clientlib-base-1.js",
             "/etc.clientlibs/my-site/clientlibs/theme/colors-1.css",
+            "/etc.clientlibs/my-site/clientlibs/theme/colors-2.css",
+            "/etc.clientlibs/my-site/icons/icon-home.svg",
+            "/etc.clientlibs/my-site/icons/icon-logo.svg",
             "/etc.clientlibs/my-site/icons/icon-sprite.svg"
         ),
         List.of(
