@@ -9,6 +9,7 @@ import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.test.util.PageResourceInfo;
 import java.util.List;
 import java.util.Map;
+import org.apache.jackrabbit.JcrConstants;
 import org.apache.sling.event.jobs.Job;
 import org.junit.jupiter.api.Test;
 
@@ -21,7 +22,7 @@ class IngestionTriggerJobHelperTest {
     // given
     when(fakeJob.getProperty(IngestionTriggerJobHelper.PN_STREAMX_INGESTION_ACTION, String.class))
         .thenReturn("PUBLISH");
-    when(fakeJob.getProperty(IngestionTriggerJobHelper.PN_STREAMX_RESOURCES_INFO, String[].class))
+    when(fakeJob.getProperty(IngestionTriggerJobHelper.PN_STREAMX_INGESTION_RESOURCES, String[].class))
         .thenReturn(new String[]{
             new PageResourceInfo("http://localhost:4502/content/we-retail/us/en").serialize(),
             new PageResourceInfo("/content/wknd/us/en").serialize()
@@ -51,7 +52,7 @@ class IngestionTriggerJobHelperTest {
 
     // then
     String rawPublicationAction = (String) jobProps.get(IngestionTriggerJobHelper.PN_STREAMX_INGESTION_ACTION);
-    String[] resourcesInfo = (String[]) jobProps.get(IngestionTriggerJobHelper.PN_STREAMX_RESOURCES_INFO);
+    String[] resourcesInfo = (String[]) jobProps.get(IngestionTriggerJobHelper.PN_STREAMX_INGESTION_RESOURCES);
 
     assertThat(rawPublicationAction).isEqualTo(PublicationAction.PUBLISH.toString());
     assertThat(resourcesInfo).hasSize(2);
@@ -66,7 +67,7 @@ class IngestionTriggerJobHelperTest {
 
   private static void assertResource(ResourceInfo actualResource, String expectedPath, String expectedPrimaryNodeType) {
     assertThat(actualResource.getPath()).isEqualTo(expectedPath);
-    assertThat(actualResource.getPrimaryNodeType()).isEqualTo(expectedPrimaryNodeType);
+    assertThat(actualResource.getProperties()).containsEntry(JcrConstants.JCR_PRIMARYTYPE, expectedPrimaryNodeType);
   }
 
 }

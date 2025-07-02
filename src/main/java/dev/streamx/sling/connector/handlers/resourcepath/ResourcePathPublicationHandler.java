@@ -64,7 +64,8 @@ public abstract class ResourcePathPublicationHandler<T> implements PublicationHa
 
   @Override
   @SuppressWarnings({"squid:S1874", "deprecation"})
-  public PublishData<T> getPublishData(String resourcePath) throws StreamxPublicationException {
+  public PublishData<T> getPublishData(ResourceInfo resourceInfo) throws StreamxPublicationException {
+    String resourcePath = resourceInfo.getPath();
     LOG.trace("Getting publish data for '{}'", resourcePath);
     try (ResourceResolver resourceResolver = resourceResolverFactory.getAdministrativeResourceResolver(null)) {
       return generatePublishData(resourcePath, resourceResolver);
@@ -86,19 +87,17 @@ public abstract class ResourcePathPublicationHandler<T> implements PublicationHa
       String channel = configuration().channel();
       Class<T> modelClass = modelClass();
       T model = model(inputStream);
-      PublishData<T> publishData = new PublishData<>(
-          resourcePath, channel, modelClass, model
-      );
+      PublishData<T> publishData = new PublishData<>(resourcePath, channel, modelClass, model);
       LOG.trace("Generated {} for {}", publishData, resourcePath);
       return publishData;
     }
   }
 
   @Override
-  public UnpublishData<T> getUnpublishData(String resourcePath) {
+  public UnpublishData<T> getUnpublishData(ResourceInfo resourceInfo) {
     String channel = configuration().channel();
     Class<T> modelClass = modelClass();
-    return new UnpublishData<>(resourcePath, channel, modelClass);
+    return new UnpublishData<>(resourceInfo.getPath(), channel, modelClass);
   }
 
   /**

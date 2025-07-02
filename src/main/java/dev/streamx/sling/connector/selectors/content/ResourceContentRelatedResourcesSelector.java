@@ -15,6 +15,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.jackrabbit.JcrConstants;
 import org.apache.sling.api.resource.LoginException;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.resource.ResourceResolverFactory;
@@ -95,30 +96,33 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
   /**
    * Retrieves a collection of related resources based on the specified resource path.
    *
-   * @param resourcePath the path of the resource for which related resources are to be selected
+   * @param resourceInfo information about the resource for which related resources are to be selected
    * @return a collection of {@code ResourceInfo} objects that are related to the specified resource.
    *  Every returned {@code ResourceInfo} object has null value for its primaryNodeType field.
    */
   @Override
-  public Collection<ResourceInfo> getRelatedResources(String resourcePath) {
+  public Collection<ResourceInfo> getRelatedResources(ResourceInfo resourceInfo) {
+    String resourcePath = resourceInfo.getPath();
     LOG.debug("Getting related resources for '{}'", resourcePath);
-    if (!ResourceFilter.isAcceptableResourcePath(resourcePath, resourceRequiredPathRegex)) {
+    if (!resourceRequiredPathRegex.matcher(resourcePath).matches()) {
       return Collections.emptyList();
     }
 
     try (ResourceResolver resourceResolver = resourceResolverFactory.getAdministrativeResourceResolver(null)) {
-      return getRelatedResources(resourcePath, resourceResolver);
+      return getRelatedResources(resourceInfo, resourceResolver);
     } catch (LoginException exception) {
       LOG.error("Failed to create Resource Resolver to load related resources for {}", resourcePath, exception);
       return Collections.emptyList();
     }
   }
 
-  private List<ResourceInfo> getRelatedResources(String resourcePath, ResourceResolver resourceResolver) {
-    if (!ResourceFilter.isAcceptablePrimaryNodeType(resourcePath, resourceResolver, resourceRequiredPrimaryNodeTypeRegex)) {
+  private List<ResourceInfo> getRelatedResources(ResourceInfo resource, ResourceResolver resourceResolver) {
+    String primaryNodeType = resource.getProperty(JcrConstants.JCR_PRIMARYTYPE);
+    if (primaryNodeType == null || !resourceRequiredPrimaryNodeTypeRegex.matcher(primaryNodeType).matches()) {
       return Collections.emptyList();
     }
 
+    String resourcePath = resource.getPath();
     Set<String> extractedPaths = extractPathsOfRelatedResources(resourcePath, resourceResolver);
     for (String extractedPath : Set.copyOf(extractedPaths)) {
       extractPathsFromNestedRelatedResource(extractedPath, resourceResolver, extractedPaths);

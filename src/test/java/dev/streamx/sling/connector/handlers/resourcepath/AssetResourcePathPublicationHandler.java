@@ -4,7 +4,6 @@ import dev.streamx.sling.connector.PublicationHandler;
 import dev.streamx.sling.connector.testing.handlers.Asset;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.commons.io.IOUtils;
 import org.apache.sling.api.resource.ResourceResolverFactory;

@@ -1,9 +1,10 @@
 package dev.streamx.sling.connector.impl;
 
-import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_ACTION;
-import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_CLIENT_NAME;
-import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_HANDLER_ID;
-import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PATH;
+import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PUBLICATION_ACTION;
+import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PUBLICATION_CLIENT_NAME;
+import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PUBLICATION_HANDLER_ID;
+import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PUBLICATION_PATH;
+import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PUBLICATION_PROPERTIES;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 
@@ -12,6 +13,7 @@ import dev.streamx.clients.ingestion.publisher.Message;
 import dev.streamx.clients.ingestion.publisher.Publisher;
 import dev.streamx.sling.connector.PublicationAction;
 import dev.streamx.sling.connector.PublicationHandler;
+import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.testing.handlers.FakeThrowablePublicationHandler;
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJobExecutionContext;
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeRetriedJob;
@@ -78,6 +80,7 @@ class PublicationJobExecutorTest {
     assertSentMessage(Message.UNPUBLISH_ACTION, null);
   }
 
+  @SuppressWarnings({"unchecked", "rawtypes"})
   private void assertSentMessage(String action, String payload) throws StreamxClientException {
     FakeStreamxClient fakeStreamxClient = fakeStreamxClientFactory.getFakeClient(STREAMX_URL);
     Publisher<?> publisher = fakeStreamxClient.getLastPublisher();
@@ -124,10 +127,11 @@ class PublicationJobExecutorTest {
 
   private static Job getFakeJob(PublicationAction action, int retries) {
     Map<String, Object> properties = new HashMap<>();
-    properties.put(PN_STREAMX_PATH, RESOURCE_PATH);
-    properties.put(PN_STREAMX_HANDLER_ID, "fake-handler");
-    properties.put(PN_STREAMX_CLIENT_NAME, STREAMX_URL);
-    properties.put(PN_STREAMX_ACTION, action.name());
+    properties.put(PN_STREAMX_PUBLICATION_PATH, RESOURCE_PATH);
+    properties.put(PN_STREAMX_PUBLICATION_PROPERTIES, "{}");
+    properties.put(PN_STREAMX_PUBLICATION_HANDLER_ID, "fake-handler");
+    properties.put(PN_STREAMX_PUBLICATION_CLIENT_NAME, STREAMX_URL);
+    properties.put(PN_STREAMX_PUBLICATION_ACTION, action.name());
     return new FakeRetriedJob(PublicationJobExecutor.JOB_TOPIC, properties, retries);
   }
 

@@ -3,7 +3,6 @@ package dev.streamx.sling.connector.testing.streamx.clients.ingestion;
 import dev.streamx.clients.ingestion.publisher.Message;
 import dev.streamx.clients.ingestion.publisher.Publisher;
 import dev.streamx.clients.ingestion.publisher.SuccessResult;
-import dev.streamx.sling.connector.PublicationAction;
 
 public class FakePublisher<T> implements Publisher<T> {
 

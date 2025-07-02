@@ -1,13 +1,12 @@
 package dev.streamx.sling.connector.impl;
 
-import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_ACTION;
-import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PATH;
+import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PUBLICATION_ACTION;
+import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PUBLICATION_PATH;
 import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -26,7 +25,7 @@ import dev.streamx.sling.connector.selectors.content.ResourceContentRelatedResou
 import dev.streamx.sling.connector.test.util.JcrTreeReader;
 import dev.streamx.sling.connector.test.util.PageResourceInfo;
 import dev.streamx.sling.connector.test.util.ResourceContentRelatedResourcesSelectorConfigImpl;
-import dev.streamx.sling.connector.test.util.ResourceMocks;
+import dev.streamx.sling.connector.test.util.ResourceResolverMocks;
 import dev.streamx.sling.connector.testing.handlers.PagePublicationHandler;
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJobManager;
 import java.lang.annotation.Annotation;
@@ -47,7 +46,6 @@ import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.resource.ResourceResolverFactory;
 import org.apache.sling.engine.SlingRequestProcessor;
@@ -60,7 +58,6 @@ import org.apache.sling.testing.mock.sling.junit5.SlingContextExtension;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentMatchers;
 import org.mockito.MockedStatic;
 
 @ExtendWith(SlingContextExtension.class)
@@ -92,14 +89,9 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
   private final SlingRequestProcessor requestProcessor = (HttpServletRequest request, HttpServletResponse response, ResourceResolver resourceResolver) -> {
     String requestURI = request.getRequestURI();
-    if (StringUtils.endsWithAny(requestURI, ".jpg", ".css", ".js")) {
-      response.setContentType("application/octet-stream");
-      response.getWriter().write("Content of image " + requestURI);
-    } else {
-      assertThat(allTestPages.keySet()).contains(requestURI);
-      response.setContentType("text/html");
-      response.getWriter().write(allTestPages.get(requestURI));
-    }
+    assertThat(allTestPages.keySet()).contains(requestURI);
+    response.setContentType("text/html");
+    response.getWriter().write(allTestPages.get(requestURI));
   };
 
   private final ResourceContentRelatedResourcesSelectorConfig relatedResourcesConfig = new ResourceContentRelatedResourcesSelectorConfigImpl()
@@ -136,23 +128,9 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
   @BeforeEach
   void setup() throws Exception {
-    configureResources();
+    ResourceResolverMocks.configure(resourceResolver, resourceResolverFactory);
     configureStreamxClient();
     configureServices();
-  }
-
-  @SuppressWarnings("deprecation")
-  private void configureResources() throws Exception {
-    doReturn(ResourceMocks.createAssetResourceMock())
-        .when(resourceResolver)
-        .resolve(ArgumentMatchers.<String>argThat(path -> StringUtils.endsWithAny(path, ".jpg", ".css", ".js")));
-
-    doReturn(ResourceMocks.createPageResourceMock())
-        .when(resourceResolver)
-        .resolve(ArgumentMatchers.<String>argThat(path -> path.endsWith(".html")));
-
-    doReturn(resourceResolver).when(resourceResolverFactory).getAdministrativeResourceResolver(null);
-    doNothing().when(resourceResolver).close();
   }
 
   private void configureServices() {
@@ -854,15 +832,15 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     assertThat(
         jobManager.getJobQueue().stream()
             .filter(job -> job.getTopic().equals("dev/streamx/publications"))
-            .filter(job -> job.hasProperty(PN_STREAMX_ACTION, PublicationAction.UNPUBLISH))
+            .filter(job -> job.hasProperty(PN_STREAMX_PUBLICATION_ACTION, PublicationAction.UNPUBLISH))
     ).isEmpty();
   }
 
   private void assertIngestedTimes(String resourcePath, int times, PublicationAction action) {
     long actualIngestedTimes = jobManager.getJobQueue().stream()
         .filter(job -> job.getTopic().equals("dev/streamx/publications"))
-        .filter(job -> job.hasProperty(PN_STREAMX_ACTION, action.name()))
-        .filter(job -> job.hasProperty(PN_STREAMX_PATH, resourcePath))
+        .filter(job -> job.hasProperty(PN_STREAMX_PUBLICATION_ACTION, action.name()))
+        .filter(job -> job.hasProperty(PN_STREAMX_PUBLICATION_PATH, resourcePath))
         .count();
     assertThat(actualIngestedTimes).describedAs(resourcePath).isEqualTo(times);
   }
@@ -878,8 +856,8 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   private void assertResourcesCurrentlyOnStreamX(Set<String> expectedResourcePaths) {
     Set<String> actualResourcePaths = new TreeSet<>();
     for (var job : jobManager.getJobQueue()) {
-      String action = job.getProperty(PN_STREAMX_ACTION, String.class);
-      String resourcePath = job.getProperty(PN_STREAMX_PATH, String.class);
+      String action = job.getProperty(PN_STREAMX_PUBLICATION_ACTION, String.class);
+      String resourcePath = job.getProperty(PN_STREAMX_PUBLICATION_PATH, String.class);
       if (action.equals(PublicationAction.PUBLISH.name())) {
         actualResourcePaths.add(resourcePath);
       } else if (action.equals(PublicationAction.UNPUBLISH.name())) {
