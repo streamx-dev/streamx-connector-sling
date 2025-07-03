@@ -3,6 +3,8 @@ package dev.streamx.sling.connector.selectors.content;
 import dev.streamx.sling.connector.RelatedResourcesSelector;
 import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.util.SimpleInternalRequest;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collection;
@@ -48,7 +50,6 @@ import org.slf4j.LoggerFactory;
 public class ResourceContentRelatedResourcesSelector implements RelatedResourcesSelector {
 
   private static final Logger LOG = LoggerFactory.getLogger(ResourceContentRelatedResourcesSelector.class);
-  private static final Pattern FORBIDDEN_RELATED_RESOURCE_PATH_PREFIX = Pattern.compile("^(https?://.*|//|data:).*");
 
   private final AtomicReference<ResourceContentRelatedResourcesSelectorConfig> config;
   private final SlingRequestProcessor slingRequestProcessor;
@@ -197,10 +198,8 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
   }
 
   private boolean isRelatedResourcePathValidForCollecting(String relatedResourcePath) {
-    return
-        notMatching(relatedResourcePath, FORBIDDEN_RELATED_RESOURCE_PATH_PREFIX)
-        &&
-        notMatching(relatedResourcePath, relatedResourcePathExcludePattern);
+    return notMatching(relatedResourcePath, relatedResourcePathExcludePattern)
+           && !isExternalUrl(relatedResourcePath);
   }
 
   private String readResourceContent(String resourcePath, ResourceResolver resourceResolver) {
@@ -223,6 +222,18 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
         .normalize()
         .toString()
         .replace('\\', '/');
+  }
+
+  private static boolean isExternalUrl(String input) {
+    if (input.startsWith("//")) {
+      return true; // protocol-relative URL
+    }
+    try {
+      URI uri = new URI(input);
+      return uri.getScheme() != null;
+    } catch (URISyntaxException e) {
+      return false; // Invalid URI → assume it is a local path
+    }
   }
 
   private static boolean notMatching(String stringToTest, Pattern pattern) {
