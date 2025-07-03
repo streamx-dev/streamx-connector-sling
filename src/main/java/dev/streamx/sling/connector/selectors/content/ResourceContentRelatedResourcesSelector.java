@@ -3,6 +3,7 @@ package dev.streamx.sling.connector.selectors.content;
 import dev.streamx.sling.connector.RelatedResourcesSelector;
 import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.util.SimpleInternalRequest;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -46,6 +47,8 @@ import org.slf4j.LoggerFactory;
 public class ResourceContentRelatedResourcesSelector implements RelatedResourcesSelector {
 
   private static final Logger LOG = LoggerFactory.getLogger(ResourceContentRelatedResourcesSelector.class);
+  private static final Pattern FORBIDDEN_RELATED_RESOURCE_PATH_PREFIX = Pattern.compile("^https?://.*");
+
   private final AtomicReference<ResourceContentRelatedResourcesSelectorConfig> config;
   private final SlingRequestProcessor slingRequestProcessor;
   private final ResourceResolverFactory resourceResolverFactory;
@@ -104,7 +107,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
   public Collection<ResourceInfo> getRelatedResources(ResourceInfo resourceInfo) {
     String resourcePath = resourceInfo.getPath();
     LOG.debug("Getting related resources for '{}'", resourcePath);
-    if (!resourceRequiredPathRegex.matcher(resourcePath).matches()) {
+    if (notMatching(resourcePath, resourceRequiredPathRegex)) {
       return Collections.emptyList();
     }
 
@@ -118,7 +121,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
 
   private List<ResourceInfo> getRelatedResources(ResourceInfo resource, ResourceResolver resourceResolver) {
     String primaryNodeType = resource.getProperty(JcrConstants.JCR_PRIMARYTYPE);
-    if (primaryNodeType == null || !resourceRequiredPrimaryNodeTypeRegex.matcher(primaryNodeType).matches()) {
+    if (primaryNodeType == null || notMatching(primaryNodeType, resourceRequiredPrimaryNodeTypeRegex)) {
       return Collections.emptyList();
     }
 
@@ -149,16 +152,16 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
    * are found
    */
   private Set<String> extractPathsOfRelatedResources(String resourcePath, ResourceResolver resourceResolver) {
-    String resourceAsString = readResourceAsString(resourcePath + getResourcePathPostfixToAppend(), resourceResolver);
-    return extractMatchingRelatedResourcePaths(resourceAsString);
+    String resourceContent = readResourceContent(resourcePath + getResourcePathPostfixToAppend(), resourceResolver);
+    return extractMatchingRelatedResourcePaths(resourcePath, resourceContent);
   }
 
   private void extractPathsFromNestedRelatedResource(String resourcePath, ResourceResolver resourceResolver, Set<String> extractedPaths) {
-    if (!relatedResourceProcessablePathPattern.matcher(resourcePath).matches()) {
+    if (notMatching(resourcePath, relatedResourceProcessablePathPattern)) {
       return;
     }
-    String resourceAsString = readResourceAsString(resourcePath, resourceResolver);
-    Set<String> nestedRelatedResourcePaths = extractMatchingRelatedResourcePaths(resourceAsString);
+    String resourceAsString = readResourceContent(resourcePath, resourceResolver);
+    Set<String> nestedRelatedResourcePaths = extractMatchingRelatedResourcePaths(resourcePath, resourceAsString);
     for (String nestedRelatedResourcePath : nestedRelatedResourcePaths) {
       if (!extractedPaths.contains(nestedRelatedResourcePath)) { // avoid circular references
         extractedPaths.add(nestedRelatedResourcePath);
@@ -167,16 +170,16 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
     }
   }
 
-
-  private Set<String> extractMatchingRelatedResourcePaths(String mainResourceContent) {
+  private Set<String> extractMatchingRelatedResourcePaths(String resourcePath, String resourceContent) {
     Set<String> matchingPaths = new TreeSet<>();
     for (Pattern includePattern : relatedResourcePathIncludePatterns) {
-      Matcher matcher = includePattern.matcher(mainResourceContent);
+      Matcher matcher = includePattern.matcher(resourceContent);
       while (matcher.find()) {
         if (matcher.groupCount() > 0) {
           String relatedResourcePath = matcher.group(1);
-          if (!relatedResourcePathExcludePattern.matcher(relatedResourcePath).matches()) {
-            matchingPaths.add(relatedResourcePath);
+          if (isRelatedResourcePathValidForCollecting(relatedResourcePath)) {
+            String normalizedPath = normalizePath(resourcePath, relatedResourcePath);
+            matchingPaths.add(normalizedPath);
           }
         }
       }
@@ -184,7 +187,14 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
     return matchingPaths;
   }
 
-  private String readResourceAsString(String resourcePath, ResourceResolver resourceResolver) {
+  private boolean isRelatedResourcePathValidForCollecting(String relatedResourcePath) {
+    return
+        notMatching(relatedResourcePath, FORBIDDEN_RELATED_RESOURCE_PATH_PREFIX)
+        &&
+        notMatching(relatedResourcePath, relatedResourcePathExcludePattern);
+  }
+
+  private String readResourceContent(String resourcePath, ResourceResolver resourceResolver) {
     SlingUri slingUri = SlingUriBuilder.parse(resourcePath, resourceResolver).build();
     return new SimpleInternalRequest(slingUri, slingRequestProcessor, resourceResolver).getResponseAsString();
   }
@@ -193,5 +203,20 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
     return Optional
         .ofNullable(config.get().resource$_$path_postfix$_$to$_$append())
         .orElse(StringUtils.EMPTY);
+  }
+
+  private static String normalizePath(String parentPath, String childPath) {
+    if (childPath.startsWith("/")) {
+      return childPath;
+    }
+    return Paths.get(parentPath).getParent()
+        .resolve(childPath)
+        .normalize()
+        .toString()
+        .replace('\\', '/');
+  }
+
+  private static boolean notMatching(String stringToTest, Pattern pattern) {
+    return !pattern.matcher(stringToTest).matches();
   }
 }

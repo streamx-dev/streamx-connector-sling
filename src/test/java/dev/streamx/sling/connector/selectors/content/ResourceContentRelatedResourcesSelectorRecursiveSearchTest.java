@@ -14,7 +14,6 @@ import java.io.File;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletRequest;
@@ -54,7 +53,8 @@ class ResourceContentRelatedResourcesSelectorRecursiveSearchTest {
 
   private final SlingRequestProcessor basicRequestProcessor = (HttpServletRequest request, HttpServletResponse response, ResourceResolver resourceResolver) -> {
     String requestURI = request.getRequestURI();
-    String content = Objects.requireNonNull(testResourceFiles.get(requestURI), requestURI);
+    assertThat(testResourceFiles.keySet()).contains(requestURI);
+    String content = testResourceFiles.get(requestURI);
     response.setContentType("text/html");
     response.getWriter().write(content);
   };
@@ -71,11 +71,15 @@ class ResourceContentRelatedResourcesSelectorRecursiveSearchTest {
         List.of(
             "/apps/my-site/clientlibs/react-app/main.chunk.js",
             "/apps/my-site/clientlibs/react-app/runtime~main.chunk.js",
-            "/content/dam/images/bg-1.png",
+            "/content/dam/images/bg.png",
+            "/etc.clientlibs/my-site/assets/colors-3.css",
             "/etc.clientlibs/my-site/assets/config.json",
-            "/etc.clientlibs/my-site/clientlibs/clientlib-base-1.css",
-            "/etc.clientlibs/my-site/clientlibs/clientlib-base-1.js",
+            "/etc.clientlibs/my-site/clientlibs/clientlib-base.css",
+            "/etc.clientlibs/my-site/clientlibs/clientlib-base.js",
             "/etc.clientlibs/my-site/clientlibs/theme/colors-1.css",
+            "/etc.clientlibs/my-site/clientlibs/theme/colors-2.css",
+            "/etc.clientlibs/my-site/icons/icon-home.svg",
+            "/etc.clientlibs/my-site/icons/icon-logo.svg",
             "/etc.clientlibs/my-site/icons/icon-sprite.svg"
         ),
         List.of(
@@ -90,10 +94,14 @@ class ResourceContentRelatedResourcesSelectorRecursiveSearchTest {
     shouldFindRelatedResources(
         ".*\\.css$",
         List.of(
-            "/content/dam/images/bg-1.png",
-            "/etc.clientlibs/my-site/clientlibs/clientlib-base-1.css",
-            "/etc.clientlibs/my-site/clientlibs/clientlib-base-1.js",
+            "/content/dam/images/bg.png",
+            "/etc.clientlibs/my-site/assets/colors-3.css",
+            "/etc.clientlibs/my-site/clientlibs/clientlib-base.css",
+            "/etc.clientlibs/my-site/clientlibs/clientlib-base.js",
             "/etc.clientlibs/my-site/clientlibs/theme/colors-1.css",
+            "/etc.clientlibs/my-site/clientlibs/theme/colors-2.css",
+            "/etc.clientlibs/my-site/icons/icon-home.svg",
+            "/etc.clientlibs/my-site/icons/icon-logo.svg",
             "/etc.clientlibs/my-site/icons/icon-sprite.svg"
         ),
         List.of(
@@ -110,19 +118,19 @@ class ResourceContentRelatedResourcesSelectorRecursiveSearchTest {
       List<String> expectedFoundResources, List<String> expectedNotFoundResources) {
 
     // given
-    ResourceContentRelatedResourcesSelector relatedResourcesSelector = new ResourceContentRelatedResourcesSelector(
-        new ResourceContentRelatedResourcesSelectorConfigImpl()
-            .withReferencesSearchRegexes(
-                "(/apps/[^\"']+)",
-                "(/content/[^\"']+)",
-                "(/etc\\.clientlibs[^\"']*)")
-            .withResourcePathPostfixToAppend(".html")
-            .withResourceRequiredPathRegex("^/content/my-site/us/en/.*")
-            .withRelatedResourceProcessablePathRegex(relatedResourceProcessablePathRegex)
-            .withResourceRequiredPrimaryNodeTypeRegex("cq:Page"),
-        basicRequestProcessor,
-        resourceResolverFactoryMock
-    );
+    var config = new ResourceContentRelatedResourcesSelectorConfigImpl()
+        .withReferencesSearchRegexes(
+            "(/apps/[^\"']+)",
+            "(/content/[^\"']+)",
+            "(/etc\\.clientlibs[^\"'\\)]+)",
+            "url\\('?([^\\)']+)'?\\)" // find anything that's inside the url() directive, skipping quotes if given
+        )
+        .withResourcePathPostfixToAppend(".html")
+        .withResourceRequiredPathRegex("^/content/my-site/us/en/.*")
+        .withRelatedResourceProcessablePathRegex(relatedResourceProcessablePathRegex)
+        .withResourceRequiredPrimaryNodeTypeRegex("cq:Page");
+
+    var relatedResourcesSelector = new ResourceContentRelatedResourcesSelector(config, basicRequestProcessor, resourceResolverFactoryMock);
 
     // when
     ResourceInfo mainPageResource = new PageResourceInfo(MAIN_PAGE_RESOURCE);
@@ -131,12 +139,8 @@ class ResourceContentRelatedResourcesSelectorRecursiveSearchTest {
     // then
     assertThat(actualRelatedResources)
         .extracting(ResourceInfo::getPath)
-        .containsExactlyElementsOf(expectedFoundResources);
-
-    // and: should collect all test resources, except the ones provided in the expectedNotFoundResources list
-    assertThat(actualRelatedResources)
-        .extracting(ResourceInfo::getPath)
-        .containsExactlyInAnyOrderElementsOf(
+        .containsExactlyElementsOf(expectedFoundResources) // should collect the expected resources
+        .containsExactlyInAnyOrderElementsOf( // should collect all test resources except the ones provided in the expectedNotFoundResources list
             SetUtils.difference(testResourceFiles.keySet(), Set.copyOf(expectedNotFoundResources))
         );
   }
