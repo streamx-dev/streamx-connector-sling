@@ -232,7 +232,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
       URI uri = new URI(input);
       return uri.getScheme() != null;
     } catch (URISyntaxException e) {
-      return false; // Invalid URI → assume it is a local path
+      return false; // invalid URI → assume it is a local path
     }
   }
 
