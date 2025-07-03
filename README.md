@@ -130,12 +130,14 @@ A typical example is extracting links from HTML elements like `<img src=...>`, `
 
 This service is intended for scenarios where you need to collect and publish resource paths—such as images, scripts, etc.—that are referenced within a page but aren't published to StreamX separately. For example, if a page references other pages and those pages are already being published individually by content authors, you should not use this mechanism to publish the page links.
 
+The service ignores externally referenced resources by checking if their paths begin with `http://` or `https://`.
+
 Example configuration for finding referenced clientlibs and core images in a page content:
 ```json
 {
   "configurations": {
     "dev.streamx.sling.connector.selectors.content.ResourceContentRelatedResourcesSelector~pages": {
-      "references.search-regexes": "$[env:STREAMX_REFERENCES_SEARCH_REGEXES;type=String[];delimiter=,;default=(/content[^\"'\\s]*\\.coreimg\\.[^\"'\\s]*),(/[^\"'\\s]*etc\\.clientlibs[^\"'\\)\\s]*),url\\('?(?!http)([^\\)']+)'?\\)]",
+      "references.search-regexes": "$[env:STREAMX_REFERENCES_SEARCH_REGEXES;type=String[];delimiter=,;default=(/content[^\"'\\s]*\\.coreimg\\.[^\"'\\s]*),(/[^\"'\\s]*etc\\.clientlibs[^\"'\\)\\s]*),url\\('?([^\\)']+)'?\\)]",
       "references.exclude-from-result.regex": ".*\\{\\.width\\}.*",
       "resource-path.postfix-to-append": ".html",
       "resource.required-path.regex": "^/content/.*",

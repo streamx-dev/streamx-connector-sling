@@ -123,7 +123,7 @@ class ResourceContentRelatedResourcesSelectorRecursiveSearchTest {
             "(/apps/[^\"']+)",
             "(/content/[^\"']+)",
             "(/etc\\.clientlibs[^\"'\\)]+)",
-            "url\\('?(?!http)([^\\)']+)'?\\)" // find anything that's inside the url() directive, skipping quotes if given
+            "url\\('?([^\\)']+)'?\\)" // find anything that's inside the url() directive, skipping quotes if given
         )
         .withResourcePathPostfixToAppend(".html")
         .withResourceRequiredPathRegex("^/content/my-site/us/en/.*")

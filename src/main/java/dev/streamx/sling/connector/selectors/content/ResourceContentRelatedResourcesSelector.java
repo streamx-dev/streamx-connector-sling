@@ -47,6 +47,8 @@ import org.slf4j.LoggerFactory;
 public class ResourceContentRelatedResourcesSelector implements RelatedResourcesSelector {
 
   private static final Logger LOG = LoggerFactory.getLogger(ResourceContentRelatedResourcesSelector.class);
+  private static final Pattern FORBIDDEN_RELATED_RESOURCE_PATH_PREFIX = Pattern.compile("^https?://.*");
+
   private final AtomicReference<ResourceContentRelatedResourcesSelectorConfig> config;
   private final SlingRequestProcessor slingRequestProcessor;
   private final ResourceResolverFactory resourceResolverFactory;
@@ -105,7 +107,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
   public Collection<ResourceInfo> getRelatedResources(ResourceInfo resourceInfo) {
     String resourcePath = resourceInfo.getPath();
     LOG.debug("Getting related resources for '{}'", resourcePath);
-    if (!resourceRequiredPathRegex.matcher(resourcePath).matches()) {
+    if (notMatching(resourcePath, resourceRequiredPathRegex)) {
       return Collections.emptyList();
     }
 
@@ -119,7 +121,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
 
   private List<ResourceInfo> getRelatedResources(ResourceInfo resource, ResourceResolver resourceResolver) {
     String primaryNodeType = resource.getProperty(JcrConstants.JCR_PRIMARYTYPE);
-    if (primaryNodeType == null || !resourceRequiredPrimaryNodeTypeRegex.matcher(primaryNodeType).matches()) {
+    if (primaryNodeType == null || notMatching(primaryNodeType, resourceRequiredPrimaryNodeTypeRegex)) {
       return Collections.emptyList();
     }
 
@@ -155,7 +157,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
   }
 
   private void extractPathsFromNestedRelatedResource(String resourcePath, ResourceResolver resourceResolver, Set<String> extractedPaths) {
-    if (!relatedResourceProcessablePathPattern.matcher(resourcePath).matches()) {
+    if (notMatching(resourcePath, relatedResourceProcessablePathPattern)) {
       return;
     }
     String resourceAsString = readResourceContent(resourcePath, resourceResolver);
@@ -175,7 +177,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
       while (matcher.find()) {
         if (matcher.groupCount() > 0) {
           String relatedResourcePath = matcher.group(1);
-          if (!relatedResourcePathExcludePattern.matcher(relatedResourcePath).matches()) {
+          if (isRelatedResourcePathValidForCollecting(relatedResourcePath)) {
             String normalizedPath = normalizePath(resourcePath, relatedResourcePath);
             matchingPaths.add(normalizedPath);
           }
@@ -183,6 +185,13 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
       }
     }
     return matchingPaths;
+  }
+
+  private boolean isRelatedResourcePathValidForCollecting(String relatedResourcePath) {
+    return
+        notMatching(relatedResourcePath, FORBIDDEN_RELATED_RESOURCE_PATH_PREFIX)
+        &&
+        notMatching(relatedResourcePath, relatedResourcePathExcludePattern);
   }
 
   private String readResourceContent(String resourcePath, ResourceResolver resourceResolver) {
@@ -205,5 +214,9 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
         .normalize()
         .toString()
         .replace('\\', '/');
+  }
+
+  private static boolean notMatching(String stringToTest, Pattern pattern) {
+    return !pattern.matcher(stringToTest).matches();
   }
 }
