@@ -52,6 +52,7 @@ import org.apache.sling.engine.SlingRequestProcessor;
 import org.apache.sling.event.jobs.JobManager;
 import org.apache.sling.event.jobs.consumer.JobExecutionContext;
 import org.apache.sling.event.jobs.consumer.JobExecutionContext.ResultBuilder;
+import org.apache.sling.testing.mock.osgi.MockOsgi;
 import org.apache.sling.testing.mock.sling.ResourceResolverType;
 import org.apache.sling.testing.mock.sling.junit5.SlingContext;
 import org.apache.sling.testing.mock.sling.junit5.SlingContextExtension;
@@ -85,18 +86,18 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   private final JobExecutionContext jobExecutionContext = mock(JobExecutionContext.class);
 
   // resource path + content
-  private final Map<String, String> allTestPages = new LinkedHashMap<>();
+  private final Map<String, String> allTestResources = new LinkedHashMap<>();
 
   private final SlingRequestProcessor requestProcessor = (HttpServletRequest request, HttpServletResponse response, ResourceResolver resourceResolver) -> {
     String requestURI = request.getRequestURI();
-    assertThat(allTestPages.keySet()).contains(requestURI);
+    assertThat(allTestResources.keySet()).contains(requestURI);
     response.setContentType("text/html");
-    response.getWriter().write(allTestPages.get(requestURI));
+    response.getWriter().write(allTestResources.get(requestURI));
   };
 
   private final ResourceContentRelatedResourcesSelectorConfig relatedResourcesConfig = new ResourceContentRelatedResourcesSelectorConfigImpl()
       .withReferencesSearchRegexes("(/content/.+coreimg.+\\.jpg)", "(/etc.clientlibs/.+\\.(css|js))")
-      .withResourcePathPostfixToAppend(".html")
+      .withResourcePathPostfixToAppend("")
       .withResourceRequiredPathRegex(".*")
       .withResourceRequiredPrimaryNodeTypeRegex(".*")
       .withRelatedResourceProcessablePathRegex(".*\\.html$");
@@ -124,6 +125,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     }
   };
 
+  private ResourceContentRelatedResourcesSelector selector;
   private long publicationServiceProcessingTotalTimeMillis = 0;
 
   @BeforeEach
@@ -135,7 +137,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
   private void configureServices() {
     slingContext.registerService(SlingRequestProcessor.class, requestProcessor);
-    var selector = new ResourceContentRelatedResourcesSelector(relatedResourcesConfig, requestProcessor, resourceResolverFactory);
+    selector = new ResourceContentRelatedResourcesSelector(relatedResourcesConfig, requestProcessor, resourceResolverFactory);
     slingContext.registerService(RelatedResourcesSelector.class, selector);
     slingContext.registerInjectActivateService(new RelatedResourcesSelectorRegistry());
 
@@ -164,11 +166,11 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   @Test
   void shouldPublishPagesAndAllRelatedResourcesThatAreConfigureToBeFound_AndUnpublishOwnCoreImagesAlongWithPage() throws Exception {
     // given
-    String page1WithImagesAndCss = registerPage(
+    String page1WithImagesAndCss = registerResource(
         PAGE_1,
         generateHtmlPageContent(CORE_IMG_FOR_PAGE_1, GLOBAL_IMAGE, GLOBAL_CSS_CLIENTLIB)
     );
-    String page2WithImagesAndJs = registerPage(
+    String page2WithImagesAndJs = registerResource(
         PAGE_2,
         generateHtmlPageContent(CORE_IMG_FOR_PAGE_2, GLOBAL_IMAGE, GLOBAL_JS_CLIENTLIB)
     );
@@ -361,11 +363,11 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   @Test
   void shouldUnpublishUnreferencedOwnImageWhenPublishingEditedPage() throws Exception {
     // given
-    String page1WithImagesAndCss = registerPage(
+    String page1WithImagesAndCss = registerResource(
         PAGE_1,
         generateHtmlPageContent(CORE_IMG_FOR_PAGE_1, GLOBAL_IMAGE, GLOBAL_CSS_CLIENTLIB)
     );
-    String page2WithImagesAndJs = registerPage(
+    String page2WithImagesAndJs = registerResource(
         PAGE_2,
         generateHtmlPageContent(CORE_IMG_FOR_PAGE_2, GLOBAL_IMAGE, GLOBAL_JS_CLIENTLIB)
     );
@@ -421,7 +423,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
     // ---------
     // when 2: edit the page to remove all related resources from its content
-    editPage(page1WithImagesAndCss, "<html />");
+    editResource(page1WithImagesAndCss, "<html />");
     publishPage(page1WithImagesAndCss);
 
     // then: expect only the own image to be unpublished
@@ -474,9 +476,9 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   @Test
   void unpublishingPageShouldNotRemoveDataForOtherPublishedPages() throws Exception {
     // given
-    String page1 = registerPage("/content/my-site/a/b/c", generateHtmlPageContent(GLOBAL_JS_CLIENTLIB));
-    String page2 = registerPage("/content/my-site/a/b", generateHtmlPageContent(GLOBAL_JS_CLIENTLIB));
-    String page3 = registerPage("/content/my-site/a", generateHtmlPageContent(GLOBAL_JS_CLIENTLIB));
+    String page1 = registerResource("/content/my-site/a/b/c", generateHtmlPageContent(GLOBAL_JS_CLIENTLIB));
+    String page2 = registerResource("/content/my-site/a/b", generateHtmlPageContent(GLOBAL_JS_CLIENTLIB));
+    String page3 = registerResource("/content/my-site/a", generateHtmlPageContent(GLOBAL_JS_CLIENTLIB));
 
     // when 1
     publishPages(page1, page2, page3);
@@ -547,9 +549,9 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     String image1 = "/content/my-site/a/b/c/image.coreimg.1.jpg";
     String image2 = "/content/my-site/a/b/image.coreimg.1.jpg";
     String image3 = "/content/my-site/a/image.coreimg.1.jpg";
-    String page1 = registerPage("/content/my-site/a/b/c", generateHtmlPageContent(image1));
-    String page2 = registerPage("/content/my-site/a/b", generateHtmlPageContent(image2));
-    String page3 = registerPage("/content/my-site/a", generateHtmlPageContent(image3));
+    String page1 = registerResource("/content/my-site/a/b/c", generateHtmlPageContent(image1));
+    String page2 = registerResource("/content/my-site/a/b", generateHtmlPageContent(image2));
+    String page3 = registerResource("/content/my-site/a", generateHtmlPageContent(image3));
 
     // when 1
     publishPages(page1, page2, page3);
@@ -611,7 +613,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   void shouldHandlePageWith1000RelatedResources() throws Exception {
     // given
     String imagePathFormat = PAGE_1 + "/images/image.coreimg.jpg/%d/bar.jpg";
-    String page1WithImagesAndCss = registerPage(
+    String page1WithImagesAndCss = registerResource(
         PAGE_1,
         generateHtmlPageContent(
             IntStream.rangeClosed(1, 1000).boxed()
@@ -633,6 +635,47 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   }
 
   @Test
+  void shouldPublishNestedRelatedResource() throws Exception {
+    // given
+    MockOsgi.modified(selector, slingContext.bundleContext(), Map.of(
+        "references.search-regexes", new String[]{"(/etc.clientlibs/.+\\.css)", "url\\(([^\\)]+)\\)"},
+        "related-resource.processable-path.regex", ".*\\.css$",
+        "references.exclude-from-result.regex", ""
+    ));
+
+    // and
+    String cssResourcePath = "/etc.clientlibs/styles.css";
+    String nestedCssResourcePath = "/etc.clientlibs/nested/styles.css";
+
+    registerResource(
+        cssResourcePath,
+        "@import url(" + nestedCssResourcePath + ")"
+    );
+
+    registerResource(
+        nestedCssResourcePath,
+        "any content"
+    );
+
+    String page = registerResource(
+        PAGE_1,
+        generateHtmlPageContent(cssResourcePath)
+    );
+
+    // when:
+    publishPage(page);
+
+    // then:
+    assertPublishedTimes(Map.of(
+        page, 1,
+        cssResourcePath, 1,
+        nestedCssResourcePath, 1
+    ));
+
+    assertResourcesCurrentlyOnStreamX(page, cssResourcePath, nestedCssResourcePath);
+  }
+
+  @Test
   void shouldHandleBigNumberOfPagesWithBigNumberOfRelatedResources() throws Exception {
     // given
     final int N = 100; // pages and images max count
@@ -647,7 +690,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
     // when: publish all the pages, each with references to images that have numbers from 1 to the page number (inclusive)
     pagePaths.forEach((pageNumber, pagePath) ->
-        registerPage(pagePath,
+        registerResource(pagePath,
             generateHtmlPageContent(
                 IntStream.rangeClosed(1, pageNumber).boxed()
                     .map(imageNumber -> String.format(imagePathFormat, pageNumber, imageNumber))
@@ -692,11 +735,11 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   @Test
   void shouldCallPublishedRelatedResourcesTreeModifyMethodsOnlyOncePerProcessingRequest() throws Exception {
     // given
-    String page1WithImagesAndCss = registerPage(
+    String page1WithImagesAndCss = registerResource(
         PAGE_1,
         generateHtmlPageContent(CORE_IMG_FOR_PAGE_1, GLOBAL_IMAGE, GLOBAL_CSS_CLIENTLIB)
     );
-    String page2WithImagesAndJs = registerPage(
+    String page2WithImagesAndJs = registerResource(
         PAGE_2,
         generateHtmlPageContent(CORE_IMG_FOR_PAGE_2, GLOBAL_IMAGE, GLOBAL_JS_CLIENTLIB)
     );
@@ -718,14 +761,14 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     }
   }
 
-  private String registerPage(String pageResourcePath, String content) {
-    allTestPages.put(pageResourcePath + ".html", content);
-    loadPageToSlingContext(pageResourcePath);
-    return pageResourcePath;
+  private String registerResource(String resourcePath, String content) {
+    allTestResources.put(resourcePath, content);
+    loadPageToSlingContext(resourcePath);
+    return resourcePath;
   }
 
-  private void editPage(String pageResourcePath, String content) {
-    allTestPages.put(pageResourcePath + ".html", content);
+  private void editResource(String resourcePath, String content) {
+    allTestResources.put(resourcePath, content);
   }
 
   private void loadPageToSlingContext(String pageResourcePath) {
