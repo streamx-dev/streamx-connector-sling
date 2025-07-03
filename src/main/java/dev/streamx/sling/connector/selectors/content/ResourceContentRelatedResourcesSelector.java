@@ -3,6 +3,8 @@ package dev.streamx.sling.connector.selectors.content;
 import dev.streamx.sling.connector.RelatedResourcesSelector;
 import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.util.SimpleInternalRequest;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collection;
@@ -23,6 +25,7 @@ import org.apache.sling.api.resource.ResourceResolverFactory;
 import org.apache.sling.api.uri.SlingUri;
 import org.apache.sling.api.uri.SlingUriBuilder;
 import org.apache.sling.engine.SlingRequestProcessor;
+import org.jetbrains.annotations.Nullable;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
@@ -47,7 +50,6 @@ import org.slf4j.LoggerFactory;
 public class ResourceContentRelatedResourcesSelector implements RelatedResourcesSelector {
 
   private static final Logger LOG = LoggerFactory.getLogger(ResourceContentRelatedResourcesSelector.class);
-  private static final Pattern FORBIDDEN_RELATED_RESOURCE_PATH_PREFIX = Pattern.compile("^https?://.*");
 
   private final AtomicReference<ResourceContentRelatedResourcesSelectorConfig> config;
   private final SlingRequestProcessor slingRequestProcessor;
@@ -84,10 +86,18 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
     relatedResourcePathIncludePatterns = Arrays.stream(currentConfig.references_search$_$regexes())
         .map(Pattern::compile)
         .collect(Collectors.toUnmodifiableList());
-    relatedResourcePathExcludePattern = Pattern.compile(currentConfig.references_exclude$_$from$_$result_regex());
-    resourceRequiredPathRegex = Pattern.compile(currentConfig.resource_required$_$path_regex());
-    resourceRequiredPrimaryNodeTypeRegex = Pattern.compile(currentConfig.resource_required$_$primary$_$node$_$type_regex());
-    relatedResourceProcessablePathPattern = Pattern.compile(currentConfig.related$_$resource_processable$_$path_regex());
+    relatedResourcePathExcludePattern = compilePattern(currentConfig.references_exclude$_$from$_$result_regex());
+    resourceRequiredPathRegex = compilePattern(currentConfig.resource_required$_$path_regex());
+    resourceRequiredPrimaryNodeTypeRegex = compilePattern(currentConfig.resource_required$_$primary$_$node$_$type_regex());
+    relatedResourceProcessablePathPattern = compilePattern(currentConfig.related$_$resource_processable$_$path_regex());
+  }
+
+  @Nullable
+  private Pattern compilePattern(String regex) {
+    if (regex == null) {
+      return null;
+    }
+    return Pattern.compile(regex);
   }
 
   @Modified
@@ -188,10 +198,8 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
   }
 
   private boolean isRelatedResourcePathValidForCollecting(String relatedResourcePath) {
-    return
-        notMatching(relatedResourcePath, FORBIDDEN_RELATED_RESOURCE_PATH_PREFIX)
-        &&
-        notMatching(relatedResourcePath, relatedResourcePathExcludePattern);
+    return notMatching(relatedResourcePath, relatedResourcePathExcludePattern)
+           && !isExternalUrl(relatedResourcePath);
   }
 
   private String readResourceContent(String resourcePath, ResourceResolver resourceResolver) {
@@ -214,6 +222,18 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
         .normalize()
         .toString()
         .replace('\\', '/');
+  }
+
+  private static boolean isExternalUrl(String input) {
+    if (input.startsWith("//")) {
+      return true; // protocol-relative URL
+    }
+    try {
+      URI uri = new URI(input);
+      return uri.getScheme() != null;
+    } catch (URISyntaxException e) {
+      return false; // invalid URI → assume it is a local path
+    }
   }
 
   private static boolean notMatching(String stringToTest, Pattern pattern) {

@@ -1,8 +1,24 @@
 @import url(/etc.clientlibs/my-site/clientlibs/theme/colors-1.css);
 @import url('theme/colors-2.css');
-@import url('../assets/colors-3.css');
-@import url('http://localhost/assets/colors-4.css');
-@import url(https://localhost/assets/colors-5.css);
+@import url("../assets/colors-3.css");
+
+/* begin of urls that should be skipped from being collected as related resources */
+@import url(http://localhost/assets/colors-4.css);
+@import url('https://localhost/assets/colors-5.css');
+@import url("https://localhost/assets/colors-6.css");
+
+@import url(//localhost/assets/colors-7.css);
+@import url('//localhost/assets/colors-8.css');
+@import url("//localhost/assets/colors-9.css");
+
+@import url(data:image/svg+xml;utf8;10);
+@import url('data:image/svg+xml;utf8;11');
+@import url("data:image/svg+xml;utf8;12");
+
+@import url(mailto:someone-1@foo.bar);
+@import url('mailto:someone-2@foo.bar');
+@import url("mailto:someone-3@foo.bar");
+/* end of urls that should be skipped */
 
 body {
   background-image: url('/content/dam/images/bg.png');
