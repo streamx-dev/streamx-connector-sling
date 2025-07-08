@@ -2,16 +2,13 @@ package dev.streamx.sling.connector.impl;
 
 import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PUBLICATION_ACTION;
 import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PUBLICATION_PATH;
-import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import dev.streamx.sling.connector.PublicationAction;
@@ -43,7 +40,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import javax.jcr.RepositoryException;
-import javax.jcr.Session;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.apache.sling.api.resource.ResourceResolver;
@@ -52,6 +48,7 @@ import org.apache.sling.engine.SlingRequestProcessor;
 import org.apache.sling.event.jobs.JobManager;
 import org.apache.sling.event.jobs.consumer.JobExecutionContext;
 import org.apache.sling.event.jobs.consumer.JobExecutionContext.ResultBuilder;
+import org.apache.sling.event.jobs.consumer.JobExecutionResult;
 import org.apache.sling.testing.mock.osgi.MockOsgi;
 import org.apache.sling.testing.mock.sling.ResourceResolverType;
 import org.apache.sling.testing.mock.sling.junit5.SlingContext;
@@ -59,7 +56,6 @@ import org.apache.sling.testing.mock.sling.junit5.SlingContextExtension;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.MockedStatic;
 
 @ExtendWith(SlingContextExtension.class)
 class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
@@ -81,9 +77,11 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   private final SlingContext slingContext = new SlingContext(ResourceResolverType.JCR_OAK);
   private final ResourceResolver resourceResolver = spy(slingContext.resourceResolver());
   private final ResourceResolverFactory resourceResolverFactory = mock(ResourceResolverFactory.class);
-  private final FakeJobManager jobManager = new FakeJobManager(Collections.emptyList());
+  private final FakeJobManager jobManager = spy(new FakeJobManager(Collections.emptyList()));
+  private final ResultBuilder resultBuilderMock = mock(ResultBuilder.class);
   private final StreamxPublicationServiceImpl publicationService = new StreamxPublicationServiceImpl();
   private final JobExecutionContext jobExecutionContext = mock(JobExecutionContext.class);
+
 
   // resource path + content
   private final Map<String, String> allTestResources = new LinkedHashMap<>();
@@ -145,7 +143,9 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     slingContext.registerService(PublicationHandler.class, new AssetResourcePathPublicationHandler(resourceResolverFactory, requestProcessor, assetResourcePathPublicationHandlerConfig));
     slingContext.registerInjectActivateService(new PublicationHandlerRegistry());
 
-    doReturn(mock(ResultBuilder.class)).when(jobExecutionContext).result();
+    doReturn(resultBuilderMock).when(resultBuilderMock).message(anyString());
+    doReturn(mock(JobExecutionResult.class)).when(resultBuilderMock).failed();
+    doReturn(resultBuilderMock).when(jobExecutionContext).result();
     slingContext.registerService(JobManager.class, jobManager);
 
     slingContext.registerInjectActivateService(publicationService);
@@ -733,32 +733,116 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   }
 
   @Test
-  void shouldCallPublishedRelatedResourcesTreeModifyMethodsOnlyOncePerProcessingRequest() throws Exception {
+  void shouldNotSaveChangesInRelatedResourcesJcrTree_IfErrorWhileAddingPublicationToQueue() throws Exception {
     // given
-    String page1WithImagesAndCss = registerResource(
-        PAGE_1,
-        generateHtmlPageContent(CORE_IMG_FOR_PAGE_1, GLOBAL_IMAGE, GLOBAL_CSS_CLIENTLIB)
+    String page1 = registerResource(PAGE_1, generateHtmlPageContent(CORE_IMG_FOR_PAGE_1));
+    String page2 = registerResource(PAGE_2, generateHtmlPageContent(CORE_IMG_FOR_PAGE_2));
+
+    // and
+    configureErrorWhileCreatingPublicationJob(CORE_IMG_FOR_PAGE_2, PublicationAction.PUBLISH);
+
+    // when
+    publishPages(page1, page2);
+
+    // then
+    verify(resultBuilderMock).message(
+        "Error while processing job: Can't handle publication of related resources. "
+        + "Publication job could not be created by JobManager for " + CORE_IMG_FOR_PAGE_2);
+
+    // and: expect resources that reached the queue - to be published to StreamX
+    assertResourcesCurrentlyOnStreamX(page1, page2, CORE_IMG_FOR_PAGE_1);
+
+    // and: in case of any error adding publication job - expect the JCR tree to be unchanged
+    verifyStateOfPublishedResourcesData(
+        Collections.emptyMap(),
+        Collections.emptySet()
     );
-    String page2WithImagesAndJs = registerResource(
-        PAGE_2,
-        generateHtmlPageContent(CORE_IMG_FOR_PAGE_2, GLOBAL_IMAGE, GLOBAL_JS_CLIENTLIB)
+  }
+
+  @Test
+  void shouldNotSaveChangesInRelatedResourcesJcrTree_IfErrorWhileAddingUnpublicationToQueue() throws Exception {
+    // given
+    String page = registerResource(PAGE_1, generateHtmlPageContent(CORE_IMG_FOR_PAGE_1));
+
+    // and
+    configureErrorWhileCreatingPublicationJob(CORE_IMG_FOR_PAGE_1, PublicationAction.UNPUBLISH);
+
+    // when
+    publishPages(page);
+
+    // then
+    assertResourcesCurrentlyOnStreamX(page, CORE_IMG_FOR_PAGE_1);
+
+    // and
+    verifyStateOfPublishedResourcesData(
+        Map.of(
+            "/var/streamx/connector/sling/referenced-related-resources", NONE,
+            "/var/streamx/connector/sling/referenced-related-resources/content", NONE,
+            "/var/streamx/connector/sling/referenced-related-resources/content/my-site", NONE,
+            "/var/streamx/connector/sling/referenced-related-resources/content/my-site/en", NONE,
+            "/var/streamx/connector/sling/referenced-related-resources/content/my-site/en/us", NONE,
+            "/var/streamx/connector/sling/referenced-related-resources/content/my-site/en/us/page-1", Set.of(CORE_IMG_FOR_PAGE_1)
+        ),
+        Set.of(
+            "/var/streamx/connector/sling/related-resources",
+            "/var/streamx/connector/sling/related-resources/content",
+            "/var/streamx/connector/sling/related-resources/content/my-site",
+            "/var/streamx/connector/sling/related-resources/content/my-site/en",
+            "/var/streamx/connector/sling/related-resources/content/my-site/en/us",
+            "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-1",
+            "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-1/images",
+            "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-1/images/image.coreimg.jpg",
+            "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-1/images/image.coreimg.jpg/11111",
+            "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-1/images/image.coreimg.jpg/11111/foo.jpg"
+        )
     );
 
-    try (MockedStatic<PublishedRelatedResourcesManager> treeManager = mockStatic(PublishedRelatedResourcesManager.class, CALLS_REAL_METHODS)) {
-      Session sessionSpy = spy(requireNonNull(resourceResolver.adaptTo(Session.class)));
-      treeManager.when(() -> PublishedRelatedResourcesManager.getSession(any())).thenReturn(sessionSpy);
+    // when 2: simulate removing image from page content, to trigger unpublishing the image
+    editResource(page, "<html />");
+    publishPages(page);
 
-      // when
-      publishPages(List.of(page1WithImagesAndCss, page2WithImagesAndJs, page1WithImagesAndCss));
-      unpublishPages(List.of(page2WithImagesAndJs, page1WithImagesAndCss, page1WithImagesAndCss));
+    // then
+    verify(resultBuilderMock).message(
+        "Error while processing job: Can't handle publication of related resources. "
+        + "Publication job could not be created by JobManager for " + CORE_IMG_FOR_PAGE_1);
 
-      // then
-      treeManager.verify(() -> PublishedRelatedResourcesManager.updatePublishedResourcesData(any(), any()), times(1));
-      treeManager.verify(() -> PublishedRelatedResourcesManager.removePublishedResourcesData(any(), any()), times(1));
+    // and
+    assertResourcesCurrentlyOnStreamX(page, CORE_IMG_FOR_PAGE_1);
 
-      // and
-      verify(sessionSpy, times(2)).save();
-    }
+    // and: in case of any error adding publication job - expect the JCR tree to be unchanged
+    verifyStateOfPublishedResourcesData(
+        Map.of(
+            "/var/streamx/connector/sling/referenced-related-resources", NONE,
+            "/var/streamx/connector/sling/referenced-related-resources/content", NONE,
+            "/var/streamx/connector/sling/referenced-related-resources/content/my-site", NONE,
+            "/var/streamx/connector/sling/referenced-related-resources/content/my-site/en", NONE,
+            "/var/streamx/connector/sling/referenced-related-resources/content/my-site/en/us", NONE,
+            "/var/streamx/connector/sling/referenced-related-resources/content/my-site/en/us/page-1", Set.of(CORE_IMG_FOR_PAGE_1)
+        ),
+        Set.of(
+            "/var/streamx/connector/sling/related-resources",
+            "/var/streamx/connector/sling/related-resources/content",
+            "/var/streamx/connector/sling/related-resources/content/my-site",
+            "/var/streamx/connector/sling/related-resources/content/my-site/en",
+            "/var/streamx/connector/sling/related-resources/content/my-site/en/us",
+            "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-1",
+            "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-1/images",
+            "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-1/images/image.coreimg.jpg",
+            "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-1/images/image.coreimg.jpg/11111",
+            "/var/streamx/connector/sling/related-resources/content/my-site/en/us/page-1/images/image.coreimg.jpg/11111/foo.jpg"
+        )
+    );
+  }
+
+  private void configureErrorWhileCreatingPublicationJob(String resourcePath, PublicationAction action) {
+    doReturn(null)
+        .when(jobManager)
+        .addJob(
+            eq(PublicationJobExecutor.JOB_TOPIC),
+            argThat(properties ->
+                properties.get(PN_STREAMX_PUBLICATION_ACTION).equals(action.toString())
+                && properties.get(PN_STREAMX_PUBLICATION_PATH).equals(resourcePath))
+        );
   }
 
   private String registerResource(String resourcePath, String content) {

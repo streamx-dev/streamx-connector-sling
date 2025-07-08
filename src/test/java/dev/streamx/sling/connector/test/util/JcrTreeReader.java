@@ -2,6 +2,7 @@ package dev.streamx.sling.connector.test.util;
 
 import static java.util.Objects.requireNonNull;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -27,10 +28,13 @@ public class JcrTreeReader {
    * Every map entry contains the node path as the key, and map of its properties as value
    */
   public static Map<String, Map<String, Set<String>>> getNestedNodes(String parentNodePath, ResourceResolver resourceResolver) throws RepositoryException {
-    Map<String, Map<String, Set<String>>> result = new LinkedHashMap<>();
-
     Session session = requireNonNull(resourceResolver.adaptTo(Session.class));
+    if (!session.nodeExists(parentNodePath)) {
+      return Collections.emptyMap();
+    }
     Node parentNode = session.getNode(parentNodePath);
+
+    Map<String, Map<String, Set<String>>> result = new LinkedHashMap<>();
     readNode(parentNode, result);
 
     return result;

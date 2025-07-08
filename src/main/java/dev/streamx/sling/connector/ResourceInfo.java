@@ -5,12 +5,12 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.commons.lang3.StringUtils;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -148,11 +148,7 @@ public class ResourceInfo {
   @Override
   public boolean equals(Object o) {
     if (o instanceof ResourceInfo) {
-      ResourceInfo that = (ResourceInfo) o;
-      return new EqualsBuilder()
-          .append(path, that.path)
-          .append(properties, that.properties)
-          .isEquals();
+      return Objects.equals(path, ((ResourceInfo) o).path);
     }
     return false;
   }
