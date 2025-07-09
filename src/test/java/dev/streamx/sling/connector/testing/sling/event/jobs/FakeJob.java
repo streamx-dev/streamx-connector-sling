@@ -56,7 +56,7 @@ public class FakeJob implements Job {
 
   @Override
   public int getNumberOfRetries() {
-    throw NOT_IMPLEMENTED_YET;
+    return Integer.MAX_VALUE;
   }
 
   @Override

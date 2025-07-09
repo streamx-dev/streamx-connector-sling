@@ -81,7 +81,10 @@ public class PublicationJobExecutor implements JobExecutor {
     try {
       return processPublication(handlerId, action, resource, clientName, context);
     } catch (StreamxPublicationException | StreamxClientException e) {
-      LOG.error("Error while processing publication, job will be retried. {}", e.getMessage());
+      LOG.error("Error while processing publication, job will be retried. "
+                + "Retry count: {}. "
+                + "Number of retries: {}. "
+                + "Error message: {}", job.getRetryCount(), job.getNumberOfRetries(), e.getMessage());
       LOG.debug("Publication error details: ", e);
       return context.result().failed(publicationRetryPolicy.getRetryDelay(job));
     } catch (RuntimeException e) {

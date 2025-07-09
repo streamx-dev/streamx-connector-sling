@@ -18,15 +18,19 @@ final class JcrNodeHelper {
   /**
    * Removes the specified JCR node and recursively deletes its parent nodes if they become orphaned (childless) as a result. <br />
    * The deletion proceeds upwards in the node hierarchy until a parent node has other children
-   * or the specified {@code basePath} is reached. The node at {@code basePath} will never be removed,
-   * even if it becomes empty.
+   * or the specified {@code basePath} is reached. The node at {@code basePath} is also removed if it becomes empty.
    */
   static void removeNodeAlongWithOrphanedParents(Node nodeToRemove, String basePath) throws RepositoryException {
     nodeToRemove = removeNodeAndReturnParent(nodeToRemove);
 
-    while (nodeToRemove.getPath().startsWith(basePath + "/") && !nodeToRemove.hasNodes()) {
+    while (isInHierarchy(nodeToRemove, basePath) && !nodeToRemove.hasNodes()) {
       nodeToRemove = removeNodeAndReturnParent(nodeToRemove);
     }
+  }
+
+  private static boolean isInHierarchy(Node node, String basePath) throws RepositoryException {
+    String nodePath = node.getPath();
+    return nodePath.startsWith(basePath + "/") || nodePath.equals(basePath);
   }
 
   private static Node removeNodeAndReturnParent(Node nodeToRemove) throws RepositoryException {

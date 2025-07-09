@@ -12,7 +12,7 @@ import javax.jcr.Session;
  */
 final class PublishedRelatedResourcesInversedTreeManager {
 
-  private static final String BASE_NODE_PATH = "/var/streamx/connector/sling/related-resources";
+  static final String BASE_NODE_PATH = "/var/streamx/connector/sling/related-resources";
 
   private PublishedRelatedResourcesInversedTreeManager() {
     // no instances
