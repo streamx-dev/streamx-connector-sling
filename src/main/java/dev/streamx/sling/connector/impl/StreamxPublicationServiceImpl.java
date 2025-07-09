@@ -18,8 +18,12 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import javax.jcr.RepositoryException;
+import javax.jcr.Session;
+import org.apache.sling.api.resource.LoginException;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.resource.ResourceResolverFactory;
 import org.apache.sling.event.jobs.Job;
@@ -105,27 +109,53 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     LOG.trace("Processing {}", job);
     PublicationAction ingestionAction = IngestionTriggerJobHelper.extractPublicationAction(job);
     List<ResourceInfo> resources = IngestionTriggerJobHelper.extractResourcesInfo(job);
+    LOG.trace("Handling publication for paths: {}", resources);
+
+    if (enabled && !resources.isEmpty()) {
+      try (ResourceResolver resourceResolver = resourceResolverFactory.getAdministrativeResourceResolver( null)) {
+        handleResourcesPublication(ingestionAction, resources);
+        handleRelatedResourcesPublication(ingestionAction, resources, resourceResolver);
+      } catch (StreamxPublicationException exception) {
+        LOG.error("Error while processing job", exception);
+        return jobExecutionContext.result() .message("Error while processing job: " + exception.getMessage()).failed();
+      } catch (LoginException | RepositoryException ex) {
+        LOG.error("Error updating JCR state for related resources", ex);
+      }
+    }
+    return jobExecutionContext.result().succeeded();
+  }
+
+  private void handleResourcesPublication(PublicationAction action, List<ResourceInfo> resources) throws StreamxPublicationException {
     try {
-      handleResourceAndRelatedResourcesPublication(ingestionAction, resources);
-      return jobExecutionContext.result().succeeded();
-    } catch (StreamxPublicationException exception) {
-      LOG.error("Error while processing job", exception);
-      return jobExecutionContext.result().message("Error while processing job: " + exception.getMessage()).failed();
+      for (ResourceInfo resource : resources) {
+        handlePublication(resource, action);
+      }
+    } catch (Exception e) {
+      throw new StreamxPublicationException("Can't handle publication of resources. " + e.getMessage(), e);
     }
   }
 
-  private void handleResourceAndRelatedResourcesPublication(PublicationAction action, List<ResourceInfo> resources)
-      throws StreamxPublicationException {
-    LOG.trace("Handling publication for paths: {}", resources);
-    if (!enabled || resources.isEmpty()) {
-      return;
-    }
-
-    try (ResourceResolver resourceResolver = resourceResolverFactory.getAdministrativeResourceResolver(null)) {
-      handleResourcesPublication(resources, action, resourceResolver);
-      handleRelatedResourcesPublication(resources, action, resourceResolver);
+  private void handleRelatedResourcesPublication(PublicationAction action, List<ResourceInfo> resources, ResourceResolver resourceResolver)
+      throws RepositoryException, StreamxPublicationException {
+    try {
+      Map<String, Set<ResourceInfo>> relatedResourcesMap = findRelatedResources(resources);
+      Session session = getSession(resourceResolver);
+      if (action == PublicationAction.PUBLISH) {
+        Set<ResourceInfo> distinctRelatedResources = SetUtils.flattenToLinkedHashSet(relatedResourcesMap.values());
+        publishRelatedResources(distinctRelatedResources, session);
+        Map<String, Set<ResourceInfo>> disappearedRelatedResources = PublishedRelatedResourcesManager.updatePublishedResourcesData(relatedResourcesMap, session);
+        unpublishRelatedResources(disappearedRelatedResources);
+      } else if (action == PublicationAction.UNPUBLISH) {
+        PublishedRelatedResourcesManager.removePublishedResourcesData(resources, session);
+        unpublishRelatedResources(relatedResourcesMap);
+      }
+      if (session.hasPendingChanges()) {
+        session.save();
+      }
+    } catch (RepositoryException ex) {
+      throw ex;
     } catch (Exception e) {
-      throw new StreamxPublicationException("Can't handle publication. " + e.getMessage(), e);
+      throw new StreamxPublicationException("Can't handle publication of related resources. " + e.getMessage(), e);
     }
   }
 
@@ -144,33 +174,9 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
     return result;
   }
 
-  private void handleResourcesPublication(List<ResourceInfo> resources, PublicationAction action, ResourceResolver resourceResolver) throws JobCreationException {
-    for (ResourceInfo resource : resources) {
-      handlePublication(resource, action);
-    }
-    if (action == PublicationAction.UNPUBLISH) {
-      PublishedRelatedResourcesManager.removePublishedResourcesData(resources, resourceResolver);
-    }
-  }
-
-  private void handleRelatedResourcesPublication(List<ResourceInfo> parentResources, PublicationAction action, ResourceResolver resourceResolver)
-      throws JobCreationException {
-    Map<String, Set<ResourceInfo>> relatedResourcesMap = findRelatedResources(parentResources);
-
-    Set<ResourceInfo> distinctRelatedResources = SetUtils.flattenToLinkedHashSet(relatedResourcesMap.values());
-
-    if (action == PublicationAction.PUBLISH) {
-      publishRelatedResources(distinctRelatedResources, resourceResolver);
-      Map<String, Set<ResourceInfo>> disappearedRelatedResources = PublishedRelatedResourcesManager.updatePublishedResourcesData(relatedResourcesMap, resourceResolver);
-      unpublishRelatedResources(disappearedRelatedResources);
-    } else if (action == PublicationAction.UNPUBLISH) {
-      unpublishRelatedResources(relatedResourcesMap);
-    }
-  }
-
-  private void publishRelatedResources(Set<ResourceInfo> relatedResources, ResourceResolver resourceResolver) throws JobCreationException {
+  private void publishRelatedResources(Set<ResourceInfo> relatedResources, Session session) throws JobCreationException {
     for (ResourceInfo relatedResource : relatedResources) {
-      if (!PublishedRelatedResourcesManager.wasPublished(relatedResource, resourceResolver)) {
+      if (!PublishedRelatedResourcesManager.wasPublished(relatedResource, session)) {
         handlePublication(relatedResource, PublicationAction.PUBLISH);
       }
     }
@@ -219,6 +225,10 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
       throw new JobCreationException("Publication job could not be created by JobManager for " + resourcePath);
     }
     LOG.debug("Publication request for [{}: {}] added to queue. Job: {}", handlerId, resourcePath, job);
+  }
+
+  private static Session getSession(ResourceResolver resourceResolver) {
+    return Objects.requireNonNull(resourceResolver.adaptTo(Session.class));
   }
 
   @ObjectClassDefinition(name = "StreamX Connector Configuration")

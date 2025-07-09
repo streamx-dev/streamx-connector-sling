@@ -6,14 +6,12 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Objects;
 import java.util.Set;
 import javax.jcr.Node;
 import javax.jcr.Property;
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 import javax.jcr.Value;
-import org.apache.sling.api.resource.ResourceResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,18 +33,13 @@ final class PublishedRelatedResourcesManager {
    * The returned set contains sum of all disappeared related resources from all the parent pages.
    * It's up to the caller to verify if the returned related resources can be safely unpublished.
    */
-  static Map<String, Set<ResourceInfo>> updatePublishedResourcesData(Map<String, Set<ResourceInfo>> relatedResourcesByParentPath, ResourceResolver resourceResolver) {
+  static Map<String, Set<ResourceInfo>> updatePublishedResourcesData(Map<String, Set<ResourceInfo>> relatedResourcesByParentPath, Session session)
+      throws RepositoryException {
     Map<String, Set<ResourceInfo>> disappearedRelatedResources = new LinkedHashMap<>();
-    try {
-      Session session = getSession(resourceResolver);
-      for (Entry<String, Set<ResourceInfo>> relatedResourcesForParentPath : relatedResourcesByParentPath.entrySet()) {
-        String parentResourcePath = relatedResourcesForParentPath.getKey();
-        Set<ResourceInfo> relatedResources = relatedResourcesForParentPath.getValue();
-        updatePublishedResourcesData(parentResourcePath, relatedResources, session, disappearedRelatedResources);
-      }
-      session.save();
-    } catch (Exception ex) {
-      LOG.error("Error updating JCR state for related resources", ex);
+    for (Entry<String, Set<ResourceInfo>> relatedResourcesForParentPath : relatedResourcesByParentPath.entrySet()) {
+      String parentResourcePath = relatedResourcesForParentPath.getKey();
+      Set<ResourceInfo> relatedResources = relatedResourcesForParentPath.getValue();
+      updatePublishedResourcesData(parentResourcePath, relatedResources, session, disappearedRelatedResources);
     }
     return disappearedRelatedResources;
   }
@@ -100,28 +93,23 @@ final class PublishedRelatedResourcesManager {
     return relatedResources;
   }
 
-  static void removePublishedResourcesData(List<ResourceInfo> parentResources, ResourceResolver resourceResolver) {
-    try {
-      Session session = getSession(resourceResolver);
-      for (ResourceInfo parentResource : parentResources) {
-        String parentResourcePath = parentResource.getPath();
-        String parentResourceJcrPath = BASE_NODE_PATH + parentResourcePath;
-        if (session.nodeExists(parentResourceJcrPath)) {
-          Node parentResourceJcrNode = session.getNode(parentResourceJcrPath);
-          Set<String> relatedResources = collectRelatedResources(parentResourceJcrNode);
-          PublishedRelatedResourcesInversedTreeManager.removeData(relatedResources, parentResourcePath, session);
-          if (parentResourceJcrNode.hasProperty(PN_RELATED_RESOURCES)) {
-            if (parentResourceJcrNode.hasNodes()) {
-              unsetRelatedResourcesProperty(parentResourceJcrNode);
-            } else {
-              JcrNodeHelper.removeNodeAlongWithOrphanedParents(parentResourceJcrNode, BASE_NODE_PATH);
-            }
+  static void removePublishedResourcesData(List<ResourceInfo> parentResources, Session session)
+      throws RepositoryException{
+    for (ResourceInfo parentResource : parentResources) {
+      String parentResourcePath = parentResource.getPath();
+      String parentResourceJcrPath = BASE_NODE_PATH + parentResourcePath;
+      if (session.nodeExists(parentResourceJcrPath)) {
+        Node parentResourceJcrNode = session.getNode(parentResourceJcrPath);
+        Set<String> relatedResources = collectRelatedResources(parentResourceJcrNode);
+        PublishedRelatedResourcesInversedTreeManager.removeData(relatedResources, parentResourcePath, session);
+        if (parentResourceJcrNode.hasProperty(PN_RELATED_RESOURCES)) {
+          if (parentResourceJcrNode.hasNodes()) {
+            unsetRelatedResourcesProperty(parentResourceJcrNode);
+          } else {
+            JcrNodeHelper.removeNodeAlongWithOrphanedParents(parentResourceJcrNode, BASE_NODE_PATH);
           }
         }
       }
-      session.save();
-    } catch (Exception ex) {
-      LOG.error("Error updating JCR state for parent resources {}", parentResources, ex);
     }
   }
 
@@ -134,18 +122,13 @@ final class PublishedRelatedResourcesManager {
     parentResourceJcrNode.setProperty(PN_RELATED_RESOURCES, (String[]) null);
   }
 
-  static boolean wasPublished(ResourceInfo relatedResource, ResourceResolver resourceResolver) {
+  static boolean wasPublished(ResourceInfo relatedResource, Session session) {
     try {
-      Session session = getSession(resourceResolver);
       return PublishedRelatedResourcesInversedTreeManager.wasPublished(relatedResource.getPath(), session);
     } catch (Exception ex) {
       LOG.error("Error checking if resource was published", ex);
       return false;
     }
-  }
-
-  static Session getSession(ResourceResolver resourceResolver) {
-    return Objects.requireNonNull(resourceResolver.adaptTo(Session.class));
   }
 
   private static Set<String> itemsOnlyInFirstSet(Set<String> set1, Set<String> set2) {
