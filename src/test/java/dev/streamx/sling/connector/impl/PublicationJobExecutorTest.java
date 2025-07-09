@@ -13,7 +13,6 @@ import dev.streamx.clients.ingestion.publisher.Message;
 import dev.streamx.clients.ingestion.publisher.Publisher;
 import dev.streamx.sling.connector.PublicationAction;
 import dev.streamx.sling.connector.PublicationHandler;
-import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.testing.handlers.FakeThrowablePublicationHandler;
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJobExecutionContext;
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeRetriedJob;

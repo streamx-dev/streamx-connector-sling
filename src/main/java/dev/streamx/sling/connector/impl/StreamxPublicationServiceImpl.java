@@ -146,8 +146,8 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
         Map<String, Set<ResourceInfo>> disappearedRelatedResources = PublishedRelatedResourcesManager.updatePublishedResourcesData(relatedResourcesMap, session);
         unpublishRelatedResources(disappearedRelatedResources);
       } else if (action == PublicationAction.UNPUBLISH) {
-        PublishedRelatedResourcesManager.removePublishedResourcesData(resources, session);
         unpublishRelatedResources(relatedResourcesMap);
+        PublishedRelatedResourcesManager.removePublishedResourcesData(resources, session);
       }
       if (session.hasPendingChanges()) {
         session.save();

@@ -17,9 +17,9 @@ import org.slf4j.LoggerFactory;
 
 final class PublishedRelatedResourcesManager {
 
-  private static final Logger LOG = LoggerFactory.getLogger(PublishedRelatedResourcesManager.class);
-  private static final String BASE_NODE_PATH = "/var/streamx/connector/sling/referenced-related-resources";
+  static final String BASE_NODE_PATH = "/var/streamx/connector/sling/referenced-related-resources";
   private static final String PN_RELATED_RESOURCES = "relatedResources";
+  private static final Logger LOG = LoggerFactory.getLogger(PublishedRelatedResourcesManager.class);
 
   private PublishedRelatedResourcesManager() {
     // no instances
@@ -69,7 +69,11 @@ final class PublishedRelatedResourcesManager {
     PublishedRelatedResourcesInversedTreeManager.removeData(relatedResourcesToDeleteFromJcr, parentResourcePath, session);
 
     if (relatedResourcesInJcr.isEmpty()) {
-      unsetRelatedResourcesProperty(parentResourceJcrNode);
+      if (!parentResourceJcrNode.hasNodes()) {
+        JcrNodeHelper.removeNodeAlongWithOrphanedParents(parentResourceJcrNode, BASE_NODE_PATH);
+      } else {
+        unsetRelatedResourcesProperty(parentResourceJcrNode);
+      }
     } else {
       setRelatedResourcesProperty(parentResourceJcrNode, relatedResourcesInJcr);
     }
@@ -94,7 +98,7 @@ final class PublishedRelatedResourcesManager {
   }
 
   static void removePublishedResourcesData(List<ResourceInfo> parentResources, Session session)
-      throws RepositoryException{
+      throws RepositoryException {
     for (ResourceInfo parentResource : parentResources) {
       String parentResourcePath = parentResource.getPath();
       String parentResourceJcrPath = BASE_NODE_PATH + parentResourcePath;
