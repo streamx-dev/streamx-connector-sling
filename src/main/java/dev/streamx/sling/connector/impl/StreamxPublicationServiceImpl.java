@@ -144,10 +144,7 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService,
         Set<ResourceInfo> distinctRelatedResources = SetUtils.flattenToLinkedHashSet(relatedResourcesMap.values());
         publishRelatedResources(distinctRelatedResources, session);
         Map<String, Set<ResourceInfo>> disappearedRelatedResources = PublishedRelatedResourcesManager.updatePublishedResourcesData(relatedResourcesMap, session);
-        if (!disappearedRelatedResources.isEmpty()) {
-          unpublishRelatedResources(disappearedRelatedResources);
-          PublishedRelatedResourcesManager.removePublishedResourcesData(disappearedRelatedResources, session);
-        }
+        unpublishRelatedResources(disappearedRelatedResources);
       } else if (action == PublicationAction.UNPUBLISH) {
         unpublishRelatedResources(relatedResourcesMap);
         PublishedRelatedResourcesManager.removePublishedResourcesData(resources, session);

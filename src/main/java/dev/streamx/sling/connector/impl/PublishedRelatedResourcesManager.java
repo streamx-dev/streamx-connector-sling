@@ -69,7 +69,11 @@ final class PublishedRelatedResourcesManager {
     PublishedRelatedResourcesInversedTreeManager.removeData(relatedResourcesToDeleteFromJcr, parentResourcePath, session);
 
     if (relatedResourcesInJcr.isEmpty()) {
-      unsetRelatedResourcesProperty(parentResourceJcrNode);
+      if (!parentResourceJcrNode.hasNodes()) {
+        JcrNodeHelper.removeNodeAlongWithOrphanedParents(parentResourceJcrNode, BASE_NODE_PATH);
+      } else {
+        unsetRelatedResourcesProperty(parentResourceJcrNode);
+      }
     } else {
       setRelatedResourcesProperty(parentResourceJcrNode, relatedResourcesInJcr);
     }
@@ -113,25 +117,6 @@ final class PublishedRelatedResourcesManager {
     }
   }
 
-  static void removePublishedResourcesData(Map<String, Set<ResourceInfo>> relatedResourcesByParentPath, Session session)
-      throws RepositoryException {
-    for (Entry<String, Set<ResourceInfo>> relatedResourcesForParentPath : relatedResourcesByParentPath.entrySet()) {
-      String parentResourcePath = relatedResourcesForParentPath.getKey();
-      String parentResourceJcrPath = BASE_NODE_PATH + parentResourcePath;
-      if (session.nodeExists(parentResourceJcrPath)) {
-        Node parentResourceJcrNode = session.getNode(parentResourceJcrPath);
-        Set<String> currentRelatedResources = collectRelatedResources(parentResourceJcrNode);
-        Set<ResourceInfo> relatedResourcesToRemove = relatedResourcesForParentPath.getValue();
-        Set<String> relatedResourcesToLeaveInJcr = subtractResources(currentRelatedResources, relatedResourcesToRemove);
-        if (relatedResourcesToLeaveInJcr.isEmpty()) {
-          JcrNodeHelper.removeNodeAlongWithOrphanedParents(parentResourceJcrNode, BASE_NODE_PATH);
-        } else {
-          setRelatedResourcesProperty(parentResourceJcrNode, relatedResourcesToLeaveInJcr);
-        }
-      }
-    }
-  }
-
   private static void setRelatedResourcesProperty(Node parentResourceJcrNode, Set<String> relatedResources) throws RepositoryException {
     String[] relatedResourcesArray = relatedResources.toArray(String[]::new);
     parentResourceJcrNode.setProperty(PN_RELATED_RESOURCES, relatedResourcesArray);
@@ -153,14 +138,6 @@ final class PublishedRelatedResourcesManager {
   private static Set<String> itemsOnlyInFirstSet(Set<String> set1, Set<String> set2) {
     Set<String> result = new LinkedHashSet<>(set1);
     result.removeAll(set2);
-    return result;
-  }
-
-  private static Set<String> subtractResources(Set<String> resourcePaths, Set<ResourceInfo> resourcesToSubtract) {
-    Set<String> result = new LinkedHashSet<>(resourcePaths);
-    for (ResourceInfo resourceToSubtract : resourcesToSubtract) {
-      result.remove(resourceToSubtract.getPath());
-    }
     return result;
   }
 }
