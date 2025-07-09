@@ -350,7 +350,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
     // ---------
     // when 2: edit the page to remove all related resources from its content
-    editResource(page1WithImagesAndCss, "<html />");
+    editResourceToRemoveAllRelatedResources(page1WithImagesAndCss);
     publishPage(page1WithImagesAndCss);
 
     // then: expect only the own image to be unpublished
@@ -482,6 +482,48 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
         Set.of(
             image2,
             image1
+        )
+    );
+  }
+
+  @Test
+  void republishingPageWithRemovedRelatedResource_ShouldNotRemoveDataOfNestedResources() throws Exception {
+    // given
+    String image1 = "/content/my-site/a/b/image.coreimg.1.jpg";
+    String image2 = "/content/my-site/a/b/c/image.coreimg.1.jpg";
+    String page2 = registerResource("/content/my-site/a/b/c", generateHtmlPageContent(image2));
+    String page1 = registerResource("/content/my-site/a/b", generateHtmlPageContent(image1));
+
+    // when 1:
+    publishPages(page1, page2);
+
+    // then
+    assertResourcesCurrentlyOnStreamX(page1, page2, image1, image2);
+
+    verifyStateOfPublishedResourcesData(
+        Map.of(
+            page1, Set.of(image1),
+            page2, Set.of(image2)
+        ),
+        Set.of(
+            image1,
+            image2
+        )
+    );
+
+    // when 2:
+    editResourceToRemoveAllRelatedResources(page1);
+    publishPages(page1);
+
+    // then: expecting image1 to be gone from StreamX
+    assertResourcesCurrentlyOnStreamX(page2, page1, image2);
+
+    verifyStateOfPublishedResourcesData(
+        Map.of(
+            page2, Set.of(image2)
+        ),
+        Set.of(
+            image2
         )
     );
   }
@@ -661,7 +703,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     );
 
     // when 2: simulate removing image from page content, to trigger unpublishing the image
-    editResource(page, "<html />");
+    editResourceToRemoveAllRelatedResources(page);
     publishPages(page);
 
     // then
@@ -700,8 +742,8 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     return resourcePath;
   }
 
-  private void editResource(String resourcePath, String content) {
-    allTestResources.put(resourcePath, content);
+  private void editResourceToRemoveAllRelatedResources(String resourcePath) {
+    allTestResources.put(resourcePath, "<html />");
   }
 
   private void loadPageToSlingContext(String pageResourcePath) {
