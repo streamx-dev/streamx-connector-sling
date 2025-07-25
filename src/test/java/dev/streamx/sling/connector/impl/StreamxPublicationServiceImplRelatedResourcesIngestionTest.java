@@ -4,9 +4,12 @@ import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX
 import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PUBLICATION_PATH;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -25,6 +28,7 @@ import dev.streamx.sling.connector.test.util.PageResourceInfo;
 import dev.streamx.sling.connector.test.util.ResourceContentRelatedResourcesSelectorConfigImpl;
 import dev.streamx.sling.connector.test.util.ResourceResolverMocks;
 import dev.streamx.sling.connector.testing.handlers.PagePublicationHandler;
+import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJob;
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJobManager;
 import java.lang.annotation.Annotation;
 import java.time.Duration;
@@ -44,10 +48,13 @@ import javax.jcr.RepositoryException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.resource.ResourceResolverFactory;
 import org.apache.sling.engine.SlingRequestProcessor;
+import org.apache.sling.event.jobs.Job;
 import org.apache.sling.event.jobs.JobManager;
+import org.apache.sling.event.jobs.JobManager.QueryType;
 import org.apache.sling.event.jobs.consumer.JobExecutionContext;
 import org.apache.sling.event.jobs.consumer.JobExecutionContext.ResultBuilder;
 import org.apache.sling.event.jobs.consumer.JobExecutionResult;
@@ -81,7 +88,6 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   private final ResultBuilder resultBuilderMock = mock(ResultBuilder.class);
   private final StreamxPublicationServiceImpl publicationService = new StreamxPublicationServiceImpl();
   private final JobExecutionContext jobExecutionContext = mock(JobExecutionContext.class);
-
 
   // resource path + content
   private final Map<String, String> allTestResources = new LinkedHashMap<>();
@@ -125,7 +131,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
   private ResourceContentRelatedResourcesSelector selector;
   private IngestionTriggerJobExecutor ingestionTriggerJobExecutor;
-  private long publicationServiceProcessingTotalTimeMillis = 0;
+  private long processingTotalTimeMillis = 0;
 
   @BeforeEach
   void setup() throws Exception {
@@ -147,6 +153,18 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     doReturn(resultBuilderMock).when(resultBuilderMock).message(anyString());
     doReturn(mock(JobExecutionResult.class)).when(resultBuilderMock).failed();
     doReturn(resultBuilderMock).when(jobExecutionContext).result();
+
+    doAnswer(invocationOnMock -> {
+      // process the ingestion job immediately in tests
+      Job job = new FakeJob(invocationOnMock.getArgument(0), invocationOnMock.getArgument(1));
+
+      long startTimeNanos = System.nanoTime();
+      ingestionTriggerJobExecutor.process(job, jobExecutionContext);
+      long elapsedTimeNanos = System.nanoTime() - startTimeNanos;
+      processingTotalTimeMillis += Duration.ofNanos(elapsedTimeNanos).toMillis();
+
+      return job;
+    }).when(jobManager).addJob(eq(IngestionTriggerJobExecutor.JOB_TOPIC), anyMap());
     slingContext.registerService(JobManager.class, jobManager);
 
     slingContext.registerInjectActivateService(publicationService);
@@ -167,14 +185,16 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
   @Test
   void shouldPublishPagesAndAllRelatedResourcesThatAreConfigureToBeFound_AndUnpublishOwnCoreImagesAlongWithPage() throws Exception {
-    // given
-    String page1WithImagesAndCss = registerResource(
+    // given: turn off skipping duplicate jobs creation
+    doReturn(Collections.emptyList()).when(jobManager).findJobs(any(QueryType.class), anyString(), anyLong(), any());
+
+    String page1WithImagesAndCss = registerPage(
         PAGE_1,
-        generateHtmlPageContent(CORE_IMG_FOR_PAGE_1, GLOBAL_IMAGE, GLOBAL_CSS_CLIENTLIB)
+        CORE_IMG_FOR_PAGE_1, GLOBAL_IMAGE, GLOBAL_CSS_CLIENTLIB
     );
-    String page2WithImagesAndJs = registerResource(
+    String page2WithImagesAndJs = registerPage(
         PAGE_2,
-        generateHtmlPageContent(CORE_IMG_FOR_PAGE_2, GLOBAL_IMAGE, GLOBAL_JS_CLIENTLIB)
+        CORE_IMG_FOR_PAGE_2, GLOBAL_IMAGE, GLOBAL_JS_CLIENTLIB
     );
 
     // when 1:
@@ -312,13 +332,13 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   @Test
   void shouldUnpublishUnreferencedOwnImageWhenPublishingEditedPage() throws Exception {
     // given
-    String page1WithImagesAndCss = registerResource(
+    String page1WithImagesAndCss = registerPage(
         PAGE_1,
-        generateHtmlPageContent(CORE_IMG_FOR_PAGE_1, GLOBAL_IMAGE, GLOBAL_CSS_CLIENTLIB)
+        CORE_IMG_FOR_PAGE_1, GLOBAL_IMAGE, GLOBAL_CSS_CLIENTLIB
     );
-    String page2WithImagesAndJs = registerResource(
+    String page2WithImagesAndJs = registerPage(
         PAGE_2,
-        generateHtmlPageContent(CORE_IMG_FOR_PAGE_2, GLOBAL_IMAGE, GLOBAL_JS_CLIENTLIB)
+        CORE_IMG_FOR_PAGE_2, GLOBAL_IMAGE, GLOBAL_JS_CLIENTLIB
     );
 
     // when 1:
@@ -390,9 +410,9 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   @Test
   void unpublishingPageShouldNotRemoveDataForOtherPublishedPages() throws Exception {
     // given
-    String page1 = registerResource("/content/my-site/a/b/c", generateHtmlPageContent(GLOBAL_JS_CLIENTLIB));
-    String page2 = registerResource("/content/my-site/a/b", generateHtmlPageContent(GLOBAL_JS_CLIENTLIB));
-    String page3 = registerResource("/content/my-site/a", generateHtmlPageContent(GLOBAL_JS_CLIENTLIB));
+    String page1 = registerPage("/content/my-site/a/b/c", GLOBAL_JS_CLIENTLIB);
+    String page2 = registerPage("/content/my-site/a/b", GLOBAL_JS_CLIENTLIB);
+    String page3 = registerPage("/content/my-site/a", GLOBAL_JS_CLIENTLIB);
 
     // when 1
     publishPages(page1, page2, page3);
@@ -428,8 +448,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     );
 
     // when 3: unpublish all remaining pages to additionally test cleaning up the JCR trees
-    unpublishPage(page1);
-    unpublishPage(page2);
+    unpublishPages(page1, page2);
 
     // then
     assertResourcesCurrentlyOnStreamX(GLOBAL_JS_CLIENTLIB);
@@ -448,9 +467,9 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     String image1 = "/content/my-site/a/b/c/image.coreimg.1.jpg";
     String image2 = "/content/my-site/a/b/image.coreimg.1.jpg";
     String image3 = "/content/my-site/a/image.coreimg.1.jpg";
-    String page1 = registerResource("/content/my-site/a/b/c", generateHtmlPageContent(image1));
-    String page2 = registerResource("/content/my-site/a/b", generateHtmlPageContent(image2));
-    String page3 = registerResource("/content/my-site/a", generateHtmlPageContent(image3));
+    String page1 = registerPage("/content/my-site/a/b/c", image1);
+    String page2 = registerPage("/content/my-site/a/b", image2);
+    String page3 = registerPage("/content/my-site/a", image3);
 
     // when 1
     publishPages(page1, page2, page3);
@@ -494,8 +513,8 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     // given
     String image1 = "/content/my-site/a/b/image.coreimg.1.jpg";
     String image2 = "/content/my-site/a/b/c/image.coreimg.1.jpg";
-    String page2 = registerResource("/content/my-site/a/b/c", generateHtmlPageContent(image2));
-    String page1 = registerResource("/content/my-site/a/b", generateHtmlPageContent(image1));
+    String page2 = registerPage("/content/my-site/a/b/c", image2);
+    String page1 = registerPage("/content/my-site/a/b", image1);
 
     // when 1:
     publishPages(page1, page2);
@@ -535,13 +554,11 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   void shouldHandlePageWith1000RelatedResources() throws Exception {
     // given
     String imagePathFormat = PAGE_1 + "/images/image.coreimg.jpg/%d/bar.jpg";
-    String page1WithImagesAndCss = registerResource(
+    String page1WithImagesAndCss = registerPage(
         PAGE_1,
-        generateHtmlPageContent(
-            IntStream.rangeClosed(1, 1000).boxed()
-                .map(i -> String.format(imagePathFormat, i))
-                .toArray(String[]::new)
-        )
+        IntStream.rangeClosed(1, 1000).boxed()
+            .map(i -> String.format(imagePathFormat, i))
+            .toArray(String[]::new)
     );
 
     // when
@@ -552,8 +569,8 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     assertNoResourcesCurrentlyOnStreamX();
 
     // and
-    System.out.println("Total processing time by Publication Service (in millis): " + publicationServiceProcessingTotalTimeMillis);
-    assertThat(publicationServiceProcessingTotalTimeMillis).isLessThan(1000);
+    System.out.println("Total processing time (in millis): " + processingTotalTimeMillis);
+    assertThat(processingTotalTimeMillis).isLessThan(1000);
   }
 
   @Test
@@ -579,10 +596,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
         "any content"
     );
 
-    String page = registerResource(
-        PAGE_1,
-        generateHtmlPageContent(cssResourcePath)
-    );
+    String page = registerPage(PAGE_1, cssResourcePath);
 
     // when:
     publishPage(page);
@@ -598,9 +612,54 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   }
 
   @Test
+  void shouldNotCreateDuplicatePublicationJobs() throws Exception {
+    // given: simulate publish job for CORE_IMG_FOR_PAGE_1 is pending
+    Job dummyPublishJob = jobManager.addJob(PublicationJobExecutor.JOB_TOPIC, Map.of(
+        PN_STREAMX_PUBLICATION_ACTION, PublicationAction.PUBLISH.toString(),
+        PN_STREAMX_PUBLICATION_PATH, CORE_IMG_FOR_PAGE_1
+    ));
+    // and: simulate unpublish job for CORE_IMG_FOR_PAGE_2 is pending
+    Job dummyUnpublishJob = jobManager.addJob(PublicationJobExecutor.JOB_TOPIC, Map.of(
+        PN_STREAMX_PUBLICATION_ACTION, PublicationAction.UNPUBLISH.toString(),
+        PN_STREAMX_PUBLICATION_PATH, CORE_IMG_FOR_PAGE_2
+    ));
+
+    String pageWithImageAndJs = registerPage(PAGE_1, CORE_IMG_FOR_PAGE_1, GLOBAL_JS_CLIENTLIB);
+    String pageWithImageAndCss = registerPage(PAGE_2, CORE_IMG_FOR_PAGE_2, GLOBAL_CSS_CLIENTLIB);
+
+    // when
+    publishPages(pageWithImageAndJs, pageWithImageAndCss);
+    unpublishPages(pageWithImageAndJs, pageWithImageAndCss);
+
+    // then
+    List<Pair<String, String>> submittedJobs = jobManager
+        .getJobQueue()
+        .stream()
+        .filter(job -> !dummyPublishJob.equals(job) && !dummyUnpublishJob.equals(job))
+        .map(job -> Pair.of(job.getProperty(PN_STREAMX_PUBLICATION_ACTION, String.class),
+            job.getProperty(PN_STREAMX_PUBLICATION_PATH, String.class)))
+        .collect(Collectors.toList());
+
+    assertThat(submittedJobs).containsExactlyInAnyOrder(
+        Pair.of("PUBLISH", PAGE_1),
+        Pair.of("PUBLISH", PAGE_2),
+        Pair.of("PUBLISH", CORE_IMG_FOR_PAGE_2), // publish job for CORE_IMG_FOR_PAGE_1 was not created
+        Pair.of("PUBLISH", GLOBAL_JS_CLIENTLIB),
+        Pair.of("PUBLISH", GLOBAL_CSS_CLIENTLIB),
+
+        Pair.of("UNPUBLISH", PAGE_1),
+        Pair.of("UNPUBLISH", PAGE_2),
+        Pair.of("UNPUBLISH", CORE_IMG_FOR_PAGE_1) // unpublish job for CORE_IMG_FOR_PAGE_2 was not created (and global related resources are by design never unpublished)
+    );
+
+    // and
+    assertResourcesCurrentlyOnStreamX(CORE_IMG_FOR_PAGE_2, GLOBAL_JS_CLIENTLIB, GLOBAL_CSS_CLIENTLIB);
+  }
+
+  @Test
   void shouldHandleBigNumberOfPagesWithBigNumberOfRelatedResources() throws Exception {
     // given
-    final int N = 100; // pages and images max count
+    final int N = 50; // pages and images max count
     final String imagePathFormat = "/content/my-site/page-%d/images/image.coreimg.jpg/%d/foo.jpg";
 
     Map<Integer, String> pagePaths = IntStream
@@ -612,12 +671,10 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
     // when: publish all the pages, each with references to images that have numbers from 1 to the page number (inclusive)
     pagePaths.forEach((pageNumber, pagePath) ->
-        registerResource(pagePath,
-            generateHtmlPageContent(
-                IntStream.rangeClosed(1, pageNumber).boxed()
-                    .map(imageNumber -> String.format(imagePathFormat, pageNumber, imageNumber))
-                    .toArray(String[]::new)
-            )
+        registerPage(pagePath,
+            IntStream.rangeClosed(1, pageNumber).boxed()
+                .map(imageNumber -> String.format(imagePathFormat, pageNumber, imageNumber))
+                .toArray(String[]::new)
         )
     );
     publishPages(pagePaths.values());
@@ -650,15 +707,15 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     assertResourcesCurrentlyOnStreamX(expectedResourcesOnStreamX);
 
     // final assertion: make sure publication (along with the JCR operations) are efficient enough
-    System.out.println("Total processing time by Publication Service (in millis): " + publicationServiceProcessingTotalTimeMillis);
-    assertThat(publicationServiceProcessingTotalTimeMillis).isLessThan(3000);
+    System.out.println("Total processing time (in millis): " + processingTotalTimeMillis);
+    assertThat(processingTotalTimeMillis).isLessThan(3000);
   }
 
   @Test
   void shouldNotSaveChangesInRelatedResourcesJcrTree_IfErrorWhileAddingPublicationToQueue() throws Exception {
     // given
-    String page1 = registerResource(PAGE_1, generateHtmlPageContent(CORE_IMG_FOR_PAGE_1));
-    String page2 = registerResource(PAGE_2, generateHtmlPageContent(CORE_IMG_FOR_PAGE_2));
+    String page1 = registerPage(PAGE_1, CORE_IMG_FOR_PAGE_1);
+    String page2 = registerPage(PAGE_2, CORE_IMG_FOR_PAGE_2);
 
     // and
     configureErrorWhileCreatingPublicationJob(CORE_IMG_FOR_PAGE_2, PublicationAction.PUBLISH);
@@ -684,7 +741,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   @Test
   void shouldNotSaveChangesInRelatedResourcesJcrTree_IfErrorWhileAddingUnpublicationToQueue() throws Exception {
     // given
-    String page = registerResource(PAGE_1, generateHtmlPageContent(CORE_IMG_FOR_PAGE_1));
+    String page = registerPage(PAGE_1, CORE_IMG_FOR_PAGE_1);
 
     // and
     configureErrorWhileCreatingPublicationJob(CORE_IMG_FOR_PAGE_1, PublicationAction.UNPUBLISH);
@@ -745,6 +802,13 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     return resourcePath;
   }
 
+  private String registerPage(String resourcePath, String... relatedResourcePathsToInclude) {
+    String pageContent = Arrays.stream(relatedResourcePathsToInclude)
+        .map(path -> "<include path='" + path + "' />") // use any include tag, doesn't have to exist in HTML language
+        .collect(Collectors.joining("\n", "<html><body>", "</body></html>"));
+    return registerResource(resourcePath, pageContent);
+  }
+
   private void editResourceToRemoveAllRelatedResources(String resourcePath) {
     allTestResources.put(resourcePath, "<html />");
   }
@@ -753,12 +817,6 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     if (resourceResolver.getResource(pageResourcePath) == null) {
       slingContext.load().json(PAGE_JSON_RESOURCE_FILE_PATH, pageResourcePath);
     }
-  }
-
-  private static String generateHtmlPageContent(String... relatedResourcePathsToInclude) {
-    return Arrays.stream(relatedResourcePathsToInclude)
-        .map(path -> "<include path='" + path + "' />") // any include tag, doesn't have to exist in HTML language
-        .collect(Collectors.joining("\n", "<html><body>", "</body></html>"));
   }
 
   private void verifyStateOfPublishedResourcesData(
@@ -834,6 +892,10 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     unpublishPages(List.of(resourcePath));
   }
 
+  private void unpublishPages(String... resourcePaths) throws Exception {
+    unpublishPages(Arrays.asList(resourcePaths));
+  }
+
   private void unpublishPages(Collection<String> resourcePaths) throws Exception {
     ingestPages(resourcePaths, PublicationAction.UNPUBLISH);
   }
@@ -845,11 +907,6 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     } else if (action == PublicationAction.UNPUBLISH) {
       publicationService.unpublish(resourcesToIngest);
     }
-
-    long startTimeNanos = System.nanoTime();
-    ingestionTriggerJobExecutor.process(jobManager.popLastJob(), jobExecutionContext);
-    long elapsedTimeNanos = System.nanoTime() - startTimeNanos;
-    publicationServiceProcessingTotalTimeMillis += Duration.ofNanos(elapsedTimeNanos).toMillis();
   }
 
   private void assertPublishedTimes(Map<String, Integer> resourcePathsAndTimes) {

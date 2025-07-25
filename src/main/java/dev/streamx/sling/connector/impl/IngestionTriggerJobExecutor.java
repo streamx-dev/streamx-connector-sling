@@ -26,6 +26,7 @@ import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.resource.ResourceResolverFactory;
 import org.apache.sling.event.jobs.Job;
 import org.apache.sling.event.jobs.JobManager;
+import org.apache.sling.event.jobs.JobManager.QueryType;
 import org.apache.sling.event.jobs.consumer.JobExecutionContext;
 import org.apache.sling.event.jobs.consumer.JobExecutionResult;
 import org.apache.sling.event.jobs.consumer.JobExecutor;
@@ -167,10 +168,14 @@ public class IngestionTriggerJobExecutor implements JobExecutor {
     }
   }
 
-  private void submitPublicationJob(ResourceInfo resource, PublicationAction action)
-      throws JobCreationException {
-    LOG.trace("Submitting publication job for resource: {}", resource);
+  private void submitPublicationJob(ResourceInfo resource, PublicationAction action) throws JobCreationException {
     String resourcePath = resource.getPath();
+    if (isPublicationJobAlreadySubmitted(resourcePath, action)) {
+      LOG.warn("Publication job for resource {} is already submitted", resource);
+      return;
+    }
+
+    LOG.trace("Submitting publication job for resource {}", resource);
     for (PublicationHandler<?> handler : publicationHandlerRegistry.getForResource(resource)) {
       for (StreamxInstanceClient client : streamxClientStore.getForResource(resource)) {
         LOG.debug("Adding publication request for [{}: {}] to queue", handler.getId(), resourcePath);
@@ -182,8 +187,6 @@ public class IngestionTriggerJobExecutor implements JobExecutor {
   private void submitPublicationJob(String handlerId, PublicationAction action,
       ResourceInfo resource, String clientName) throws JobCreationException {
     String resourcePath = resource.getPath();
-
-    // TODO skip submitting publication job if there is an active or queued job for the same resource path
 
     Map<String, Object> jobProperties = Map.of(
         PN_STREAMX_PUBLICATION_HANDLER_ID, handlerId,
@@ -198,6 +201,21 @@ public class IngestionTriggerJobExecutor implements JobExecutor {
       throw new JobCreationException("Publication job could not be created by JobManager for " + resourcePath);
     }
     LOG.debug("Publication request for [{}: {}] added to queue. Job: {}", handlerId, resourcePath, job);
+  }
+
+  private boolean isPublicationJobAlreadySubmitted(String resourcePath, PublicationAction action) {
+    return isPublicationJobAlreadySubmitted(QueryType.ACTIVE, resourcePath, action)
+           ||
+           isPublicationJobAlreadySubmitted(QueryType.QUEUED, resourcePath, action);
+  }
+
+  private boolean isPublicationJobAlreadySubmitted(QueryType queryType, String resourcePath, PublicationAction action) {
+    Map<String, Object> propertiesForSearch = Map.of(
+        PN_STREAMX_PUBLICATION_ACTION, action.toString(),
+        PN_STREAMX_PUBLICATION_PATH, resourcePath
+    );
+    int limit = 1;
+    return !jobManager.findJobs(queryType, PublicationJobExecutor.JOB_TOPIC, limit, propertiesForSearch).isEmpty();
   }
 
   static PublicationAction extractPublicationAction(Job job) {
