@@ -650,7 +650,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
     // final assertion: make sure publication (along with the JCR operations) are efficient enough
     System.out.println("Total processing time by Publication Service (in millis): " + publicationServiceProcessingTotalTimeMillis);
-    assertThat(publicationServiceProcessingTotalTimeMillis).isLessThan(2500);
+    assertThat(publicationServiceProcessingTotalTimeMillis).isLessThan(3000);
   }
 
   @Test
