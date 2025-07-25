@@ -636,8 +636,10 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
         .getJobQueue()
         .stream()
         .filter(job -> !dummyPublishJob.equals(job) && !dummyUnpublishJob.equals(job))
-        .map(job -> Pair.of(job.getProperty(PN_STREAMX_PUBLICATION_ACTION, String.class),
-            job.getProperty(PN_STREAMX_PUBLICATION_PATH, String.class)))
+        .map(job -> Pair.of(
+            job.getProperty(PN_STREAMX_PUBLICATION_ACTION, String.class),
+            job.getProperty(PN_STREAMX_PUBLICATION_PATH, String.class)
+        ))
         .collect(Collectors.toList());
 
     assertThat(submittedJobs).containsExactlyInAnyOrder(
