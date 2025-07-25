@@ -124,7 +124,7 @@ action to be taken when a particular resource is published.
 The connector includes a built-in implementation of [RelatedResourcesSelector](./src/main/java/dev/streamx/sling/connector/RelatedResourcesSelector.java),
 called [ResourceContentRelatedResourcesSelector](./src/main/java/dev/streamx/sling/connector/selectors/content/ResourceContentRelatedResourcesSelector.java).
 
-The `getRelatedResources(String resourcePath)` method of `ResourceContentRelatedResourcesSelector` makes an internal Sling request to retrieve the content of the specified resource.
+The `getRelatedResources(ResourceInfo resourceInfo)` method of `ResourceContentRelatedResourcesSelector` makes an internal Sling request to retrieve the content of the specified resource.
 It scans that content to identify and collect related resources referenced within it.
 A typical example is extracting links from HTML elements like `<img src=...>`, `<script src=...>` and similar.
 
