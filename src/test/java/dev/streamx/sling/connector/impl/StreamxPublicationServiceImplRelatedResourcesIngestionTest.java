@@ -123,6 +123,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   };
 
   private ResourceContentRelatedResourcesSelector selector;
+  private IngestionTriggerJobExecutor ingestionTriggerJobExecutor;
   private long publicationServiceProcessingTotalTimeMillis = 0;
 
   @BeforeEach
@@ -148,6 +149,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     slingContext.registerService(JobManager.class, jobManager);
 
     slingContext.registerInjectActivateService(publicationService);
+    ingestionTriggerJobExecutor = slingContext.registerInjectActivateService(IngestionTriggerJobExecutor.class);
   }
 
   private void configureStreamxClient() {
@@ -665,7 +667,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
     // then
     verify(resultBuilderMock).message(
-        "Error while processing job: Can't handle publication of related resources. "
+        "Error while processing job: Can't submit publication jobs for related resources. "
         + "Publication job could not be created by JobManager for " + CORE_IMG_FOR_PAGE_2);
 
     // and: expect resources that reached the queue - to be published to StreamX
@@ -708,7 +710,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
     // then
     verify(resultBuilderMock).message(
-        "Error while processing job: Can't handle publication of related resources. "
+        "Error while processing job: Can't submit publication jobs for related resources. "
         + "Publication job could not be created by JobManager for " + CORE_IMG_FOR_PAGE_1);
 
     // and
@@ -844,7 +846,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     }
 
     long startTimeNanos = System.nanoTime();
-    publicationService.process(jobManager.popLastJob(), jobExecutionContext);
+    ingestionTriggerJobExecutor.process(jobManager.popLastJob(), jobExecutionContext);
     long elapsedTimeNanos = System.nanoTime() - startTimeNanos;
     publicationServiceProcessingTotalTimeMillis += Duration.ofNanos(elapsedTimeNanos).toMillis();
   }

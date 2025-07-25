@@ -3,8 +3,6 @@ package dev.streamx.sling.connector.testing.sling.event.jobs;
 import java.util.Calendar;
 import java.util.Map;
 import java.util.Set;
-import org.apache.sling.api.resource.ValueMap;
-import org.apache.sling.api.wrappers.ValueMapDecorator;
 import org.apache.sling.event.jobs.Job;
 
 public class FakeJob implements Job {
@@ -12,11 +10,11 @@ public class FakeJob implements Job {
   private static final UnsupportedOperationException NOT_IMPLEMENTED_YET = new UnsupportedOperationException("Not implemented yet");
 
   private final String topic;
-  private final ValueMap properties;
+  private final Map<String, Object> properties;
 
   public FakeJob(String topic, Map<String, Object> properties) {
     this.topic = topic;
-    this.properties = new ValueMapDecorator(properties);
+    this.properties = properties;
   }
 
   @Override
@@ -41,12 +39,12 @@ public class FakeJob implements Job {
 
   @Override
   public <T> T getProperty(String propertyName, Class<T> aClass) {
-    return properties.get(propertyName, aClass);
+    return (T) properties.get(propertyName);
   }
 
   @Override
   public <T> T getProperty(String propertyName, T defaultValue) {
-    return properties.get(propertyName, defaultValue);
+    return (T) properties.getOrDefault(propertyName, defaultValue);
   }
 
   @Override
@@ -122,5 +120,10 @@ public class FakeJob implements Job {
   // custom methods
   public boolean hasProperty(String name, Object value) {
     return getPropertyNames().contains(name) && getProperty(name).equals(value);
+  }
+
+  @Override
+  public String toString() {
+    return topic + " " + properties;
   }
 }
