@@ -45,15 +45,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssumptions.given;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(SlingContextExtension.class)
 class StreamxPublicationServiceImplTest {
@@ -72,6 +71,7 @@ class StreamxPublicationServiceImplTest {
   private final List<FakeStreamxClientConfig> fakeStreamxClientConfigs = new ArrayList<>();
 
   private StreamxPublicationServiceImpl publicationService;
+  private IngestionTriggerJobExecutor ingestionTriggerJobExecutor;
   private FakeJobManager fakeJobManager;
   private FakeStreamxClient fakeStreamxClient;
   private FakeStreamxClientFactory fakeStreamxClientFactory;
@@ -144,20 +144,7 @@ class StreamxPublicationServiceImplTest {
       return;
     }
 
-    publicationService = spy(new StreamxPublicationServiceImpl());
-    doAnswer(
-        invocation -> {
-          processResourcesAsJob(invocation.getArgument(0), "PUBLISH");
-          return null;
-        }
-    ).when(publicationService).publish(anyList());
-
-    doAnswer(
-        invocation -> {
-          processResourcesAsJob(invocation.getArgument(0), "UNPUBLISH");
-          return null;
-        }
-    ).when(publicationService).unpublish(anyList());
+    publicationService = new StreamxPublicationServiceImpl();
 
     JobExecutor publicationJobExecutor = new PublicationJobExecutor();
 
@@ -167,7 +154,16 @@ class StreamxPublicationServiceImplTest {
 
     fakeStreamxClientFactory = new FakeStreamxClientFactory();
     slingContext.registerService(StreamxClientFactory.class, fakeStreamxClientFactory);
+
     fakeJobManager = spy(new FakeJobManager(Collections.singletonList(publicationJobExecutor)));
+
+    doAnswer(invocationOnMock -> {
+      // process the ingestion job immediately in tests
+      Job job = new FakeJob(invocationOnMock.getArgument(0), invocationOnMock.getArgument(1));
+      ingestionTriggerJobExecutor.process(job, new FakeJobExecutionContext());
+      return job;
+    }).when(fakeJobManager).addJob(eq(IngestionTriggerJobExecutor.JOB_TOPIC), anyMap());
+
     slingContext.registerService(JobManager.class, fakeJobManager);
     slingContext.registerService(PublicationRetryPolicy.class, new DefaultPublicationRetryPolicy());
     for (PublicationHandler<?> handler : handlers) {
@@ -187,19 +183,9 @@ class StreamxPublicationServiceImplTest {
     slingContext.registerInjectActivateService(publicationService, publicationServiceConfig);
     slingContext.registerInjectActivateService(publicationJobExecutor);
 
+    ingestionTriggerJobExecutor = slingContext.registerInjectActivateService(IngestionTriggerJobExecutor.class);
+
     fakeStreamxClient = fakeStreamxClientFactory.getFakeClient("/fake/streamx/instance");
-  }
-
-  private void processResourcesAsJob(List<ResourceInfo> resources, String action) {
-    String[] serializedResources = resources
-        .stream()
-        .map(ResourceInfo::serialize)
-        .toArray(String[]::new);
-
-    Job job = mock(Job.class);
-    when(job.getProperty(IngestionTriggerJobHelper.PN_STREAMX_INGESTION_RESOURCES, String[].class)).thenReturn(serializedResources);
-    when(job.getProperty(IngestionTriggerJobHelper.PN_STREAMX_INGESTION_ACTION, String.class)).thenReturn(action);
-    publicationService.process(job, new FakeJobExecutionContext());
   }
 
   @Test
@@ -598,8 +584,7 @@ class StreamxPublicationServiceImplTest {
   void shouldSubmitIngestionTriggerJobs() throws Exception {
     // given
     initializeComponentsIfNotInitialized();
-    doCallRealMethod().when(publicationService).publish(anyList());
-    doCallRealMethod().when(publicationService).unpublish(anyList());
+    doCallRealMethod().when(fakeJobManager).addJob(anyString(), anyMap());
 
     // when
     publicationService.publish(Collections.singletonList(new PageResourceInfo("path-1")));
@@ -610,15 +595,15 @@ class StreamxPublicationServiceImplTest {
     assertThat(queuedJobs).hasSize(2);
 
     FakeJob publishJob = queuedJobs.get(0);
-    assertThat(publishJob.getProperty(IngestionTriggerJobHelper.PN_STREAMX_INGESTION_ACTION, String.class))
+    assertThat(publishJob.getProperty(IngestionTriggerJobExecutor.PN_STREAMX_INGESTION_ACTION, String.class))
         .isEqualTo("PUBLISH");
-    assertThat(publishJob.getProperty(IngestionTriggerJobHelper.PN_STREAMX_INGESTION_RESOURCES, String[].class))
+    assertThat(publishJob.getProperty(IngestionTriggerJobExecutor.PN_STREAMX_INGESTION_RESOURCES, String[].class))
         .containsExactly("{\"path\":\"path-1\",\"properties\":{\"jcr:primaryType\":\"cq:Page\"}}");
 
     FakeJob unpublishJob = queuedJobs.get(1);
-    assertThat(unpublishJob.getProperty(IngestionTriggerJobHelper.PN_STREAMX_INGESTION_ACTION, String.class))
+    assertThat(unpublishJob.getProperty(IngestionTriggerJobExecutor.PN_STREAMX_INGESTION_ACTION, String.class))
         .isEqualTo("UNPUBLISH");
-    assertThat(unpublishJob.getProperty(IngestionTriggerJobHelper.PN_STREAMX_INGESTION_RESOURCES, String[].class))
+    assertThat(unpublishJob.getProperty(IngestionTriggerJobExecutor.PN_STREAMX_INGESTION_RESOURCES, String[].class))
         .containsExactly("{\"path\":\"path-2\",\"properties\":{\"jcr:primaryType\":\"dam:Asset\"}}");
   }
 
