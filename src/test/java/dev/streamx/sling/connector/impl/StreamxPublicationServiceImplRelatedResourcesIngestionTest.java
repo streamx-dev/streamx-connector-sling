@@ -971,11 +971,11 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     unpublishPages(Arrays.asList(resourcePaths));
   }
 
-  private void unpublishPages(Collection<String> resourcePaths) throws Exception {
+  private void unpublishPages(Collection<String> resourcePaths) {
     ingestPages(resourcePaths, PublicationAction.UNPUBLISH);
   }
 
-  private void ingestPages(Collection<String> resourcePaths, PublicationAction action) throws Exception {
+  private void ingestPages(Collection<String> resourcePaths, PublicationAction action) {
     List<ResourceInfo> resourcesToIngest = resourcePaths.stream().map(PageResourceInfo::new).collect(Collectors.toList());
     if (action == PublicationAction.PUBLISH) {
       publicationService.publish(resourcesToIngest);
