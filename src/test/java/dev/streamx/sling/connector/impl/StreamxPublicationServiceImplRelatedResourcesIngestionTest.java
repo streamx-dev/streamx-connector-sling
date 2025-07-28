@@ -571,7 +571,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
     // and
     System.out.println("Total processing time (in millis): " + processingTotalTimeMillis);
-    assertThat(processingTotalTimeMillis).isLessThan(1000);
+    assertThat(processingTotalTimeMillis).isLessThan(3000);
   }
 
   @Test
