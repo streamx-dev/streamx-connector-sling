@@ -3,6 +3,7 @@ package dev.streamx.sling.connector.impl;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
+import dev.streamx.sling.connector.ResourceInfo;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import org.junit.jupiter.api.Test;
@@ -53,6 +54,6 @@ class StreamxClientFactoryImplTest {
 
     // then
     assertThat(streamxClient.getName()).isEqualTo(config.name());
-    assertThat(streamxClient.canProcess("any-path")).isTrue();
+    assertThat(streamxClient.canProcess(new ResourceInfo("any-path"))).isTrue();
   }
 }

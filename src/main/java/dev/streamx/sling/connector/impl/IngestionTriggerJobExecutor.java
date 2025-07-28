@@ -172,7 +172,7 @@ public class IngestionTriggerJobExecutor implements JobExecutor {
     LOG.trace("Submitting publication job for resource: {}", resource);
     String resourcePath = resource.getPath();
     for (PublicationHandler<?> handler : publicationHandlerRegistry.getForResource(resource)) {
-      for (StreamxInstanceClient client : streamxClientStore.getForResource(resourcePath)) {
+      for (StreamxInstanceClient client : streamxClientStore.getForResource(resource)) {
         LOG.debug("Adding publication request for [{}: {}] to queue", handler.getId(), resourcePath);
         submitPublicationJob(handler.getId(), action, resource, client.getName());
       }

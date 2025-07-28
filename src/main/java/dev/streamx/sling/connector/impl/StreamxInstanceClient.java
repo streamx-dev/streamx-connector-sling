@@ -4,6 +4,7 @@ import dev.streamx.clients.ingestion.StreamxClient;
 import dev.streamx.clients.ingestion.exceptions.StreamxClientException;
 import dev.streamx.clients.ingestion.publisher.Publisher;
 import dev.streamx.sling.connector.PublicationData;
+import dev.streamx.sling.connector.ResourceInfo;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -42,12 +43,12 @@ public class StreamxInstanceClient {
     return name;
   }
 
-  boolean canProcess(String resourcePath) {
+  boolean canProcess(ResourceInfo resourceInfo) {
     if (resourcePathPatterns == null) {
       return false;
     }
 
-    return resourcePathPatterns.stream().anyMatch(resourcePath::matches);
+    return resourcePathPatterns.stream().anyMatch(resourceInfo.getPath()::matches);
   }
 
 }

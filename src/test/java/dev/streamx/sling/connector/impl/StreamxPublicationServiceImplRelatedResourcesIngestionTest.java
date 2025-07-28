@@ -3,6 +3,7 @@ package dev.streamx.sling.connector.impl;
 import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PUBLICATION_ACTION;
 import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PUBLICATION_PATH;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -160,7 +161,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     doReturn("streamxClient").when(streamxClientMock).getName();
 
     StreamxClientStore streamxClientStore = mock(StreamxClientStoreImpl.class);
-    doReturn(List.of(streamxClientMock)).when(streamxClientStore).getForResource(anyString());
+    doReturn(List.of(streamxClientMock)).when(streamxClientStore).getForResource(any(ResourceInfo.class));
     slingContext.registerInjectActivateService(streamxClientStore);
   }
 

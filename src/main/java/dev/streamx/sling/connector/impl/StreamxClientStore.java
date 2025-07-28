@@ -1,5 +1,6 @@
 package dev.streamx.sling.connector.impl;
 
+import dev.streamx.sling.connector.ResourceInfo;
 import java.util.List;
 
 /**
@@ -9,10 +10,10 @@ interface StreamxClientStore {
 
   /**
    * Returns all {@link StreamxInstanceClient} instances related to the specified path.
-   * @param resourcePath path to get {@link StreamxInstanceClient}s for
+   * @param resourceInfo resource to get {@link StreamxInstanceClient}s for
    * @return list of {@link StreamxInstanceClient}s related to the specified path
    */
-  List<StreamxInstanceClient> getForResource(String resourcePath);
+  List<StreamxInstanceClient> getForResource(ResourceInfo resourceInfo);
 
   /**
    * Returns the {@link StreamxInstanceClient} instance with the specified name.

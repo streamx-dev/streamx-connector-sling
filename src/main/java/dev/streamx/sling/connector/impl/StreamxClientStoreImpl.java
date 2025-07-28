@@ -2,6 +2,7 @@ package dev.streamx.sling.connector.impl;
 
 import dev.streamx.clients.ingestion.StreamxClient;
 import dev.streamx.clients.ingestion.exceptions.StreamxClientException;
+import dev.streamx.sling.connector.ResourceInfo;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -83,10 +84,10 @@ public class StreamxClientStoreImpl implements StreamxClientStore {
   }
 
   @Override
-  public List<StreamxInstanceClient> getForResource(String resourcePath) {
+  public List<StreamxInstanceClient> getForResource(ResourceInfo resourceInfo) {
     return clientsByName.values().stream()
         .filter(Objects::nonNull)
-        .filter(client -> client.canProcess(resourcePath))
+        .filter(client -> client.canProcess(resourceInfo))
         .collect(Collectors.toList());
   }
 
