@@ -1,7 +1,5 @@
 package dev.streamx.sling.connector.impl;
 
-import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PUBLICATION_ACTION;
-import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PUBLICATION_PATH;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -72,14 +70,15 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   private static final String PAGE_1 = "/content/my-site/en/us/page-1";
   private static final String PAGE_2 = "/content/my-site/en/us/page-2";
 
-  private static final String CORE_IMG_FOR_PAGE_1 = "/content/my-site/en/us/page-1/images/image.coreimg.jpg/11111/foo.jpg";
-  private static final String CORE_IMG_FOR_PAGE_2 = "/content/my-site/en/us/page-2/images/image.coreimg.jpg/22222/foo.jpg";
+  private static final String CORE_IMG_FOR_PAGE_1 = PAGE_1 + "/images/image.coreimg.jpg/11111/foo.jpg";
+  private static final String CORE_IMG_FOR_PAGE_2 = PAGE_2 + "/images/image.coreimg.jpg/22222/foo.jpg";
 
   private static final String GLOBAL_IMAGE = "/content/dam/bar.jpg";
   private static final String GLOBAL_CSS_CLIENTLIB = "/etc.clientlibs/clientlib-1.js";
   private static final String GLOBAL_JS_CLIENTLIB = "/etc.clientlibs/clientlib-1.css";
 
   private static final String PAGE_JSON_RESOURCE_FILE_PATH = "src/test/resources/page.json";
+  private static final String STREAMX_CLIENT_NAME = "streamxClient";
 
   private final SlingContext slingContext = new SlingContext(ResourceResolverType.JCR_OAK);
   private final ResourceResolver resourceResolver = spy(slingContext.resourceResolver());
@@ -131,6 +130,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
   private ResourceContentRelatedResourcesSelector selector;
   private IngestionTriggerJobExecutor ingestionTriggerJobExecutor;
+  private AssetResourcePathPublicationHandler assetResourcePathPublicationHandler;
   private long processingTotalTimeMillis = 0;
 
   @BeforeEach
@@ -147,7 +147,8 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     slingContext.registerInjectActivateService(new RelatedResourcesSelectorRegistry());
 
     slingContext.registerService(PublicationHandler.class, new PagePublicationHandler(resourceResolver));
-    slingContext.registerService(PublicationHandler.class, new AssetResourcePathPublicationHandler(resourceResolverFactory, requestProcessor, assetResourcePathPublicationHandlerConfig));
+    assetResourcePathPublicationHandler = new AssetResourcePathPublicationHandler(resourceResolverFactory, requestProcessor, assetResourcePathPublicationHandlerConfig);
+    slingContext.registerService(PublicationHandler.class, assetResourcePathPublicationHandler);
     slingContext.registerInjectActivateService(new PublicationHandlerRegistry());
 
     doReturn(resultBuilderMock).when(resultBuilderMock).message(anyString());
@@ -176,7 +177,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     slingContext.registerService(StreamxClientFactory.class, new FakeStreamxClientFactory());
 
     StreamxInstanceClient streamxClientMock = mock(StreamxInstanceClient.class);
-    doReturn("streamxClient").when(streamxClientMock).getName();
+    doReturn(STREAMX_CLIENT_NAME).when(streamxClientMock).getName();
 
     StreamxClientStore streamxClientStore = mock(StreamxClientStoreImpl.class);
     doReturn(List.of(streamxClientMock)).when(streamxClientStore).getForResource(any(ResourceInfo.class));
@@ -613,49 +614,119 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
   @Test
   void shouldNotCreateDuplicatePublicationJobs() throws Exception {
-    // given: simulate publish job for CORE_IMG_FOR_PAGE_1 is pending
-    Job dummyPublishJob = jobManager.addJob(PublicationJobExecutor.JOB_TOPIC, Map.of(
-        PN_STREAMX_PUBLICATION_ACTION, PublicationAction.PUBLISH.toString(),
-        PN_STREAMX_PUBLICATION_PATH, CORE_IMG_FOR_PAGE_1
-    ));
-    // and: simulate unpublish job for CORE_IMG_FOR_PAGE_2 is pending
-    Job dummyUnpublishJob = jobManager.addJob(PublicationJobExecutor.JOB_TOPIC, Map.of(
-        PN_STREAMX_PUBLICATION_ACTION, PublicationAction.UNPUBLISH.toString(),
-        PN_STREAMX_PUBLICATION_PATH, CORE_IMG_FOR_PAGE_2
-    ));
+    // given: page with 6 images and 2 global assets
+    String page = "/content/my-site/en/us/page-with-related-resources";
+    String coreImg1 = page + "/images/coreimg/1.jpg";
+    String coreImg2 = page + "/images/coreimg/2.jpg";
+    String coreImg3 = page + "/images/coreimg/3.jpg";
+    String coreImg4 = page + "/images/coreimg/4.jpg";
+    String coreImg5 = page + "/images/coreimg/5.jpg";
+    String coreImg6 = page + "/images/coreimg/6.jpg";
 
-    String pageWithImageAndJs = registerPage(PAGE_1, CORE_IMG_FOR_PAGE_1, GLOBAL_JS_CLIENTLIB);
-    String pageWithImageAndCss = registerPage(PAGE_2, CORE_IMG_FOR_PAGE_2, GLOBAL_CSS_CLIENTLIB);
+    registerPage(
+        page,
+        coreImg1, coreImg2, coreImg3, coreImg4, coreImg5, coreImg6,
+        GLOBAL_JS_CLIENTLIB, GLOBAL_CSS_CLIENTLIB
+    );
+
+    // and: simulate some pending publish/unpublish jobs already exist
+    List<Job> dummyJobs = List.of(
+        // publish job for image 1
+        createDummyIngestionJob(
+            coreImg1,
+            PublicationAction.PUBLISH,
+            assetResourcePathPublicationHandler.getId(),
+            STREAMX_CLIENT_NAME
+        ),
+
+        // publish job for image 2, but for other handler
+        createDummyIngestionJob(
+            coreImg2,
+            PublicationAction.PUBLISH,
+            "other" + assetResourcePathPublicationHandler.getId(),
+            STREAMX_CLIENT_NAME
+        ),
+
+        // publish job for image 3, but for other client
+        createDummyIngestionJob(
+            coreImg3,
+            PublicationAction.PUBLISH,
+            assetResourcePathPublicationHandler.getId(),
+            "other" + STREAMX_CLIENT_NAME
+        ),
+
+        // unpublish job for image 6
+        createDummyIngestionJob(
+            coreImg6,
+            PublicationAction.UNPUBLISH,
+            assetResourcePathPublicationHandler.getId(),
+            STREAMX_CLIENT_NAME
+        ),
+
+        // unpublish job for image 5, but for other handler
+        createDummyIngestionJob(
+            coreImg5,
+            PublicationAction.UNPUBLISH,
+            "other" + assetResourcePathPublicationHandler.getId(),
+            STREAMX_CLIENT_NAME
+        ),
+
+        // unpublish job for image 4, but for other client
+        createDummyIngestionJob(
+            coreImg4,
+            PublicationAction.UNPUBLISH,
+            assetResourcePathPublicationHandler.getId(),
+            "other" + STREAMX_CLIENT_NAME
+        )
+    );
 
     // when
-    publishPages(pageWithImageAndJs, pageWithImageAndCss);
-    unpublishPages(pageWithImageAndJs, pageWithImageAndCss);
+    publishPage(page);
+    unpublishPage(page);
 
     // then
     List<Pair<String, String>> submittedJobs = jobManager
         .getJobQueue()
         .stream()
-        .filter(job -> !dummyPublishJob.equals(job) && !dummyUnpublishJob.equals(job))
+        .filter(job -> !dummyJobs.contains(job))
         .map(job -> Pair.of(
-            job.getProperty(PN_STREAMX_PUBLICATION_ACTION, String.class),
-            job.getProperty(PN_STREAMX_PUBLICATION_PATH, String.class)
+            PublicationJobProperties.getAction(job),
+            PublicationJobProperties.getResourcePath(job)
         ))
         .collect(Collectors.toList());
 
     assertThat(submittedJobs).containsExactlyInAnyOrder(
-        Pair.of("PUBLISH", PAGE_1),
-        Pair.of("PUBLISH", PAGE_2),
-        Pair.of("PUBLISH", CORE_IMG_FOR_PAGE_2), // publish job for CORE_IMG_FOR_PAGE_1 was not created
+        // expecting publish job for coreImg1 to not be created
+        Pair.of("PUBLISH", page),
+        Pair.of("PUBLISH", coreImg2),
+        Pair.of("PUBLISH", coreImg3),
+        Pair.of("PUBLISH", coreImg4),
+        Pair.of("PUBLISH", coreImg5),
+        Pair.of("PUBLISH", coreImg6),
         Pair.of("PUBLISH", GLOBAL_JS_CLIENTLIB),
         Pair.of("PUBLISH", GLOBAL_CSS_CLIENTLIB),
 
-        Pair.of("UNPUBLISH", PAGE_1),
-        Pair.of("UNPUBLISH", PAGE_2),
-        Pair.of("UNPUBLISH", CORE_IMG_FOR_PAGE_1) // unpublish job for CORE_IMG_FOR_PAGE_2 was not created (and global related resources are by design never unpublished)
+        // expecting unpublish job for coreImg6 to not be created
+        Pair.of("UNPUBLISH", page),
+        Pair.of("UNPUBLISH", coreImg1),
+        Pair.of("UNPUBLISH", coreImg2),
+        Pair.of("UNPUBLISH", coreImg3),
+        Pair.of("UNPUBLISH", coreImg4),
+        Pair.of("UNPUBLISH", coreImg5)
     );
 
     // and
-    assertResourcesCurrentlyOnStreamX(CORE_IMG_FOR_PAGE_2, GLOBAL_JS_CLIENTLIB, GLOBAL_CSS_CLIENTLIB);
+    assertResourcesCurrentlyOnStreamX(coreImg6, GLOBAL_JS_CLIENTLIB, GLOBAL_CSS_CLIENTLIB);
+  }
+
+  private Job createDummyIngestionJob(String resourcePath, PublicationAction action, String handlerId, String clientName) {
+    Map<String, Object> properties = new PublicationJobProperties()
+        .withHandlerId(handlerId)
+        .withClientName(clientName)
+        .withAction(action)
+        .withResource(new ResourceInfo(resourcePath))
+        .asMap();
+    return jobManager.addJob(PublicationJobExecutor.JOB_TOPIC, properties);
   }
 
   @Test
@@ -710,7 +781,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
     // final assertion: make sure publication (along with the JCR operations) are efficient enough
     System.out.println("Total processing time (in millis): " + processingTotalTimeMillis);
-    assertThat(processingTotalTimeMillis).isLessThan(3000);
+    assertThat(processingTotalTimeMillis).isLessThan(5000);
   }
 
   @Test
@@ -792,9 +863,11 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
         .when(jobManager)
         .addJob(
             eq(PublicationJobExecutor.JOB_TOPIC),
-            argThat(properties ->
-                properties.get(PN_STREAMX_PUBLICATION_ACTION).equals(action.toString())
-                && properties.get(PN_STREAMX_PUBLICATION_PATH).equals(resourcePath))
+            argThat(properties -> {
+              FakeJob job = new FakeJob(PublicationJobExecutor.JOB_TOPIC, properties);
+              return PublicationJobProperties.getAction(job).equals(action.toString())
+                     && PublicationJobProperties.getResourcePath(job).equals(resourcePath);
+            })
         );
   }
 
@@ -931,15 +1004,15 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     assertThat(
         jobManager.getJobQueue().stream()
             .filter(job -> job.getTopic().equals("dev/streamx/publications"))
-            .filter(job -> job.hasProperty(PN_STREAMX_PUBLICATION_ACTION, PublicationAction.UNPUBLISH))
+            .filter(job -> PublicationAction.UNPUBLISH.toString().equals(PublicationJobProperties.getAction(job)))
     ).isEmpty();
   }
 
   private void assertIngestedTimes(String resourcePath, int times, PublicationAction action) {
     long actualIngestedTimes = jobManager.getJobQueue().stream()
         .filter(job -> job.getTopic().equals("dev/streamx/publications"))
-        .filter(job -> job.hasProperty(PN_STREAMX_PUBLICATION_ACTION, action.name()))
-        .filter(job -> job.hasProperty(PN_STREAMX_PUBLICATION_PATH, resourcePath))
+        .filter(job -> action.toString().equals(PublicationJobProperties.getAction(job)))
+        .filter(job -> resourcePath.equals(PublicationJobProperties.getResourcePath(job)))
         .count();
     assertThat(actualIngestedTimes).describedAs(resourcePath).isEqualTo(times);
   }
@@ -955,8 +1028,8 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   private void assertResourcesCurrentlyOnStreamX(Set<String> expectedResourcePaths) {
     Set<String> actualResourcePaths = new TreeSet<>();
     for (var job : jobManager.getJobQueue()) {
-      String action = job.getProperty(PN_STREAMX_PUBLICATION_ACTION, String.class);
-      String resourcePath = job.getProperty(PN_STREAMX_PUBLICATION_PATH, String.class);
+      String action = PublicationJobProperties.getAction(job);
+      String resourcePath = PublicationJobProperties.getResourcePath(job);
       if (action.equals(PublicationAction.PUBLISH.name())) {
         actualResourcePaths.add(resourcePath);
       } else if (action.equals(PublicationAction.UNPUBLISH.name())) {

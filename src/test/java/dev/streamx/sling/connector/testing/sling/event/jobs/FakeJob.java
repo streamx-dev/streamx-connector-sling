@@ -38,11 +38,13 @@ public class FakeJob implements Job {
   }
 
   @Override
+  @SuppressWarnings("unchecked")
   public <T> T getProperty(String propertyName, Class<T> aClass) {
     return (T) properties.get(propertyName);
   }
 
   @Override
+  @SuppressWarnings("unchecked")
   public <T> T getProperty(String propertyName, T defaultValue) {
     return (T) properties.getOrDefault(propertyName, defaultValue);
   }
@@ -115,11 +117,6 @@ public class FakeJob implements Job {
   @Override
   public Calendar getProgressETA() {
     return notImplementedYet();
-  }
-
-  // custom methods
-  public boolean hasProperty(String name, Object value) {
-    return getPropertyNames().contains(name) && getProperty(name).equals(value);
   }
 
   @Override

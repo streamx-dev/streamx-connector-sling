@@ -36,11 +36,6 @@ public class PublicationJobExecutor implements JobExecutor {
   private static final Logger LOG = LoggerFactory.getLogger(PublicationJobExecutor.class);
 
   static final String JOB_TOPIC = "dev/streamx/publications";
-  static final String PN_STREAMX_PUBLICATION_HANDLER_ID = "streamx.publication.handler.id";
-  static final String PN_STREAMX_PUBLICATION_CLIENT_NAME = "streamx.publication.client.name";
-  static final String PN_STREAMX_PUBLICATION_ACTION = "streamx.publication.action";
-  static final String PN_STREAMX_PUBLICATION_PATH = "streamx.publication.path";
-  static final String PN_STREAMX_PUBLICATION_PROPERTIES = "streamx.publication.properties";
 
   @Reference
   private StreamxClientStore streamxClientStore;
@@ -60,21 +55,20 @@ public class PublicationJobExecutor implements JobExecutor {
   @Override
   public JobExecutionResult process(Job job, JobExecutionContext context) {
     LOG.trace("Processing {}", job);
-    String handlerId = job.getProperty(PN_STREAMX_PUBLICATION_HANDLER_ID, String.class);
-    String clientName = job.getProperty(PN_STREAMX_PUBLICATION_CLIENT_NAME, String.class);
-    Optional<PublicationAction> actionNullable = PublicationAction.of(job.getProperty(
-        PN_STREAMX_PUBLICATION_ACTION, String.class));
+    String handlerId = PublicationJobProperties.getHandlerId(job);
+    String clientName = PublicationJobProperties.getClientName(job);
+    Optional<PublicationAction> actionNullable = PublicationAction.of(PublicationJobProperties.getAction(job));
     if (actionNullable.isEmpty()) {
       LOG.warn("Publication action is not set, job will be cancelled: {}", job);
       return context.result().cancelled();
     }
     PublicationAction action = actionNullable.orElseThrow();
-    String path = job.getProperty(PN_STREAMX_PUBLICATION_PATH, String.class);
+    String path = PublicationJobProperties.getResourcePath(job);
     if (StringUtils.isEmpty(path)) {
       LOG.warn("This publication job has no path: {}", job);
       return context.result().cancelled();
     }
-    String serializedProperties = job.getProperty(PN_STREAMX_PUBLICATION_PROPERTIES, String.class);
+    String serializedProperties = PublicationJobProperties.getResourceProperties(job);
     Map<String, String> properties = ResourceInfo.deserializeProperties(serializedProperties);
     ResourceInfo resource = new ResourceInfo(path, properties);
     LOG.debug("Processing action: [{} - {}]", action, path);

@@ -1,15 +1,10 @@
 package dev.streamx.sling.connector.impl;
 
-import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PUBLICATION_ACTION;
-import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PUBLICATION_CLIENT_NAME;
-import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PUBLICATION_HANDLER_ID;
-import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PUBLICATION_PATH;
-import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PUBLICATION_PROPERTIES;
-
 import dev.streamx.sling.connector.PublicationAction;
 import dev.streamx.sling.connector.PublicationHandler;
 import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.StreamxPublicationException;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -46,9 +41,8 @@ import org.slf4j.LoggerFactory;
 public class IngestionTriggerJobExecutor implements JobExecutor {
 
   static final String JOB_TOPIC = "dev/streamx/ingestion-trigger";
-  static final String PN_STREAMX_INGESTION_ACTION = "streamx.ingestion.action";
-  static final String PN_STREAMX_INGESTION_RESOURCES = "streamx.ingestion.resources";
 
+  private static final int FIND_JOBS_LIMIT = 1;
   private static final Logger LOG = LoggerFactory.getLogger(IngestionTriggerJobExecutor.class);
 
   @Reference
@@ -170,10 +164,6 @@ public class IngestionTriggerJobExecutor implements JobExecutor {
 
   private void submitPublicationJob(ResourceInfo resource, PublicationAction action) throws JobCreationException {
     String resourcePath = resource.getPath();
-    if (isPublicationJobAlreadySubmitted(resourcePath, action)) {
-      LOG.warn("Publication job for resource {} is already submitted", resource);
-      return;
-    }
 
     LOG.trace("Submitting publication job for resource {}", resource);
     for (PublicationHandler<?> handler : publicationHandlerRegistry.getForResource(resource)) {
@@ -188,13 +178,17 @@ public class IngestionTriggerJobExecutor implements JobExecutor {
       ResourceInfo resource, String clientName) throws JobCreationException {
     String resourcePath = resource.getPath();
 
-    Map<String, Object> jobProperties = Map.of(
-        PN_STREAMX_PUBLICATION_HANDLER_ID, handlerId,
-        PN_STREAMX_PUBLICATION_CLIENT_NAME, clientName,
-        PN_STREAMX_PUBLICATION_ACTION, action.toString(),
-        PN_STREAMX_PUBLICATION_PATH, resourcePath,
-        PN_STREAMX_PUBLICATION_PROPERTIES, resource.getSerializedProperties()
-    );
+    Map<String, Object> jobProperties = new PublicationJobProperties()
+        .withHandlerId(handlerId)
+        .withClientName(clientName)
+        .withAction(action)
+        .withResource(resource)
+        .asMap();
+
+    if (isPublicationJobAlreadySubmitted(jobProperties)) {
+      LOG.info("Publication job for resource {} with job properties {} is already submitted", resource, jobProperties);
+      return;
+    }
 
     Job job = jobManager.addJob(PublicationJobExecutor.JOB_TOPIC, jobProperties);
     if (job == null) {
@@ -203,28 +197,25 @@ public class IngestionTriggerJobExecutor implements JobExecutor {
     LOG.debug("Publication request for [{}: {}] added to queue. Job: {}", handlerId, resourcePath, job);
   }
 
-  private boolean isPublicationJobAlreadySubmitted(String resourcePath, PublicationAction action) {
-    return isPublicationJobAlreadySubmitted(QueryType.ACTIVE, resourcePath, action)
+  private boolean isPublicationJobAlreadySubmitted(Map<String, Object> jobProperties) {
+    return isPublicationJobAlreadySubmitted(QueryType.ACTIVE, jobProperties)
            ||
-           isPublicationJobAlreadySubmitted(QueryType.QUEUED, resourcePath, action);
+           isPublicationJobAlreadySubmitted(QueryType.QUEUED, jobProperties);
   }
 
-  private boolean isPublicationJobAlreadySubmitted(QueryType queryType, String resourcePath, PublicationAction action) {
-    Map<String, Object> propertiesForSearch = Map.of(
-        PN_STREAMX_PUBLICATION_ACTION, action.toString(),
-        PN_STREAMX_PUBLICATION_PATH, resourcePath
-    );
-    int limit = 1;
-    return !jobManager.findJobs(queryType, PublicationJobExecutor.JOB_TOPIC, limit, propertiesForSearch).isEmpty();
+  private boolean isPublicationJobAlreadySubmitted(QueryType queryType, Map<String, Object> jobProperties) {
+    @SuppressWarnings("unchecked")
+    Collection<Job> foundJobs = jobManager.findJobs(queryType, PublicationJobExecutor.JOB_TOPIC, FIND_JOBS_LIMIT, jobProperties);
+    return !foundJobs.isEmpty();
   }
 
   static PublicationAction extractPublicationAction(Job job) {
-    String publicationActionRaw = job.getProperty(PN_STREAMX_INGESTION_ACTION, String.class);
+    String publicationActionRaw = IngestionTriggerJobProperties.getAction(job);
     return PublicationAction.of(publicationActionRaw).orElseThrow();
   }
 
   static List<ResourceInfo> extractResourcesInfo(Job job) {
-    String[] resourcesInfoRaw = job.getProperty(PN_STREAMX_INGESTION_RESOURCES, String[].class);
+    String[] resourcesInfoRaw = IngestionTriggerJobProperties.getResources(job);
     return Stream.of(resourcesInfoRaw)
         .map(ResourceInfo::deserialize)
         .filter(resource -> resource.getPath() != null)
