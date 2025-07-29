@@ -1,10 +1,5 @@
 package dev.streamx.sling.connector.impl;
 
-import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PUBLICATION_ACTION;
-import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PUBLICATION_CLIENT_NAME;
-import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PUBLICATION_HANDLER_ID;
-import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PUBLICATION_PATH;
-import static dev.streamx.sling.connector.impl.PublicationJobExecutor.PN_STREAMX_PUBLICATION_PROPERTIES;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 
@@ -13,12 +8,12 @@ import dev.streamx.clients.ingestion.publisher.Message;
 import dev.streamx.clients.ingestion.publisher.Publisher;
 import dev.streamx.sling.connector.PublicationAction;
 import dev.streamx.sling.connector.PublicationHandler;
+import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.testing.handlers.FakeThrowablePublicationHandler;
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeJobExecutionContext;
 import dev.streamx.sling.connector.testing.sling.event.jobs.FakeRetriedJob;
 import dev.streamx.sling.connector.testing.streamx.clients.ingestion.FakeStreamxClient;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.apache.sling.event.jobs.Job;
@@ -125,12 +120,12 @@ class PublicationJobExecutorTest {
   }
 
   private static Job getFakeJob(PublicationAction action, int retries) {
-    Map<String, Object> properties = new HashMap<>();
-    properties.put(PN_STREAMX_PUBLICATION_PATH, RESOURCE_PATH);
-    properties.put(PN_STREAMX_PUBLICATION_PROPERTIES, "{}");
-    properties.put(PN_STREAMX_PUBLICATION_HANDLER_ID, "fake-handler");
-    properties.put(PN_STREAMX_PUBLICATION_CLIENT_NAME, STREAMX_URL);
-    properties.put(PN_STREAMX_PUBLICATION_ACTION, action.name());
+    Map<String, Object> properties = new PublicationJobProperties()
+        .withResource(new ResourceInfo(RESOURCE_PATH))
+        .withHandlerId("fake-handler")
+        .withClientName(STREAMX_URL)
+        .withAction(action)
+        .asMap();
     return new FakeRetriedJob(PublicationJobExecutor.JOB_TOPIC, properties, retries);
   }
 

@@ -595,15 +595,15 @@ class StreamxPublicationServiceImplTest {
     assertThat(queuedJobs).hasSize(2);
 
     FakeJob publishJob = queuedJobs.get(0);
-    assertThat(publishJob.getProperty(IngestionTriggerJobExecutor.PN_STREAMX_INGESTION_ACTION, String.class))
+    assertThat(IngestionTriggerJobProperties.getAction(publishJob))
         .isEqualTo("PUBLISH");
-    assertThat(publishJob.getProperty(IngestionTriggerJobExecutor.PN_STREAMX_INGESTION_RESOURCES, String[].class))
+    assertThat(IngestionTriggerJobProperties.getResources(publishJob))
         .containsExactly("{\"path\":\"path-1\",\"properties\":{\"jcr:primaryType\":\"cq:Page\"}}");
 
     FakeJob unpublishJob = queuedJobs.get(1);
-    assertThat(unpublishJob.getProperty(IngestionTriggerJobExecutor.PN_STREAMX_INGESTION_ACTION, String.class))
+    assertThat(IngestionTriggerJobProperties.getAction(unpublishJob))
         .isEqualTo("UNPUBLISH");
-    assertThat(unpublishJob.getProperty(IngestionTriggerJobExecutor.PN_STREAMX_INGESTION_RESOURCES, String[].class))
+    assertThat(IngestionTriggerJobProperties.getResources(unpublishJob))
         .containsExactly("{\"path\":\"path-2\",\"properties\":{\"jcr:primaryType\":\"dam:Asset\"}}");
   }
 

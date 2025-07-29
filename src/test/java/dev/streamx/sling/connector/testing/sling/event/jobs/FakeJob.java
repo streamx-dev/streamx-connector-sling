@@ -1,13 +1,13 @@
 package dev.streamx.sling.connector.testing.sling.event.jobs;
 
+import static dev.streamx.sling.connector.testing.sling.event.jobs.UnsupportedExceptionHelper.notImplementedYet;
+
 import java.util.Calendar;
 import java.util.Map;
 import java.util.Set;
 import org.apache.sling.event.jobs.Job;
 
 public class FakeJob implements Job {
-
-  private static final UnsupportedOperationException NOT_IMPLEMENTED_YET = new UnsupportedOperationException("Not implemented yet");
 
   private final String topic;
   private final Map<String, Object> properties;
@@ -24,7 +24,7 @@ public class FakeJob implements Job {
 
   @Override
   public String getId() {
-    throw NOT_IMPLEMENTED_YET;
+    return notImplementedYet();
   }
 
   @Override
@@ -38,18 +38,20 @@ public class FakeJob implements Job {
   }
 
   @Override
+  @SuppressWarnings("unchecked")
   public <T> T getProperty(String propertyName, Class<T> aClass) {
     return (T) properties.get(propertyName);
   }
 
   @Override
+  @SuppressWarnings("unchecked")
   public <T> T getProperty(String propertyName, T defaultValue) {
     return (T) properties.getOrDefault(propertyName, defaultValue);
   }
 
   @Override
   public int getRetryCount() {
-    throw NOT_IMPLEMENTED_YET;
+    return notImplementedYet();
   }
 
   @Override
@@ -59,67 +61,62 @@ public class FakeJob implements Job {
 
   @Override
   public String getQueueName() {
-    throw NOT_IMPLEMENTED_YET;
+    return notImplementedYet();
   }
 
   @Override
   public String getTargetInstance() {
-    throw NOT_IMPLEMENTED_YET;
+    return notImplementedYet();
   }
 
   @Override
   public Calendar getProcessingStarted() {
-    throw NOT_IMPLEMENTED_YET;
+    return notImplementedYet();
   }
 
   @Override
   public Calendar getCreated() {
-    throw NOT_IMPLEMENTED_YET;
+    return notImplementedYet();
   }
 
   @Override
   public String getCreatedInstance() {
-    throw NOT_IMPLEMENTED_YET;
+    return notImplementedYet();
   }
 
   @Override
   public JobState getJobState() {
-    throw NOT_IMPLEMENTED_YET;
+    return notImplementedYet();
   }
 
   @Override
   public Calendar getFinishedDate() {
-    throw NOT_IMPLEMENTED_YET;
+    return notImplementedYet();
   }
 
   @Override
   public String getResultMessage() {
-    throw NOT_IMPLEMENTED_YET;
+    return notImplementedYet();
   }
 
   @Override
   public String[] getProgressLog() {
-    throw NOT_IMPLEMENTED_YET;
+    return notImplementedYet();
   }
 
   @Override
   public int getProgressStepCount() {
-    throw NOT_IMPLEMENTED_YET;
+    return notImplementedYet();
   }
 
   @Override
   public int getFinishedProgressStep() {
-    throw NOT_IMPLEMENTED_YET;
+    return notImplementedYet();
   }
 
   @Override
   public Calendar getProgressETA() {
-    throw NOT_IMPLEMENTED_YET;
-  }
-
-  // custom methods
-  public boolean hasProperty(String name, Object value) {
-    return getPropertyNames().contains(name) && getProperty(name).equals(value);
+    return notImplementedYet();
   }
 
   @Override

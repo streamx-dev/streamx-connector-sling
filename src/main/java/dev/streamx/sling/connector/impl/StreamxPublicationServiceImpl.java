@@ -1,8 +1,5 @@
 package dev.streamx.sling.connector.impl;
 
-import static dev.streamx.sling.connector.impl.IngestionTriggerJobExecutor.PN_STREAMX_INGESTION_ACTION;
-import static dev.streamx.sling.connector.impl.IngestionTriggerJobExecutor.PN_STREAMX_INGESTION_RESOURCES;
-
 import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.PublicationAction;
 import dev.streamx.sling.connector.StreamxPublicationException;
@@ -71,10 +68,10 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService 
       return;
     }
 
-    Map<String, Object> jobProps = Map.of(
-        PN_STREAMX_INGESTION_ACTION, ingestionAction.toString(),
-        PN_STREAMX_INGESTION_RESOURCES, resources.stream().map(ResourceInfo::serialize).toArray(String[]::new)
-    );
+    Map<String, Object> jobProps = new IngestionTriggerJobProperties()
+        .withAction(ingestionAction)
+        .withResources(resources)
+        .asMap();
 
     Job addedJob = jobManager.addJob(IngestionTriggerJobExecutor.JOB_TOPIC, jobProps);
     LOG.debug("Added job: {}", addedJob);

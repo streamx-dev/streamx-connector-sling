@@ -1,11 +1,13 @@
 package dev.streamx.sling.connector.testing.sling.event.jobs;
 
-import com.google.common.collect.Iterables;
+import static dev.streamx.sling.connector.testing.sling.event.jobs.UnsupportedExceptionHelper.notImplementedYet;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.sling.event.jobs.Job;
 import org.apache.sling.event.jobs.JobBuilder;
 import org.apache.sling.event.jobs.JobManager;
@@ -17,8 +19,6 @@ import org.apache.sling.event.jobs.consumer.JobExecutor;
 
 public class FakeJobManager implements JobManager {
 
-  private static final UnsupportedOperationException NOT_IMPLEMENTED_YET = new UnsupportedOperationException("Not implemented yet");
-
   private final List<JobExecutor> executors;
   private final List<FakeJob> jobQueue = new LinkedList<>();
   private final List<FakeJob> processedJobs = new LinkedList<>();
@@ -29,22 +29,22 @@ public class FakeJobManager implements JobManager {
 
   @Override
   public Statistics getStatistics() {
-    throw NOT_IMPLEMENTED_YET;
+    return notImplementedYet();
   }
 
   @Override
   public Iterable<TopicStatistics> getTopicStatistics() {
-    throw NOT_IMPLEMENTED_YET;
+    return notImplementedYet();
   }
 
   @Override
   public Queue getQueue(String s) {
-    throw NOT_IMPLEMENTED_YET;
+    return notImplementedYet();
   }
 
   @Override
   public Iterable<Queue> getQueues() {
-    throw NOT_IMPLEMENTED_YET;
+    return notImplementedYet();
   }
 
   @Override
@@ -56,47 +56,71 @@ public class FakeJobManager implements JobManager {
 
   @Override
   public Job getJobById(String s) {
-    throw NOT_IMPLEMENTED_YET;
+    return notImplementedYet();
   }
 
   @Override
   public boolean removeJobById(String s) {
-    throw NOT_IMPLEMENTED_YET;
+    return notImplementedYet();
   }
 
   @Override
   public Job getJob(String s, Map<String, Object> map) {
-    throw NOT_IMPLEMENTED_YET;
+    return notImplementedYet();
   }
 
   @Override
-  public Collection<Job> findJobs(QueryType queryType, String s, long l, Map<String, Object>... maps) {
-    throw NOT_IMPLEMENTED_YET;
+  public Collection<Job> findJobs(QueryType type, String topic, long limit, Map<String, Object>... templates) {
+    if (templates.length != 1) {
+      return notImplementedYet();
+    }
+
+    Collection<Job> foundJobs = new LinkedList<>();
+    Map<String, Object> properties = templates[0];
+    for (Job job : jobQueue) {
+      if (job.getTopic().equals(topic) && doesJobHaveProperties(job, properties)) {
+        foundJobs.add(job);
+      }
+    }
+    return foundJobs;
+  }
+
+  private static boolean doesJobHaveProperties(Job job, Map<String, Object> properties) {
+    boolean propertiesMatch = true;
+    for (var property : properties.entrySet()) {
+      String propertyName = property.getKey();
+      Object expectedValue = property.getValue();
+      if (!Objects.equals(job.getProperty(propertyName), expectedValue)) {
+        propertiesMatch = false;
+        break;
+      }
+    }
+    return propertiesMatch;
   }
 
   @Override
   public void stopJobById(String s) {
-    throw NOT_IMPLEMENTED_YET;
+    notImplementedYet();
   }
 
   @Override
   public Job retryJobById(String s) {
-    throw NOT_IMPLEMENTED_YET;
+    return notImplementedYet();
   }
 
   @Override
   public JobBuilder createJob(String s) {
-    throw NOT_IMPLEMENTED_YET;
+    return notImplementedYet();
   }
 
   @Override
   public Collection<ScheduledJobInfo> getScheduledJobs() {
-    throw NOT_IMPLEMENTED_YET;
+    return notImplementedYet();
   }
 
   @Override
   public Collection<ScheduledJobInfo> getScheduledJobs(String s, long l, Map<String, Object>... maps) {
-    throw NOT_IMPLEMENTED_YET;
+    return notImplementedYet();
   }
 
   /*
@@ -115,12 +139,6 @@ public class FakeJobManager implements JobManager {
       }
       processedJobs.add(fakeJob);
     }
-  }
-
-  public Job popLastJob() {
-    FakeJob lastJob = Iterables.getLast(jobQueue);
-    jobQueue.remove(lastJob);
-    return lastJob;
   }
 
   public int getProcessedJobsCount() {
