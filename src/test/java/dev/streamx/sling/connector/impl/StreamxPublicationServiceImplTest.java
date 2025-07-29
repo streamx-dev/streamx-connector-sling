@@ -43,6 +43,7 @@ import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.fail;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssumptions.given;
 import static org.mockito.ArgumentMatchers.anyMap;
@@ -139,7 +140,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @SuppressWarnings("ReturnOfNull")
-  private void initializeComponentsIfNotInitialized() throws Exception {
+  private void initializeComponentsIfNotInitialized() {
     if (publicationService != null) {
       return;
     }
@@ -189,7 +190,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldPublishSinglePage() throws Exception {
+  void shouldPublishSinglePage() {
     givenPageHierarchy("/content/my-site/page-1/page-2/page-3");
 
     whenPathIsPublished("/content/my-site/page-1");
@@ -202,7 +203,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldPublishMultiplePages() throws Exception {
+  void shouldPublishMultiplePages() {
     givenPageHierarchy("/content/my-site/page-1/page-2/page-3");
 
     whenPathsArePublished("/content/my-site/page-1", "/content/my-site/page-1/page-2");
@@ -216,7 +217,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldPublishAndUnpublishSinglePage() throws Exception {
+  void shouldPublishAndUnpublishSinglePage() {
     givenPageHierarchy("/content/my-site/page-1/page-2");
 
     whenPathIsPublished("/content/my-site/page-1");
@@ -232,7 +233,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldUnpublishSinglePage() throws Exception {
+  void shouldUnpublishSinglePage() {
     givenPageHierarchy("/content/my-site/page-1/page-2/page-3");
 
     whenPathIsUnpublished("/content/my-site/page-1");
@@ -245,7 +246,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldUnpublishMultiplePages() throws Exception {
+  void shouldUnpublishMultiplePages() {
     givenPageHierarchy("/content/my-site/page-1/page-2/page-3");
 
     whenPathsAreUnpublished("/content/my-site/page-1", "/content/my-site/page-1/page-2");
@@ -259,7 +260,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldUnpublishEvenIfResourceDoesNotExist() throws Exception {
+  void shouldUnpublishEvenIfResourceDoesNotExist() {
     given(resourceResolver.getResource("/content/my-site/page-1.html")).isNull();
     given(resourceResolver.getResource("/content/dam/asset-1.jpeg")).isNull();
 
@@ -274,7 +275,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldNotPublishIfIsDisabled() throws Exception {
+  void shouldNotPublishIfIsDisabled() {
     givenPageHierarchy("/content/my-site/page-1/page-2/page-3");
     givenPublicationService(config ->
         config.put("enabled", false)
@@ -290,7 +291,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldNotPublishIfResourceDoesNotExist() throws Exception {
+  void shouldNotPublishIfResourceDoesNotExist() {
     givenPageHierarchy("/content/my-site/page-1");
 
     whenPathIsPublished("/content/my-site/page-1/non-existing-page");
@@ -301,7 +302,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldNotPublishIfNoPublishDataWasReturnedByHandler() throws Exception {
+  void shouldNotPublishIfNoPublishDataWasReturnedByHandler() {
     givenPageHierarchy(
         "/content/my-site/page-1",
         "/content/impostor-site/page-2"
@@ -323,7 +324,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldNotPublishIfAnyPathIsEmpty() throws Exception {
+  void shouldNotPublishIfAnyPathIsEmpty() {
     givenPageHierarchy("/content/my-site/page-1");
 
     assertThatThrownBy(() -> whenPathsArePublished("/content/my-site/page-1", null))
@@ -341,7 +342,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldNotPublishIfNoPathsWereGiven() throws Exception {
+  void shouldNotPublishIfNoPathsWereGiven() {
     givenPageHierarchy("/content/my-site/page-1");
 
     whenPathsArePublished();
@@ -353,7 +354,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldNotPublishIfNoHandlerCanHandle() throws Exception {
+  void shouldNotPublishIfNoHandlerCanHandle() {
     givenPageHierarchy("/var/my-site-copy/page-1");
 
     whenPathIsPublished("/var/my-site-copy/page-1");
@@ -364,7 +365,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldPublishDifferentTypesOfContent() throws Exception {
+  void shouldPublishDifferentTypesOfContent() {
     givenPageHierarchy("/content/my-site/page-1/page-2");
     givenAsset("/content/dam/asset-1.jpeg");
 
@@ -384,7 +385,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldNotPublishIfResourceWasRemovedAfterPublication() throws Exception {
+  void shouldNotPublishIfResourceWasRemovedAfterPublication() {
     givenPageHierarchy("/content/my-site/page-1");
 
     whenPathIsPublished("/content/my-site/page-1");
@@ -396,7 +397,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldCreatePublishJobForEachInstance() throws Exception {
+  void shouldCreatePublishJobForEachInstance() {
     givenPageHierarchy("/content/my-site/page-1");
 
     givenStreamxClientInstances(
@@ -414,7 +415,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldPublishToStreamxInstanceIfPathMatchesPattern() throws Exception {
+  void shouldPublishToStreamxInstanceIfPathMatchesPattern() {
     givenPageHierarchy(
         "/content/my-site/page-1",
         "/content/other-site/page-1"
@@ -463,7 +464,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldUpdateContentOnStreamxForRelatedResources() throws Exception {
+  void shouldUpdateContentOnStreamxForRelatedResources() {
     givenPageHierarchy(
         "/content/my-site/page-1",
         RELATED_ASSET_TO_PUBLISH,
@@ -488,7 +489,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldUpdateRelatedResourcesJustOnceEvenIfWillBeReturnedByMultipleSelectors() throws Exception {
+  void shouldUpdateRelatedResourcesJustOnceEvenIfWillBeReturnedByMultipleSelectors() {
     givenPageHierarchy(
         "/content/my-site/page-1",
         RELATED_ASSET_TO_PUBLISH,
@@ -513,7 +514,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldUpdateRelatedResourcesJustOnceEvenIfRelatesToMultiplePublishedResources() throws Exception {
+  void shouldUpdateRelatedResourcesJustOnceEvenIfRelatesToMultiplePublishedResources() {
     givenPageHierarchy(
         "/content/my-site/page-1",
         "/content/my-site/page-2",
@@ -541,7 +542,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldNotSendExtraUpdateToRelatedResourcesIfItIsPublishedExplicitly() throws Exception {
+  void shouldNotSendExtraUpdateToRelatedResourcesIfItIsPublishedExplicitly() {
     givenPageHierarchy(
         "/content/my-site/page-1",
         RELATED_ASSET_TO_PUBLISH,
@@ -567,7 +568,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldInternallyHandleExceptionWhileAddingNewSlingJob() throws Exception {
+  void shouldInternallyHandleExceptionWhileAddingNewSlingJob() {
     initializeComponentsIfNotInitialized();
     doReturn(null).when(fakeJobManager).addJob(anyString(), anyMap());
 
@@ -581,7 +582,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   @Test
-  void shouldSubmitIngestionTriggerJobs() throws Exception {
+  void shouldSubmitIngestionTriggerJobs() {
     // given
     initializeComponentsIfNotInitialized();
     doCallRealMethod().when(fakeJobManager).addJob(anyString(), anyMap());
@@ -607,16 +608,24 @@ class StreamxPublicationServiceImplTest {
         .containsExactly("{\"path\":\"path-2\",\"properties\":{\"jcr:primaryType\":\"dam:Asset\"}}");
   }
 
-  private void givenPageHierarchy(String... paths) throws PersistenceException {
-    for (String path : paths) {
-      slingContext.create().resource(path);
+  private void givenPageHierarchy(String... paths) {
+    try {
+      for (String path : paths) {
+        slingContext.create().resource(path);
+      }
+      resourceResolver.commit();
+    } catch (PersistenceException ex) {
+      fail(ex.getMessage(), ex);
     }
-    resourceResolver.commit();
   }
 
-  private void givenAsset(String path) throws PersistenceException {
-    slingContext.create().resource(path);
-    resourceResolver.commit();
+  private void givenAsset(String path) {
+    try {
+      slingContext.create().resource(path);
+      resourceResolver.commit();
+    } catch (PersistenceException ex) {
+      fail(ex.getMessage(), ex);
+    }
   }
 
   private void givenPublicationService(Consumer<Map<String, Object>> propertiesModifier) {
@@ -639,22 +648,22 @@ class StreamxPublicationServiceImplTest {
     this.fakeStreamxClientConfigs.addAll(Arrays.asList(configs));
   }
 
-  private void whenPathIsPublished(String path) throws Exception {
+  private void whenPathIsPublished(String path) {
     initializeComponentsIfNotInitialized();
     publicationService.publish(toResourceInfoList(path));
   }
 
-  private void whenPathsArePublished(String... paths) throws Exception {
+  private void whenPathsArePublished(String... paths) {
     initializeComponentsIfNotInitialized();
     publicationService.publish(toResourceInfoList(paths));
   }
 
-  private void whenPathIsUnpublished(String path) throws Exception {
+  private void whenPathIsUnpublished(String path) {
     initializeComponentsIfNotInitialized();
     publicationService.unpublish(toResourceInfoList(path));
   }
 
-  private void whenPathsAreUnpublished(String... paths) throws Exception {
+  private void whenPathsAreUnpublished(String... paths) {
     initializeComponentsIfNotInitialized();
     publicationService.unpublish(toResourceInfoList(paths));
   }
@@ -671,11 +680,15 @@ class StreamxPublicationServiceImplTest {
     fakeJobManager.processAllJobs();
   }
 
-  private void whenResourceIsRemoved(String path) throws PersistenceException {
+  private void whenResourceIsRemoved(String path) {
     Resource resource = resourceResolver.getResource(path);
     assertThat(resource).isNotNull();
-    resourceResolver.delete(resource);
-    resourceResolver.commit();
+    try {
+      resourceResolver.delete(resource);
+      resourceResolver.commit();
+    } catch (PersistenceException ex) {
+      fail(ex.getMessage(), ex);
+    }
   }
 
   private void thenProcessedJobsCountIs(int count) {

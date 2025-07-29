@@ -2,7 +2,6 @@ package dev.streamx.sling.connector.impl;
 
 import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.PublicationAction;
-import dev.streamx.sling.connector.StreamxPublicationException;
 import dev.streamx.sling.connector.StreamxPublicationService;
 import dev.streamx.sling.connector.impl.StreamxPublicationServiceImpl.Config;
 import java.util.List;
@@ -54,12 +53,12 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService 
   }
 
   @Override
-  public void publish(List<ResourceInfo> resourcesToPublish) throws StreamxPublicationException {
+  public void publish(List<ResourceInfo> resourcesToPublish) {
     submitIngestionTriggerJob(PublicationAction.PUBLISH, resourcesToPublish);
   }
 
   @Override
-  public void unpublish(List<ResourceInfo> resourcesToUnpublish) throws StreamxPublicationException {
+  public void unpublish(List<ResourceInfo> resourcesToUnpublish) {
     submitIngestionTriggerJob(PublicationAction.UNPUBLISH, resourcesToUnpublish);
   }
 
