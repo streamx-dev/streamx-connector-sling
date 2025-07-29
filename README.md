@@ -59,31 +59,11 @@ Example configuration containing custom resourcePathPatterns:
 
 Publication events are sent
 using [Apache Sling Jobs](https://sling.apache.org/documentation/bundles/apache-sling-eventing-and-job-handling.html#jobs-guarantee-of-processing).
-Events are added to the queue named `dev/streamx/publications`, which is managed by
-the `Apache Sling Job Default Queue`. However, it is possible to define a custom Job Handler. For
-example:
+Events are added to the queue named `dev/streamx/publications`.
 
-```json
-{
-  "configurations": {
-    "org.apache.sling.event.jobs.QueueConfiguration~streamx-publication-actions": {
-      "queue.name": "StreamX Publication Action Queue",
-      "queue.topics": [
-        "dev/streamx/publications"
-      ],
-      "queue.type": "UNORDERED",
-      "queue.retries": 60,
-      "queue.maxparallel": 0.5,
-      "service.ranking": 1
-    }
-  }
-}
-```
+#### Retry delay policy for failed Publication Jobs
 
-#### Retry delay policy
-
-Additionally, it's possible to define
-a [PublicationRetryPolicy](./src/main/java/dev/streamx/sling/connector/PublicationRetryPolicy.java)
+It's possible to define a [PublicationRetryPolicy](./src/main/java/dev/streamx/sling/connector/PublicationRetryPolicy.java).
 A custom implementation can be provided, but by default, the `DefaultPublicationRetryPolicy` is
 used. This policy implementation has its default configuration, but can be customized with an OSGI
 configuration as follows:
@@ -99,6 +79,39 @@ configuration as follows:
   }
 }
 ```
+
+Values for both delay settings are specified in milliseconds.
+
+### Custom Publication Job Handler
+
+Publication Jobs queue is managed by the `Apache Sling Job Default Queue`, but it's possible to define a custom Job Handler.
+For example:
+
+```json
+{
+  "configurations": {
+    "org.apache.sling.event.jobs.QueueConfiguration~streamx-publications": {
+      "queue.name": "StreamX Publications Queue",
+      "queue.topics": [
+        "dev/streamx/publications"
+      ],
+      "queue.type": "UNORDERED",
+      "queue.retries": 10000,
+      "queue.maxparallel": 0.5,
+      "service.ranking:Integer": 1
+    }
+  }
+}
+```
+
+With this configuration, publication jobs are processed in parallel, using a number of parallel threads equal to half the number of available CPU cores.
+
+This configuration intentionally omits setting the `queue.retrydelay` field, since the delay between retries is calculated dynamically by the current  `Retry delay policy`.
+
+Here, the maximum number of retries is set to 10,000, based on the assumption that - combined with the `max.retry.delay` from the `Retry delay policy` being set to 60 seconds - a failing job will be retried for at most one week. This extended retry window is intended to tolerate situations like StreamX downtime over a weekend.
+
+Internally, the connector also manages a `dev/streamx/ingestion-trigger` job.
+This job uses the default queue configuration and the built-in default retry policy.
 
 ## HttpClient
 
