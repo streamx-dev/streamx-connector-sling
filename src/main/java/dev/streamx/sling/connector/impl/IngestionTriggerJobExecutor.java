@@ -3,7 +3,6 @@ package dev.streamx.sling.connector.impl;
 import dev.streamx.sling.connector.PublicationAction;
 import dev.streamx.sling.connector.PublicationHandler;
 import dev.streamx.sling.connector.ResourceInfo;
-import dev.streamx.sling.connector.StreamxPublicationException;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -80,9 +79,9 @@ public class IngestionTriggerJobExecutor implements JobExecutor {
       try (ResourceResolver resourceResolver = resourceResolverFactory.getAdministrativeResourceResolver( null)) {
         submitResourcesPublicationJob(ingestionAction, resources);
         submitRelatedResourcesPublicationJob(ingestionAction, resources, resourceResolver);
-      } catch (StreamxPublicationException exception) {
-        LOG.error("Error while processing job", exception);
-        return jobExecutionContext.result() .message("Error while processing job: " + exception.getMessage()).failed();
+      } catch (PublicationJobSubmitException exception) {
+        LOG.error("Error while submitting publication job", exception);
+        return jobExecutionContext.result().message("Error while processing job: " + exception.getMessage()).failed();
       } catch (LoginException | RepositoryException ex) {
         LOG.error("Error updating JCR state for related resources", ex);
       }
@@ -90,18 +89,18 @@ public class IngestionTriggerJobExecutor implements JobExecutor {
     return jobExecutionContext.result().succeeded();
   }
 
-  private void submitResourcesPublicationJob(PublicationAction action, List<ResourceInfo> resources) throws StreamxPublicationException {
+  private void submitResourcesPublicationJob(PublicationAction action, List<ResourceInfo> resources) throws PublicationJobSubmitException {
     try {
       for (ResourceInfo resource : resources) {
         submitPublicationJob(resource, action);
       }
     } catch (Exception e) {
-      throw new StreamxPublicationException("Can't submit publication jobs for resources. " + e.getMessage(), e);
+      throw new PublicationJobSubmitException("Can't submit publication jobs for resources. " + e.getMessage(), e);
     }
   }
 
   private void submitRelatedResourcesPublicationJob(PublicationAction action, List<ResourceInfo> resources, ResourceResolver resourceResolver)
-      throws RepositoryException, StreamxPublicationException {
+      throws RepositoryException, PublicationJobSubmitException {
     try {
       Map<String, Set<ResourceInfo>> relatedResourcesMap = findRelatedResources(resources);
       Session session = Objects.requireNonNull(resourceResolver.adaptTo(Session.class));
@@ -120,7 +119,7 @@ public class IngestionTriggerJobExecutor implements JobExecutor {
     } catch (RepositoryException ex) {
       throw ex;
     } catch (Exception e) {
-      throw new StreamxPublicationException("Can't submit publication jobs for related resources. " + e.getMessage(), e);
+      throw new PublicationJobSubmitException("Can't submit publication jobs for related resources. " + e.getMessage(), e);
     }
   }
 
