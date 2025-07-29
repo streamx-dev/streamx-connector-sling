@@ -134,7 +134,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   private long processingTotalTimeMillis = 0;
 
   @BeforeEach
-  void setup() throws Exception {
+  void setup() {
     ResourceResolverMocks.configure(resourceResolver, resourceResolverFactory);
     configureStreamxClient();
     configureServices();
@@ -552,7 +552,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   }
 
   @Test
-  void shouldHandlePageWith1000RelatedResources() throws Exception {
+  void shouldHandlePageWith1000RelatedResources() {
     // given
     String imagePathFormat = PAGE_1 + "/images/image.coreimg.jpg/%d/bar.jpg";
     String page1WithImagesAndCss = registerPage(
@@ -575,7 +575,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   }
 
   @Test
-  void shouldPublishNestedRelatedResource() throws Exception {
+  void shouldPublishNestedRelatedResource() {
     // given
     MockOsgi.modified(selector, slingContext.bundleContext(), Map.of(
         "references.search-regexes", new String[]{"(/etc.clientlibs/.+\\.css)", "url\\(([^\\)]+)\\)"},
@@ -613,7 +613,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   }
 
   @Test
-  void shouldNotCreateDuplicatePublicationJobs() throws Exception {
+  void shouldNotCreateDuplicatePublicationJobs() {
     // given: page with 6 images and 2 global assets
     String page = "/content/my-site/en/us/page-with-related-resources";
     String coreImg1 = page + "/images/coreimg/1.jpg";
@@ -730,7 +730,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   }
 
   @Test
-  void shouldHandleBigNumberOfPagesWithBigNumberOfRelatedResources() throws Exception {
+  void shouldHandleBigNumberOfPagesWithBigNumberOfRelatedResources() {
     // given
     final int N = 50; // pages and images max count
     final String imagePathFormat = "/content/my-site/page-%d/images/image.coreimg.jpg/%d/foo.jpg";
@@ -951,23 +951,23 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     }
   }
 
-  private void publishPage(String resourcePath) throws Exception {
+  private void publishPage(String resourcePath) {
     publishPages(List.of(resourcePath));
   }
 
-  private void publishPages(String... resourcePaths) throws Exception {
+  private void publishPages(String... resourcePaths) {
     publishPages(Arrays.asList(resourcePaths));
   }
 
-  private void publishPages(Collection<String> resourcePaths) throws Exception {
+  private void publishPages(Collection<String> resourcePaths) {
     ingestPages(resourcePaths, PublicationAction.PUBLISH);
   }
 
-  private void unpublishPage(String resourcePath) throws Exception {
+  private void unpublishPage(String resourcePath) {
     unpublishPages(List.of(resourcePath));
   }
 
-  private void unpublishPages(String... resourcePaths) throws Exception {
+  private void unpublishPages(String... resourcePaths) {
     unpublishPages(Arrays.asList(resourcePaths));
   }
 

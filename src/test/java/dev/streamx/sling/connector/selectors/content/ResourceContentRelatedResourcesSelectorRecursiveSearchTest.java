@@ -60,7 +60,7 @@ class ResourceContentRelatedResourcesSelectorRecursiveSearchTest {
   };
 
   @BeforeEach
-  void setupResourceResolver() throws Exception {
+  void setupResourceResolver() {
     ResourceResolverMocks.configure(resourceResolverSpy, resourceResolverFactoryMock);
   }
 
