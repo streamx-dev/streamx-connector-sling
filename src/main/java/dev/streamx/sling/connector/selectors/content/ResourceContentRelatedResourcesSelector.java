@@ -115,8 +115,8 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
    */
   @Override
   public Collection<ResourceInfo> getRelatedResources(ResourceInfo resourceInfo) {
+    LOG.trace("Finding related resources for {}", resourceInfo);
     String resourcePath = resourceInfo.getPath();
-    LOG.debug("Getting related resources for '{}'", resourcePath);
     if (!matches(resourcePath, resourceRequiredPathRegex)) {
       return Collections.emptyList();
     }
@@ -124,7 +124,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
     try (ResourceResolver resourceResolver = resourceResolverFactory.getAdministrativeResourceResolver(null)) {
       return getRelatedResources(resourceInfo, resourceResolver);
     } catch (LoginException exception) {
-      LOG.error("Failed to create Resource Resolver to load related resources for {}", resourcePath, exception);
+      LOG.error("Failed to create Resource Resolver to find related resources for {}", resourcePath, exception);
       return Collections.emptyList();
     }
   }
@@ -135,13 +135,14 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
       return Collections.emptyList();
     }
 
-    String resourcePath = resource.getPath();
-    Set<String> extractedPaths = extractPathsOfRelatedResources(resourcePath, resourceResolver);
+    Set<String> extractedPaths = extractPathsOfRelatedResources(resource.getPath(), resourceResolver);
     for (String extractedPath : Set.copyOf(extractedPaths)) {
       extractPathsFromNestedRelatedResource(extractedPath, resourceResolver, extractedPaths);
     }
 
-    LOG.info("Recognized paths for '{}': {}", resourcePath, extractedPaths);
+    if (!extractedPaths.isEmpty()) {
+      LOG.info("Found related resources for {}: {}", resource, extractedPaths);
+    }
 
     return extractedPaths.stream()
         .map(ResourceInfo::new)
@@ -190,6 +191,8 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
           if (isRelatedResourcePathValidForCollecting(relatedResourcePath)) {
             String normalizedPath = normalizePath(resourcePath, relatedResourcePath);
             matchingPaths.add(normalizedPath);
+          } else {
+            LOG.trace("Skipping related resource {} - path is not valid for collection", relatedResourcePath);
           }
         }
       }

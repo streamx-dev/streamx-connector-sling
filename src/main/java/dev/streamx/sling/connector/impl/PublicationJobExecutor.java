@@ -55,23 +55,44 @@ public class PublicationJobExecutor implements JobExecutor {
   @Override
   public JobExecutionResult process(Job job, JobExecutionContext context) {
     LOG.trace("Processing {}", job);
-    String handlerId = PublicationJobProperties.getHandlerId(job);
-    String clientName = PublicationJobProperties.getClientName(job);
-    Optional<PublicationAction> actionNullable = PublicationAction.of(PublicationJobProperties.getAction(job));
-    if (actionNullable.isEmpty()) {
+
+    Optional<PublicationAction> actionOptional = PublicationAction.of(PublicationJobProperties.getAction(job));
+    if (actionOptional.isEmpty()) {
       LOG.warn("Publication action is not set, job will be cancelled: {}", job);
       return context.result().cancelled();
     }
-    PublicationAction action = actionNullable.orElseThrow();
+    PublicationAction action = actionOptional.get();
+
     String path = PublicationJobProperties.getResourcePath(job);
     if (StringUtils.isEmpty(path)) {
       LOG.warn("This publication job has no path: {}", job);
       return context.result().cancelled();
     }
+
     String serializedProperties = PublicationJobProperties.getResourceProperties(job);
-    Map<String, String> properties = ResourceInfo.deserializeProperties(serializedProperties);
-    ResourceInfo resource = new ResourceInfo(path, properties);
-    LOG.debug("Processing action: [{} - {}]", action, path);
+    Map<String, String> resourceProperties;
+    try {
+      resourceProperties = ResourceInfo.deserializeProperties(serializedProperties);
+    } catch (IllegalArgumentException ex) {
+      LOG.warn("Error deserializing properties for resource {} from the string: {}", path, serializedProperties);
+      return context.result().cancelled();
+    }
+    ResourceInfo resource = new ResourceInfo(path, resourceProperties);
+
+    String handlerId = PublicationJobProperties.getHandlerId(job);
+    if (StringUtils.isEmpty(handlerId)) {
+      LOG.warn("This publication job has no Handler ID: {}", job);
+      return context.result().cancelled();
+    }
+
+    String clientName = PublicationJobProperties.getClientName(job);
+    if (StringUtils.isEmpty(clientName)) {
+      LOG.warn("This publication job has no Client Name: {}", job);
+      return context.result().cancelled();
+    }
+
+    LOG.trace("Processing {} publication for resource {}, handler '{}' and client '{}'", action, resource, handlerId, clientName);
+
     try {
       return processPublication(handlerId, action, resource, clientName, context);
     } catch (StreamxPublicationException | StreamxClientException e) {
@@ -79,11 +100,11 @@ public class PublicationJobExecutor implements JobExecutor {
                 + "Retry count: {}. "
                 + "Number of retries: {}. "
                 + "Error message: {}", job.getRetryCount(), job.getNumberOfRetries(), e.getMessage());
-      LOG.debug("Publication error details: ", e);
+      LOG.trace("Publication error details: ", e);
       return context.result().failed(publicationRetryPolicy.getRetryDelay(job));
     } catch (RuntimeException e) {
-      LOG.error("Unknown error while processing publication [{}, {}, {}]",
-          handlerId, action, path, e);
+      LOG.error("Unknown error while processing {} publication for resource {}, handler '{}' and client '{}'",
+          action, resource, handlerId, clientName, e);
       return context.result().cancelled();
     }
   }
@@ -93,12 +114,12 @@ public class PublicationJobExecutor implements JobExecutor {
       throws StreamxPublicationException, StreamxClientException {
     PublicationHandler<?> publicationHandler = findHandler(handlerId);
     if (publicationHandler == null) {
-      LOG.warn("Cannot find publication handler with id: [{}]", handlerId);
+      LOG.warn("Cannot find publication handler with id: {}", handlerId);
       return context.result().cancelled();
     }
     StreamxInstanceClient streamxInstanceClient = streamxClientStore.getByName(clientName);
     if (streamxInstanceClient == null) {
-      LOG.warn("Cannot find StreamX client with name: [{}]", clientName);
+      LOG.warn("Cannot find StreamX client with name: {}", clientName);
       return context.result().cancelled();
     }
 
@@ -110,7 +131,7 @@ public class PublicationJobExecutor implements JobExecutor {
         handleUnpublish(publicationHandler, streamxInstanceClient, resource);
         break;
       default:
-        LOG.debug("Unsupported publication action: [{}]", action);
+        LOG.trace("Unsupported publication action: {}", action);
         return context.result().cancelled();
     }
     return context.result().succeeded();
@@ -128,7 +149,7 @@ public class PublicationJobExecutor implements JobExecutor {
       throws StreamxPublicationException, StreamxClientException {
     PublishData<T> publishData = publicationHandler.getPublishData(resource);
     if (publishData == null) {
-      LOG.debug("Publish data returned by [{}] is null", publicationHandler.getClass().getName());
+      LOG.trace("Publish data returned by handler {} is null", publicationHandler.getClass().getName());
       return;
     }
     Publisher<T> publisher = streamxInstanceClient.getPublisher(publishData);
@@ -136,7 +157,7 @@ public class PublicationJobExecutor implements JobExecutor {
             .withProperties(publishData.getProperties())
             .build();
     publisher.send(messageToSend);
-    LOG.info("Published resource: [{}] to [{}: {}]", publishData.getKey(),
+    LOG.info("Published resource {} using client '{}' to channel {}", publishData.getKey(),
         streamxInstanceClient.getName(), publishData.getChannel());
   }
 
@@ -145,7 +166,7 @@ public class PublicationJobExecutor implements JobExecutor {
       throws StreamxPublicationException, StreamxClientException {
     UnpublishData<T> unpublishData = publicationHandler.getUnpublishData(resource);
     if (unpublishData == null) {
-      LOG.debug("Unpublish data returned by [{}] is null", publicationHandler.getClass().getName());
+      LOG.trace("Unpublish data returned by handler {} is null", publicationHandler.getClass().getName());
       return;
     }
     Publisher<T> publisher = streamxInstanceClient.getPublisher(unpublishData);
@@ -153,7 +174,7 @@ public class PublicationJobExecutor implements JobExecutor {
         .withProperties(unpublishData.getProperties())
         .build();
     publisher.send(messageToSend);
-    LOG.info("Unpublished resource: [{}] from [{}: {}]", unpublishData.getKey(),
+    LOG.info("Unpublished resource {} using client '{}' from channel {}", unpublishData.getKey(),
         streamxInstanceClient.getName(), unpublishData.getChannel());
   }
 

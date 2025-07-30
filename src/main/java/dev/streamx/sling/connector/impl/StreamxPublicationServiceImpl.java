@@ -62,18 +62,19 @@ public class StreamxPublicationServiceImpl implements StreamxPublicationService 
     submitIngestionTriggerJob(PublicationAction.UNPUBLISH, resourcesToUnpublish);
   }
 
-  private void submitIngestionTriggerJob(PublicationAction ingestionAction, List<ResourceInfo> resources) {
-    if (!enabled) {
-      return;
+  private void submitIngestionTriggerJob(PublicationAction action, List<ResourceInfo> resources) {
+    if (enabled) {
+      Map<String, Object> jobProps = new IngestionTriggerJobProperties()
+          .withAction(action)
+          .withResources(resources)
+          .asMap();
+
+      LOG.trace("Submitting {} ingestion trigger job for resources {}", action, resources);
+      Job addedJob = jobManager.addJob(IngestionTriggerJobExecutor.JOB_TOPIC, jobProps);
+      if (addedJob == null) {
+        LOG.error("Ingestion trigger job could not be created by JobManager for " + jobProps);
+      }
     }
-
-    Map<String, Object> jobProps = new IngestionTriggerJobProperties()
-        .withAction(ingestionAction)
-        .withResources(resources)
-        .asMap();
-
-    Job addedJob = jobManager.addJob(IngestionTriggerJobExecutor.JOB_TOPIC, jobProps);
-    LOG.debug("Added job: {}", addedJob);
   }
 
   @ObjectClassDefinition(name = "StreamX Connector Configuration")

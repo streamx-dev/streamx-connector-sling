@@ -106,7 +106,7 @@ For example:
 
 With this configuration, publication jobs are processed in parallel, using a number of parallel threads equal to half the number of available CPU cores.
 
-This configuration intentionally omits setting the `queue.retrydelay` field, since the delay between retries is calculated dynamically by the current  `Retry delay policy`.
+This configuration intentionally omits setting the `queue.retrydelay` field, since the delay between retries is calculated dynamically by the current `Retry delay policy`.
 
 Here, the maximum number of retries is set to 10,000, based on the assumption that - combined with the `max.retry.delay` from the `Retry delay policy` being set to 60 seconds - a failing job will be retried for at most one week. This extended retry window is intended to tolerate situations like StreamX downtime over a weekend.
 

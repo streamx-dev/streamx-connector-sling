@@ -18,7 +18,11 @@ import dev.streamx.sling.connector.testing.streamx.clients.ingestion.FakeStreamx
 import dev.streamx.sling.connector.testing.streamx.clients.ingestion.Publication;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.io.IOUtils;
@@ -31,15 +35,13 @@ import org.apache.sling.engine.SlingRequestProcessor;
 import org.apache.sling.event.jobs.Job;
 import org.apache.sling.event.jobs.JobManager;
 import org.apache.sling.event.jobs.consumer.JobExecutor;
+import org.apache.sling.testing.mock.osgi.MockOsgi;
 import org.apache.sling.testing.mock.sling.ResourceResolverType;
 import org.apache.sling.testing.mock.sling.junit5.SlingContext;
 import org.apache.sling.testing.mock.sling.junit5.SlingContextExtension;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-
-import java.util.*;
-import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -64,18 +66,12 @@ class StreamxPublicationServiceImplTest {
   private static final String OTHER_RELATED_ASSET_TO_PUBLISH = "/content/dam/assets/my-site/related/script1.js";
 
   private final SlingContext slingContext = new SlingContext(ResourceResolverType.JCR_OAK);
-  private final ResourceResolver resourceResolver = spy(slingContext.resourceResolver());
+  private final ResourceResolver resourceResolver = slingContext.resourceResolver();
   private final ResourceResolverFactory resourceResolverFactory = mock(ResourceResolverFactory.class);
-  private final Map<String, Object> publicationServiceConfig = new HashMap<>();
-  private final List<PublicationHandler<?>> handlers = new ArrayList<>();
-  private final List<RelatedResourcesSelector> relatedResourcesSelectors = new ArrayList<>();
-  private final List<FakeStreamxClientConfig> fakeStreamxClientConfigs = new ArrayList<>();
-
-  private StreamxPublicationServiceImpl publicationService;
-  private IngestionTriggerJobExecutor ingestionTriggerJobExecutor;
-  private FakeJobManager fakeJobManager;
-  private FakeStreamxClient fakeStreamxClient;
-  private FakeStreamxClientFactory fakeStreamxClientFactory;
+  private final StreamxPublicationServiceImpl publicationService = new StreamxPublicationServiceImpl();
+  private final JobExecutor publicationJobExecutor = new PublicationJobExecutor();
+  private final FakeJobManager fakeJobManager = spy(new FakeJobManager(Collections.singletonList(publicationJobExecutor)));
+  private final FakeStreamxClientFactory fakeStreamxClientFactory = new FakeStreamxClientFactory();
 
   private final SlingRequestProcessor dummyRequestProcessor = (HttpServletRequest request, HttpServletResponse response, ResourceResolver resolver) -> {
     String requestUri = request.getRequestURI();
@@ -85,7 +81,7 @@ class StreamxPublicationServiceImplTest {
   };
 
   private final RelatedResourcesSelector relatedAssetsSelector = resource ->
-       Arrays.asList(
+       List.of(
           new AssetResourceInfo(RELATED_ASSET_TO_PUBLISH),
           new AssetResourceInfo(OTHER_RELATED_ASSET_TO_PUBLISH)
       );
@@ -134,30 +130,25 @@ class StreamxPublicationServiceImplTest {
 
   @BeforeEach
   void setUp() {
-    handlers.add(new PagePublicationHandler(resourceResolver));
-    handlers.add(new AssetPublicationHandler(resourceResolver));
-    fakeStreamxClientConfigs.add(getDefaultFakeStreamxClientConfig());
-  }
+    ResourceResolverMocks.configure(slingContext, resourceResolverFactory);
 
-  @SuppressWarnings("ReturnOfNull")
-  private void initializeComponentsIfNotInitialized() {
-    if (publicationService != null) {
-      return;
-    }
+    registerHandlers(
+        new PagePublicationHandler(resourceResolver),
+        new AssetPublicationHandler(resourceResolver)
+    );
 
-    publicationService = new StreamxPublicationServiceImpl();
-
-    JobExecutor publicationJobExecutor = new PublicationJobExecutor();
-
-    for (FakeStreamxClientConfig config : fakeStreamxClientConfigs) {
-      slingContext.registerService(StreamxClientConfig.class, config);
-    }
-
-    fakeStreamxClientFactory = new FakeStreamxClientFactory();
+    registerClientConfigs(getDefaultFakeStreamxClientConfig());
     slingContext.registerService(StreamxClientFactory.class, fakeStreamxClientFactory);
+    slingContext.registerInjectActivateService(StreamxClientStoreImpl.class);
 
-    fakeJobManager = spy(new FakeJobManager(Collections.singletonList(publicationJobExecutor)));
+    slingContext.registerService(PublicationRetryPolicy.class, new DefaultPublicationRetryPolicy());
+    slingContext.registerInjectActivateService(new PublicationHandlerRegistry());
+    slingContext.registerInjectActivateService(new RelatedResourcesSelectorRegistry());
 
+    slingContext.registerService(JobManager.class, fakeJobManager);
+    slingContext.registerInjectActivateService(publicationJobExecutor);
+
+    IngestionTriggerJobExecutor ingestionTriggerJobExecutor = slingContext.registerInjectActivateService(IngestionTriggerJobExecutor.class);
     doAnswer(invocationOnMock -> {
       // process the ingestion job immediately in tests
       Job job = new FakeJob(invocationOnMock.getArgument(0), invocationOnMock.getArgument(1));
@@ -165,28 +156,7 @@ class StreamxPublicationServiceImplTest {
       return job;
     }).when(fakeJobManager).addJob(eq(IngestionTriggerJobExecutor.JOB_TOPIC), anyMap());
 
-    slingContext.registerService(JobManager.class, fakeJobManager);
-    slingContext.registerService(PublicationRetryPolicy.class, new DefaultPublicationRetryPolicy());
-    for (PublicationHandler<?> handler : handlers) {
-      slingContext.registerService(PublicationHandler.class, handler);
-    }
-    for (RelatedResourcesSelector selector : relatedResourcesSelectors) {
-      slingContext.registerService(RelatedResourcesSelector.class, selector);
-    }
-    slingContext.registerInjectActivateService(StreamxClientStoreImpl.class);
-    slingContext.registerInjectActivateService(new PublicationHandlerRegistry());
-
-    slingContext.registerInjectActivateService(new RelatedResourcesSelectorRegistry());
-
-    ResourceResolverMocks.configure(resourceResolver, resourceResolverFactory);
-
-    slingContext.registerService(SlingRequestProcessor.class, dummyRequestProcessor);
-    slingContext.registerInjectActivateService(publicationService, publicationServiceConfig);
-    slingContext.registerInjectActivateService(publicationJobExecutor);
-
-    ingestionTriggerJobExecutor = slingContext.registerInjectActivateService(IngestionTriggerJobExecutor.class);
-
-    fakeStreamxClient = fakeStreamxClientFactory.getFakeClient("/fake/streamx/instance");
+    slingContext.registerInjectActivateService(publicationService);
   }
 
   @Test
@@ -277,9 +247,7 @@ class StreamxPublicationServiceImplTest {
   @Test
   void shouldNotPublishIfIsDisabled() {
     givenPageHierarchy("/content/my-site/page-1/page-2/page-3");
-    givenPublicationService(config ->
-        config.put("enabled", false)
-    );
+    givenPublicationService(Map.of("enabled", false));
 
     whenPathsArePublished("/content/my-site/page-1", "/content/my-site/page-1/page-2");
     whenPathIsUnpublished("/content/my-site/page-1/page-2");
@@ -569,7 +537,6 @@ class StreamxPublicationServiceImplTest {
 
   @Test
   void shouldInternallyHandleExceptionWhileAddingNewSlingJob() {
-    initializeComponentsIfNotInitialized();
     doReturn(null).when(fakeJobManager).addJob(anyString(), anyMap());
 
     givenPageHierarchy("/content/my-site/page-1");
@@ -584,7 +551,6 @@ class StreamxPublicationServiceImplTest {
   @Test
   void shouldSubmitIngestionTriggerJobs() {
     // given
-    initializeComponentsIfNotInitialized();
     doCallRealMethod().when(fakeJobManager).addJob(anyString(), anyMap());
 
     // when
@@ -628,48 +594,41 @@ class StreamxPublicationServiceImplTest {
     }
   }
 
-  private void givenPublicationService(Consumer<Map<String, Object>> propertiesModifier) {
-    propertiesModifier.accept(publicationServiceConfig);
+  private void givenPublicationService(Map<String, Object> properties) {
+    MockOsgi.modified(publicationService, slingContext.bundleContext(), properties);
   }
 
   private void givenRelatedResourcesSelectors(RelatedResourcesSelector... selectors) {
-    this.relatedResourcesSelectors.clear();
-    this.relatedResourcesSelectors.addAll(Arrays.asList(selectors));
-    this.handlers.add(assetResourcePathPublicationHandler);
+    registerSelectors(selectors);
+    registerHandlers(assetResourcePathPublicationHandler);
   }
 
   private void givenHandlers(PublicationHandler<?>... handlers) {
-    this.handlers.clear();
-    this.handlers.addAll(Arrays.asList(handlers));
+    registerHandlers(handlers);
   }
 
   private void givenStreamxClientInstances(FakeStreamxClientConfig... configs) {
-    this.fakeStreamxClientConfigs.clear();
-    this.fakeStreamxClientConfigs.addAll(Arrays.asList(configs));
+    registerClientConfigs(configs);
   }
 
   private void whenPathIsPublished(String path) {
-    initializeComponentsIfNotInitialized();
     publicationService.publish(toResourceInfoList(path));
   }
 
   private void whenPathsArePublished(String... paths) {
-    initializeComponentsIfNotInitialized();
     publicationService.publish(toResourceInfoList(paths));
   }
 
   private void whenPathIsUnpublished(String path) {
-    initializeComponentsIfNotInitialized();
     publicationService.unpublish(toResourceInfoList(path));
   }
 
   private void whenPathsAreUnpublished(String... paths) {
-    initializeComponentsIfNotInitialized();
     publicationService.unpublish(toResourceInfoList(paths));
   }
 
   private static List<ResourceInfo> toResourceInfoList(String... paths) {
-    return Arrays.stream(paths).map(path ->
+    return Stream.of(paths).map(path ->
         StringUtils.contains(path, "/dam/")
             ? new AssetResourceInfo(path)
             : new PageResourceInfo(path)
@@ -696,9 +655,7 @@ class StreamxPublicationServiceImplTest {
   }
 
   private void thenPublicationsContainsExactly(Publication... publications) {
-    assertThat(fakeStreamxClient.getPublications())
-        .usingRecursiveFieldByFieldElementComparator()
-        .containsExactly(publications);
+    thenInstancePublicationsContainsExactly("/fake/streamx/instance", publications);
   }
 
   private void thenInstancePublicationsContainsExactly(String streamxInstanceUrl, Publication... publications) {
@@ -709,18 +666,36 @@ class StreamxPublicationServiceImplTest {
   }
 
   private void thenNoPublicationsWereMade() {
-    assertThat(fakeStreamxClient.getPublications()).isEmpty();
+    thenPublicationsContainsExactly();
   }
 
-  private Publication publishedPage(String key) {
+  private void registerClientConfigs(FakeStreamxClientConfig ...configs) {
+    for (FakeStreamxClientConfig config : configs) {
+      slingContext.registerService(StreamxClientConfig.class, config);
+    }
+  }
+
+  private void registerSelectors(RelatedResourcesSelector... selectors) {
+    for (RelatedResourcesSelector selector : selectors) {
+      slingContext.registerService(RelatedResourcesSelector.class, selector);
+    }
+  }
+
+  private void registerHandlers(PublicationHandler<?>... handlers) {
+    for (PublicationHandler<?> handler : handlers) {
+      slingContext.registerService(PublicationHandler.class, handler);
+    }
+  }
+
+  private static Publication publishedPage(String key) {
     return publishedResource(key, PAGES_CHANNEL, "Page: ");
   }
 
-  private Publication publishedAsset(String key) {
+  private static Publication publishedAsset(String key) {
     return publishedResource(key, ASSETS_CHANNEL, "Asset: ");
   }
 
-  private Publication publishedResource(String key, String channel, String dataPrefix) {
+  private static Publication publishedResource(String key, String channel, String dataPrefix) {
     String data = dataPrefix + extractPageNameWithoutExtension(key);
     return new Publication(PublicationAction.PUBLISH, key, channel, data);
   }
@@ -730,26 +705,26 @@ class StreamxPublicationServiceImplTest {
     return StringUtils.removeEnd(pageName, ".html");
   }
 
-  private Publication unpublishedPage(String key) {
+  private static Publication unpublishedPage(String key) {
     return unpublishedResource(key, PAGES_CHANNEL);
   }
 
-  private Publication unpublishedAsset(String key) {
+  private static Publication unpublishedAsset(String key) {
     return unpublishedResource(key, ASSETS_CHANNEL);
   }
 
-  private Publication unpublishedResource(String key, String channel) {
+  private static Publication unpublishedResource(String key, String channel) {
     return new Publication(PublicationAction.UNPUBLISH, key, channel, null);
   }
 
   private static FakeStreamxClientConfig getOtherSiteFakeStreamxClientConfig() {
     return new FakeStreamxClientConfig("/fake/other-site/instance",
-        Arrays.asList("/.*/other-site/.*", "/.*/dam/.*"));
+        List.of("/.*/other-site/.*", "/.*/dam/.*"));
   }
 
   private static FakeStreamxClientConfig getMySiteFakeStreamxClientConfig() {
     return new FakeStreamxClientConfig("/fake/my-site/instance",
-        Arrays.asList("/.*/my-site/.*", "/.*/dam/.*"));
+        List.of("/.*/my-site/.*", "/.*/dam/.*"));
   }
 
   private static FakeStreamxClientConfig getDefaultFakeStreamxClientConfig() {

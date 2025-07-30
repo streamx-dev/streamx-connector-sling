@@ -50,12 +50,7 @@ public abstract class ResourcePathPublicationHandler<T> implements PublicationHa
     String resourcePath = resource.getPath();
     if (configuration().isEnabled()) {
       String resourcePathRegex = configuration().resourcePathRegex();
-      boolean matches = resourcePath.matches(resourcePathRegex);
-      LOG.trace(
-          "Does resource path '{}' match this regex: '{}'? Answer: {}",
-          resourcePath, resourcePathRegex, matches
-      );
-      return matches;
+      return resourcePath.matches(resourcePathRegex);
     } else {
       LOG.trace("Handler is disabled. Not handling '{}'", resourcePath);
       return false;

@@ -29,10 +29,10 @@ public class StreamxClientConfigImpl implements StreamxClientConfig {
   static final String SERVICE_DESCRIPTION = "Configuration of the client of StreamX "
       + "REST Ingestion Service";
   private static final Logger LOG = LoggerFactory.getLogger(StreamxClientConfigImpl.class);
-  private final AtomicReference<String> name;
-  private final AtomicReference<String> streamxUrl;
-  private final AtomicReference<OSGiSecret> authToken;
-  private final AtomicReference<List<String>> resourcePathPatterns;
+  private final AtomicReference<String> name = new AtomicReference<>();
+  private final AtomicReference<String> streamxUrl = new AtomicReference<>();
+  private final AtomicReference<OSGiSecret> authToken = new AtomicReference<>();
+  private final AtomicReference<List<String>> resourcePathPatterns = new AtomicReference<>();
 
   /**
    * Constructs an instance of this class.
@@ -40,14 +40,7 @@ public class StreamxClientConfigImpl implements StreamxClientConfig {
    */
   @Activate
   public StreamxClientConfigImpl(StreamxClientConfigOcd config) {
-    this.name = new AtomicReference<>(config.name());
-    this.streamxUrl = new AtomicReference<>(config.streamxUrl());
-    this.authToken = new AtomicReference<>(new OSGiSecret(config.authToken()));
-    this.resourcePathPatterns = new AtomicReference<>(Arrays.asList(config.resourcePathPatterns()));
-    LOG.trace(
-        "Applied configuration. Name: '{}'. URL: '{}'. Resource path patterns: '{}'.",
-        name, streamxUrl, resourcePathPatterns
-    );
+    configure(config);
   }
 
   @Modified

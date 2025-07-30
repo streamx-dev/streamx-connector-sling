@@ -15,13 +15,13 @@ import javax.jcr.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-final class PublishedRelatedResourcesManager {
+final class PublishedRelatedResourcesTreeManager {
 
   static final String BASE_NODE_PATH = "/var/streamx/connector/sling/referenced-related-resources";
   private static final String PN_RELATED_RESOURCES = "relatedResources";
-  private static final Logger LOG = LoggerFactory.getLogger(PublishedRelatedResourcesManager.class);
+  private static final Logger LOG = LoggerFactory.getLogger(PublishedRelatedResourcesTreeManager.class);
 
-  private PublishedRelatedResourcesManager() {
+  private PublishedRelatedResourcesTreeManager() {
     // no instances
   }
 
