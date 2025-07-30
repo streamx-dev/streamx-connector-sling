@@ -51,7 +51,7 @@ class ResourceContentRelatedResourcesSelectorTest {
 
   @BeforeEach
   void setupResourceResolver() {
-      ResourceResolverMocks.configure(context, resourceResolverFactoryMock);
+    ResourceResolverMocks.configure(context, resourceResolverFactoryMock);
   }
 
   @Test
