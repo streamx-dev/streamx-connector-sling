@@ -56,10 +56,10 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
   private final ResourceResolverFactory resourceResolverFactory;
 
   private List<Pattern> relatedResourcePathIncludePatterns;
-  private Pattern relatedResourcePathExcludePattern;
-  private Pattern resourceRequiredPathRegex;
-  private Pattern resourceRequiredPrimaryNodeTypeRegex;
-  private Pattern relatedResourceProcessablePathPattern;
+  private @Nullable Pattern relatedResourcePathExcludePattern;
+  private @Nullable Pattern resourceRequiredPathRegex;
+  private @Nullable Pattern resourceRequiredPrimaryNodeTypeRegex;
+  private @Nullable Pattern relatedResourceProcessablePathPattern;
 
   /**
    * Constructs an instance of this class.
@@ -117,7 +117,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
   public Collection<ResourceInfo> getRelatedResources(ResourceInfo resourceInfo) {
     String resourcePath = resourceInfo.getPath();
     LOG.debug("Getting related resources for '{}'", resourcePath);
-    if (notMatching(resourcePath, resourceRequiredPathRegex)) {
+    if (!matches(resourcePath, resourceRequiredPathRegex)) {
       return Collections.emptyList();
     }
 
@@ -131,7 +131,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
 
   private List<ResourceInfo> getRelatedResources(ResourceInfo resource, ResourceResolver resourceResolver) {
     String primaryNodeType = resource.getProperty(JcrConstants.JCR_PRIMARYTYPE);
-    if (primaryNodeType == null || notMatching(primaryNodeType, resourceRequiredPrimaryNodeTypeRegex)) {
+    if (primaryNodeType == null || !matches(primaryNodeType, resourceRequiredPrimaryNodeTypeRegex)) {
       return Collections.emptyList();
     }
 
@@ -167,7 +167,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
   }
 
   private void extractPathsFromNestedRelatedResource(String resourcePath, ResourceResolver resourceResolver, Set<String> extractedPaths) {
-    if (notMatching(resourcePath, relatedResourceProcessablePathPattern)) {
+    if (!matches(resourcePath, relatedResourceProcessablePathPattern)) {
       return;
     }
     String resourceAsString = readResourceContent(resourcePath, resourceResolver);
@@ -198,7 +198,7 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
   }
 
   private boolean isRelatedResourcePathValidForCollecting(String relatedResourcePath) {
-    return notMatching(relatedResourcePath, relatedResourcePathExcludePattern)
+    return !matches(relatedResourcePath, relatedResourcePathExcludePattern)
            && !isExternalUrl(relatedResourcePath);
   }
 
@@ -236,7 +236,10 @@ public class ResourceContentRelatedResourcesSelector implements RelatedResources
     }
   }
 
-  private static boolean notMatching(String stringToTest, Pattern pattern) {
-    return !pattern.matcher(stringToTest).matches();
+  private static boolean matches(String stringToTest, @Nullable Pattern pattern) {
+    if (pattern == null) {
+      return false;
+    }
+    return pattern.matcher(stringToTest).matches();
   }
 }
