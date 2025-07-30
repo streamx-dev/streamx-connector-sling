@@ -81,7 +81,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   private static final String STREAMX_CLIENT_NAME = "streamxClient";
 
   private final SlingContext slingContext = new SlingContext(ResourceResolverType.JCR_OAK);
-  private final ResourceResolver resourceResolver = spy(slingContext.resourceResolver());
+  private final ResourceResolver resourceResolver = slingContext.resourceResolver();
   private final ResourceResolverFactory resourceResolverFactory = mock(ResourceResolverFactory.class);
   private final FakeJobManager jobManager = spy(new FakeJobManager(Collections.emptyList()));
   private final ResultBuilder resultBuilderMock = mock(ResultBuilder.class);
@@ -135,7 +135,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
   @BeforeEach
   void setup() {
-    ResourceResolverMocks.configure(resourceResolver, resourceResolverFactory);
+    ResourceResolverMocks.configure(slingContext, resourceResolverFactory);
     configureStreamxClient();
     configureServices();
   }
@@ -182,6 +182,25 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
     StreamxClientStore streamxClientStore = mock(StreamxClientStoreImpl.class);
     doReturn(List.of(streamxClientMock)).when(streamxClientStore).getForResource(any(ResourceInfo.class));
     slingContext.registerInjectActivateService(streamxClientStore);
+  }
+
+  @Test
+  void shouldPublishPageAndItsRelatedResources() {
+    // given
+    registerPage(PAGE_1, CORE_IMG_FOR_PAGE_1, GLOBAL_IMAGE, GLOBAL_CSS_CLIENTLIB);
+
+    // when
+    publishPage(PAGE_1);
+
+    // then
+    assertPublishedTimes(Map.of(
+        PAGE_1, 1,
+        CORE_IMG_FOR_PAGE_1, 1,
+        GLOBAL_IMAGE, 0,
+        GLOBAL_CSS_CLIENTLIB, 1
+    ));
+
+    assertResourcesCurrentlyOnStreamX(PAGE_1, CORE_IMG_FOR_PAGE_1, GLOBAL_CSS_CLIENTLIB);
   }
 
   @Test
@@ -798,8 +817,8 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
     // then
     verify(resultBuilderMock).message(
-        "Error while processing job: Can't submit publication jobs for related resources. "
-        + "Publication job could not be created by JobManager for " + CORE_IMG_FOR_PAGE_2);
+        "Error while processing job: Can't submit PUBLISH jobs for related resources. "
+        + "PUBLISH job could not be created by JobManager for " + new ResourceInfo(CORE_IMG_FOR_PAGE_2));
 
     // and: expect resources that reached the queue - to be published to StreamX
     assertResourcesCurrentlyOnStreamX(page1, page2, CORE_IMG_FOR_PAGE_1);
@@ -841,8 +860,8 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
 
     // then
     verify(resultBuilderMock).message(
-        "Error while processing job: Can't submit publication jobs for related resources. "
-        + "Publication job could not be created by JobManager for " + CORE_IMG_FOR_PAGE_1);
+        "Error while processing job: Can't submit PUBLISH jobs for related resources. "
+        + "UNPUBLISH job could not be created by JobManager for " + new ResourceInfo(CORE_IMG_FOR_PAGE_1));
 
     // and
     assertResourcesCurrentlyOnStreamX(page, CORE_IMG_FOR_PAGE_1);
@@ -902,7 +921,7 @@ class StreamxPublicationServiceImplRelatedResourcesIngestionTest {
   }
 
   private void verifyMainTree(Map<String, Set<String>> expectedParentAndRelatedResources) throws RepositoryException {
-    String baseNodePath = PublishedRelatedResourcesManager.BASE_NODE_PATH;
+    String baseNodePath = PublishedRelatedResourcesTreeManager.BASE_NODE_PATH;
 
     // given
     Map<String, Map<String, Set<String>>> expectedTreeNodes = expectedParentAndRelatedResources.entrySet()

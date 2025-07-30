@@ -4,7 +4,6 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.contentOf;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
 
 import dev.streamx.sling.connector.ResourceInfo;
 import dev.streamx.sling.connector.test.util.PageResourceInfo;
@@ -48,7 +47,6 @@ class ResourceContentRelatedResourcesSelectorRecursiveSearchTest {
       ));
 
   private final SlingContext context = new SlingContext(ResourceResolverType.JCR_OAK);
-  private final ResourceResolver resourceResolverSpy = spy(context.resourceResolver());
   private final ResourceResolverFactory resourceResolverFactoryMock = mock(ResourceResolverFactory.class);
 
   private final SlingRequestProcessor basicRequestProcessor = (HttpServletRequest request, HttpServletResponse response, ResourceResolver resourceResolver) -> {
@@ -61,7 +59,7 @@ class ResourceContentRelatedResourcesSelectorRecursiveSearchTest {
 
   @BeforeEach
   void setupResourceResolver() {
-    ResourceResolverMocks.configure(resourceResolverSpy, resourceResolverFactoryMock);
+    ResourceResolverMocks.configure(context, resourceResolverFactoryMock);
   }
 
   @Test
