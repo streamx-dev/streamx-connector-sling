@@ -52,7 +52,7 @@ class ResourceContentRelatedResourcesSelectorTest {
   };
 
   @BeforeEach
-  void setupResourceResolver() throws Exception {
+  void setupResourceResolver() {
     ResourceResolverMocks.configure(resourceResolverSpy, resourceResolverFactoryMock);
   }
 
