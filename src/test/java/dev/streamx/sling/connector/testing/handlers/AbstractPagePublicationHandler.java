@@ -18,10 +18,6 @@ abstract class AbstractPagePublicationHandler implements PublicationHandler<Page
     this.resourceResolver = resourceResolver;
   }
 
-  private static String getPagePath(String resourcePath) {
-    return resourcePath + ".html";
-  }
-
   protected abstract String handledPagePathPrefix();
 
   @Override
@@ -32,15 +28,18 @@ abstract class AbstractPagePublicationHandler implements PublicationHandler<Page
 
   @Override
   public PublishData<Page> getPublishData(ResourceInfo resourceInfo) {
-    String resourcePath = resourceInfo.getPath();
-    Resource resource = resourceResolver.getResource(resourcePath);
+    Resource resource = resourceResolver.getResource(resourceInfo.getPath());
     Objects.requireNonNull(resource);
-    return new PublishData<>(getPagePath(resourcePath), CHANNEL, Page.class,
+    return new PublishData<>(getPagePath(resourceInfo), CHANNEL, Page.class,
         new Page(resource.getName()));
   }
 
   @Override
   public UnpublishData<Page> getUnpublishData(ResourceInfo resourceInfo) {
-    return new UnpublishData<>(getPagePath(resourceInfo.getPath()), CHANNEL, Page.class);
+    return new UnpublishData<>(getPagePath(resourceInfo), CHANNEL, Page.class);
+  }
+
+  private static String getPagePath(ResourceInfo resource) {
+    return resource.getPath() + ".html";
   }
 }

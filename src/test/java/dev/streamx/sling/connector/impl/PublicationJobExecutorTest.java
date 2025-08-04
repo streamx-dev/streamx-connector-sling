@@ -31,6 +31,7 @@ import org.mockito.ArgumentMatchers;
 @ExtendWith(SlingContextExtension.class)
 class PublicationJobExecutorTest {
 
+  private static final String STREAMX_NAME = "fake streamx instance";
   private static final String STREAMX_URL = "/fake/streamx/instance";
   private static final String RESOURCE_PATH = "/resource/path/";
 
@@ -123,7 +124,7 @@ class PublicationJobExecutorTest {
     Map<String, Object> properties = new PublicationJobProperties()
         .withResource(new ResourceInfo(RESOURCE_PATH))
         .withHandlerId("fake-handler")
-        .withClientName(STREAMX_URL)
+        .withClientName(STREAMX_NAME)
         .withAction(action)
         .asMap();
     return new FakeRetriedJob(PublicationJobExecutor.JOB_TOPIC, properties, retries);

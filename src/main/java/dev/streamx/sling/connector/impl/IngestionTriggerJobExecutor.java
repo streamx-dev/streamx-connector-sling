@@ -2,6 +2,7 @@ package dev.streamx.sling.connector.impl;
 
 import dev.streamx.sling.connector.PublicationAction;
 import dev.streamx.sling.connector.PublicationHandler;
+import dev.streamx.sling.connector.RelatedResourcesSelector;
 import dev.streamx.sling.connector.ResourceInfo;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -70,17 +71,24 @@ public class IngestionTriggerJobExecutor implements JobExecutor {
    */
   @Override
   public JobExecutionResult process(Job job, JobExecutionContext jobExecutionContext) {
-    LOG.trace("Processing {}", job);
-    PublicationAction ingestionAction = extractPublicationAction(job);
-    List<ResourceInfo> resources = extractResourcesInfo(job);
-    LOG.trace("Submitting publication jobs for paths: {}", resources);
+    LOG.trace("Processing ingestion trigger job {}", job);
+    PublicationAction action;
+    List<ResourceInfo> resources;
+
+    try {
+      action = extractPublicationAction(job);
+      resources = extractResourcesInfo(job);
+    } catch (Exception ex) {
+      LOG.error("Error reading data from job properties", ex);
+      return jobExecutionContext.result().message(ex.getMessage()).cancelled();
+    }
 
     if (!resources.isEmpty()) {
       try (ResourceResolver resourceResolver = resourceResolverFactory.getAdministrativeResourceResolver( null)) {
-        submitResourcesPublicationJob(ingestionAction, resources);
-        submitRelatedResourcesPublicationJob(ingestionAction, resources, resourceResolver);
+        submitPublicationJobsForMainResources(action, resources);
+        submitPublicationJobsForRelatedResources(action, resources, resourceResolver);
       } catch (PublicationJobSubmitException exception) {
-        LOG.error("Error while submitting publication job", exception);
+        LOG.error("Error while submitting {} job", action, exception);
         return jobExecutionContext.result().message("Error while processing job: " + exception.getMessage()).failed();
       } catch (LoginException | RepositoryException ex) {
         LOG.error("Error updating JCR state for related resources", ex);
@@ -89,29 +97,37 @@ public class IngestionTriggerJobExecutor implements JobExecutor {
     return jobExecutionContext.result().succeeded();
   }
 
-  private void submitResourcesPublicationJob(PublicationAction action, List<ResourceInfo> resources) throws PublicationJobSubmitException {
+  private void submitPublicationJobsForMainResources(PublicationAction action, List<ResourceInfo> resources) throws PublicationJobSubmitException {
     try {
       for (ResourceInfo resource : resources) {
-        submitPublicationJob(resource, action);
+        submitPublicationJobs(resource, action);
       }
     } catch (Exception e) {
-      throw new PublicationJobSubmitException("Can't submit publication jobs for resources. " + e.getMessage(), e);
+      throw new PublicationJobSubmitException("Can't submit " + action + " jobs for resources. " + e.getMessage(), e);
     }
   }
 
-  private void submitRelatedResourcesPublicationJob(PublicationAction action, List<ResourceInfo> resources, ResourceResolver resourceResolver)
+  private void submitPublicationJobsForRelatedResources(PublicationAction action, List<ResourceInfo> resources, ResourceResolver resourceResolver)
       throws RepositoryException, PublicationJobSubmitException {
+    List<RelatedResourcesSelector> relatedResourcesSelectors = relatedResourcesSelectorRegistry.getSelectors();
+    if (relatedResourcesSelectors.isEmpty()) {
+      return;
+    }
+
     try {
-      Map<String, Set<ResourceInfo>> relatedResourcesMap = findRelatedResources(resources);
+      Map<String, Set<ResourceInfo>> relatedResourcesMap = findRelatedResources(resources, relatedResourcesSelectors);
       Session session = Objects.requireNonNull(resourceResolver.adaptTo(Session.class));
       if (action == PublicationAction.PUBLISH) {
         Set<ResourceInfo> distinctRelatedResources = SetUtils.flattenToLinkedHashSet(relatedResourcesMap.values());
-        submitPublishRelatedResourcesJob(distinctRelatedResources, session);
-        Map<String, Set<ResourceInfo>> disappearedRelatedResources = PublishedRelatedResourcesManager.updatePublishedResourcesData(relatedResourcesMap, session);
-        submitUnpublishRelatedResourcesJob(disappearedRelatedResources);
+        submitPublishJobsForRelatedResources(distinctRelatedResources, session);
+        Map<String, Set<ResourceInfo>> disappearedRelatedResources = PublishedRelatedResourcesTreeManager.updatePublishedResourcesData(relatedResourcesMap, session);
+        if (!disappearedRelatedResources.isEmpty()) {
+          LOG.trace("Detected the following disappeared related resources for parent resources: {}", disappearedRelatedResources);
+          submitUnpublishJobsForRelatedResources(disappearedRelatedResources);
+        }
       } else if (action == PublicationAction.UNPUBLISH) {
-        submitUnpublishRelatedResourcesJob(relatedResourcesMap);
-        PublishedRelatedResourcesManager.removePublishedResourcesData(resources, session);
+        submitUnpublishJobsForRelatedResources(relatedResourcesMap);
+        PublishedRelatedResourcesTreeManager.removePublishedResourcesData(resources, session);
       }
       if (session.hasPendingChanges()) {
         session.save();
@@ -119,34 +135,39 @@ public class IngestionTriggerJobExecutor implements JobExecutor {
     } catch (RepositoryException ex) {
       throw ex;
     } catch (Exception e) {
-      throw new PublicationJobSubmitException("Can't submit publication jobs for related resources. " + e.getMessage(), e);
+      throw new PublicationJobSubmitException("Can't submit " + action + " jobs for related resources. " + e.getMessage(), e);
     }
   }
 
-  private Map<String, Set<ResourceInfo>> findRelatedResources(List<ResourceInfo> parentResources) {
-    LOG.trace("Searching for related resources for {}", parentResources);
+  private Map<String, Set<ResourceInfo>> findRelatedResources(List<ResourceInfo> parentResources, List<RelatedResourcesSelector> relatedResourcesSelectors) {
+    LOG.trace("Searching for related resources of parent resources {}", parentResources);
     Set<String> parentResourcesPaths = SetUtils.mapToLinkedHashSet(parentResources, ResourceInfo::getPath);
 
     Map<String, Set<ResourceInfo>> result = new LinkedHashMap<>();
     for (ResourceInfo parentResource : parentResources) {
-      Set<ResourceInfo> relatedResources = relatedResourcesSelectorRegistry.getSelectors().stream()
-          .flatMap(selector -> selector.getRelatedResources(parentResource).stream())
-          .filter(relatedResource -> !parentResourcesPaths.contains(relatedResource.getPath()))
-          .collect(Collectors.toCollection(LinkedHashSet::new));
+      Set<ResourceInfo> relatedResources = new LinkedHashSet<>();
+      for (RelatedResourcesSelector selector : relatedResourcesSelectors) {
+        relatedResources.addAll(selector.getRelatedResources(parentResource));
+      }
+      relatedResources.removeIf(relatedResource -> parentResourcesPaths.contains(relatedResource.getPath()));
       result.put(parentResource.getPath(), relatedResources);
     }
     return result;
   }
 
-  private void submitPublishRelatedResourcesJob(Set<ResourceInfo> relatedResources, Session session) throws JobCreationException {
+  private void submitPublishJobsForRelatedResources(Set<ResourceInfo> relatedResources, Session session) throws JobCreationException {
+    final PublicationAction action = PublicationAction.PUBLISH;
+
     for (ResourceInfo relatedResource : relatedResources) {
-      if (!PublishedRelatedResourcesManager.wasPublished(relatedResource, session)) {
-        submitPublicationJob(relatedResource, PublicationAction.PUBLISH);
+      if (PublishedRelatedResourcesTreeManager.wasPublished(relatedResource, session)) {
+        LOG.trace("Skipping submitting {} jobs for related resource {} because it is marked as already published", action, relatedResource);
+      } else {
+        submitPublicationJobs(relatedResource, action);
       }
     }
   }
 
-  private void submitUnpublishRelatedResourcesJob(Map<String, Set<ResourceInfo>> relatedResourcesMap) throws JobCreationException {
+  private void submitUnpublishJobsForRelatedResources(Map<String, Set<ResourceInfo>> relatedResourcesMap) throws JobCreationException {
     Set<ResourceInfo> relatedResourcesToUnpublish = new LinkedHashSet<>();
     for (Entry<String, Set<ResourceInfo>> relatedResourcesForParentPath : relatedResourcesMap.entrySet()) {
       String parentResourcePath = relatedResourcesForParentPath.getKey();
@@ -157,17 +178,14 @@ public class IngestionTriggerJobExecutor implements JobExecutor {
       }
     }
     for (ResourceInfo relatedResource : relatedResourcesToUnpublish) {
-      submitPublicationJob(relatedResource, PublicationAction.UNPUBLISH);
+      submitPublicationJobs(relatedResource, PublicationAction.UNPUBLISH);
     }
   }
 
-  private void submitPublicationJob(ResourceInfo resource, PublicationAction action) throws JobCreationException {
-    String resourcePath = resource.getPath();
-
-    LOG.trace("Submitting publication job for resource {}", resource);
+  private void submitPublicationJobs(ResourceInfo resource, PublicationAction action) throws JobCreationException {
+    LOG.trace("Attempting to submit {} jobs for resource {} for matching handlers and clients", action, resource);
     for (PublicationHandler<?> handler : publicationHandlerRegistry.getForResource(resource)) {
       for (StreamxInstanceClient client : streamxClientStore.getForResource(resource)) {
-        LOG.debug("Adding publication request for [{}: {}] to queue", handler.getId(), resourcePath);
         submitPublicationJob(handler.getId(), action, resource, client.getName());
       }
     }
@@ -175,7 +193,7 @@ public class IngestionTriggerJobExecutor implements JobExecutor {
 
   private void submitPublicationJob(String handlerId, PublicationAction action,
       ResourceInfo resource, String clientName) throws JobCreationException {
-    String resourcePath = resource.getPath();
+    LOG.trace("Submitting {} job for resource {}, handler '{}' and client '{}'", action, resource, handlerId, clientName);
 
     Map<String, Object> jobProperties = new PublicationJobProperties()
         .withHandlerId(handlerId)
@@ -185,15 +203,14 @@ public class IngestionTriggerJobExecutor implements JobExecutor {
         .asMap();
 
     if (isPublicationJobAlreadySubmitted(jobProperties)) {
-      LOG.info("Publication job for resource {} with job properties {} is already submitted", resource, jobProperties);
+      LOG.info("{} job for resource {} with job properties {} is already submitted", action, resource, jobProperties);
       return;
     }
 
     Job job = jobManager.addJob(PublicationJobExecutor.JOB_TOPIC, jobProperties);
     if (job == null) {
-      throw new JobCreationException("Publication job could not be created by JobManager for " + resourcePath);
+      throw new JobCreationException(action + " job could not be created by JobManager for " + resource);
     }
-    LOG.debug("Publication request for [{}: {}] added to queue. Job: {}", handlerId, resourcePath, job);
   }
 
   private boolean isPublicationJobAlreadySubmitted(Map<String, Object> jobProperties) {

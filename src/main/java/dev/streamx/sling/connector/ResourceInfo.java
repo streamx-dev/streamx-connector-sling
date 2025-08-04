@@ -2,10 +2,12 @@ package dev.streamx.sling.connector;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -31,6 +33,9 @@ public class ResourceInfo {
 
   private final Map<String, String> properties;
 
+  @JsonIgnore
+  private final String valueForToString;
+
   /**
    * Creates an instance of {@link ResourceInfo} with empty properties map
    * @param path path of the resource
@@ -53,6 +58,13 @@ public class ResourceInfo {
     }
     this.path = path;
     this.properties = Collections.unmodifiableMap(properties);
+    String propertiesForToString = properties.entrySet().stream()
+        .map(entry -> String.format("%s=%s", entry.getKey(), entry.getValue()))
+        .collect(Collectors.joining(", "));
+    valueForToString = String.format("'%s%s'",
+        path,
+        properties.isEmpty() ? "" : ", " + propertiesForToString
+    );
   }
 
   /**
@@ -97,6 +109,7 @@ public class ResourceInfo {
    * Returns the JSON string deserialized to a {@code Map<String, String>}
    * @param serializedProperties a {@code Map<String, String>} serialized to JSON
    * @return the JSON string deserialized to a {@code Map<String, String>}
+   * @throws IllegalArgumentException when the input string cannot be converted to properties map
    */
   public static Map<String, String> deserializeProperties(String serializedProperties) {
     try {
@@ -122,8 +135,9 @@ public class ResourceInfo {
    * Returns the JSON string deserialized to a {@link ResourceInfo} instance
    * @param serialized a {@link ResourceInfo} instance serialized to JSON
    * @return the JSON string deserialized to a {@link ResourceInfo} instance
+   * @throws IllegalArgumentException when the input string cannot be converted to ResourceInfo
    */
-  public static ResourceInfo deserialize(String serialized) {
+  public static ResourceInfo deserialize(String serialized) throws IllegalArgumentException {
     try {
       return getOrCreateObjectMapper().readValue(serialized, ResourceInfo.class);
     } catch (JsonProcessingException ex) {
@@ -155,6 +169,6 @@ public class ResourceInfo {
 
   @Override
   public String toString() {
-    return serialize();
+    return valueForToString;
   }
 }

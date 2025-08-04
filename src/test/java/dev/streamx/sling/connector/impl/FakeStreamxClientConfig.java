@@ -6,17 +6,19 @@ import org.osgi.service.component.annotations.Component;
 @Component(service = StreamxClientConfig.class)
 class FakeStreamxClientConfig implements StreamxClientConfig {
 
+  private final String name;
   private final String streamxUrl;
   private final List<String> resourcePathPatterns;
 
   FakeStreamxClientConfig(String streamxUrl, List<String> resourcePathPatterns) {
+    this.name = streamxUrl.replace("/", " ").trim();
     this.streamxUrl = streamxUrl;
     this.resourcePathPatterns = resourcePathPatterns;
   }
 
   @Override
   public String getName() {
-    return streamxUrl;
+    return name;
   }
 
   @Override
